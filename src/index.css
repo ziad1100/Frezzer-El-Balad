@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #38bdf8;
+  --color-brand-600: #1e3a5f;
+  --color-brand-700: #153050;
+  --color-brand-800: #0f2540;
+  --color-brand-900: #0f172a;
+
+  --color-gold-50: #f0fdfa;
+  --color-gold-100: #ccfbf1;
+  --color-gold-200: #99f6e4;
+  --color-gold-300: #5eead4;
+  --color-gold-400: #2dd4bf;
+  --color-gold-500: #22c55e;
+  --color-gold-600: #16a34a;
+  --color-gold-700: #15803d;
+
+  --color-night-50: var(--tw-night-50);
+  --color-night-100: var(--tw-night-100);
+  --color-night-200: var(--tw-night-200);
+  --color-night-300: var(--tw-night-300);
+  --color-night-400: var(--tw-night-400);
+  --color-night-500: var(--tw-night-500);
+  --color-night-600: var(--tw-night-600);
+  --color-night-700: var(--tw-night-700);
+  --color-night-800: var(--tw-night-800);
+  --color-night-850: var(--tw-night-850);
+  --color-night-900: var(--tw-night-900);
+  --color-night-950: var(--tw-night-950);
+
+  --font-sans: "Inter", "Cairo", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --animate-fade-in: fade-in 0.4s ease both;
+  --animate-slide-up: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-scale-in: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}
+
+:root,
+[data-theme="dark"] {
+  --tw-night-50: #f6f6f6;
+  --tw-night-100: #e7e7e7;
+  --tw-night-200: #d1d1d1;
+  --tw-night-300: #b0b0b0;
+  --tw-night-400: #888888;
+  --tw-night-500: #6d6d6d;
+  --tw-night-600: #5d5d5d;
+  --tw-night-700: #4f4f4f;
+  --tw-night-800: #2a2a2a;
+  --tw-night-850: #1e1e1e;
+  --tw-night-900: #161616;
+  --tw-night-950: #0d0d0d;
+}
+
+[data-theme="light"] {
+  --tw-night-50: #0c0c0c;
+  --tw-night-100: #1b1b1b;
+  --tw-night-200: #303030;
+  --tw-night-300: #4b4b4b;
+  --tw-night-400: #686868;
+  --tw-night-500: #767676;
+  --tw-night-600: #8a8a8a;
+  --tw-night-700: #b5b5b5;
+  --tw-night-800: #e3e3e3;
+  --tw-night-850: #ececec;
+  --tw-night-900: #f4f4f4;
+  --tw-night-950: #fafafa;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-night-950 text-night-100 font-sans antialiased;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  [dir="rtl"] body {
+    font-family: var(--font-arabic);
+  }
+
+  ::selection {
+    @apply bg-brand-500 text-white;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-night-700) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-night-700 rounded-full;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility container-px {
+  @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}

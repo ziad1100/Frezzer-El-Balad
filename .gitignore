@@ -1,0 +1,50 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Dev database (mongodb-memory-server persistent data)
+server/.data/
+
+# Local uploads
+server/uploads/
+
+# Secrets — never commit these
+.env
+server/.env
+.env.*
+!.env.example
+!server/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Backups (received copies, DB dumps, scheduled-task artifacts)
+backups/
+.vercel
+.env*
+
+# Playwright test artifacts
+playwright-report/
+test-results/

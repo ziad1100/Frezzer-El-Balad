@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="theme-color" content="#0F172A" />
+    <script>
+      try {
+        var t = localStorage.getItem('ph_theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.dataset.theme = t;
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0D0D0D' : '#FAFAFA');
+        }
+      } catch (e) {}
+    </script>
+    <link rel="icon" type="image/jpeg" href="/images/frezzer-logo.jpeg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="فريزر البلد — متجر إلكتروني للحوم والفراخ والمصنعات والمجمدات بجودة عالية وأسعار مناسبة | Frezzer El Balad - Premium meat, chicken & frozen products at affordable prices" />
+    <meta name="theme-color" content="#0F172A" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <title>فريزر البلد | لحوم وفراخ ومجمدات | Frezzer El Balad</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/health/ready",
+      "destination": "/api/app?url=/health/ready"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/app?url=/health"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/app?url=/api/$1"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "/api/app?url=/uploads/$1"
+    },
+    {
+      "source": "/((?!api/|uploads/|assets/|images/|favicon|.*\\.(?:js|css|svg|png|jpe?g|webp|gif|avif|ico|woff2?|json|txt)$).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

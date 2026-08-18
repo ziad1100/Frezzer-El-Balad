@@ -1,0 +1,154 @@
+{
+  "menu_category": "لحوم ووجبات",
+  "currency": "EGP",
+  "note": "الأسعار تقديرية بتناسب متوسط أسعار السوق المصري 2026، لازم تتعدل حسب المنطقة ونوع المحل وحجم الوجبة الفعلي",
+  "items": [
+    {
+      "id": 1,
+      "name_ar": "لحمة فلانك",
+      "name_en": "Flank Steak",
+      "unit": "طبق/وجبة",
+      "price_egp": 320
+    },
+    {
+      "id": 2,
+      "name_ar": "لحمة استيك",
+      "name_en": "Steak",
+      "unit": "طبق/وجبة",
+      "price_egp": 280
+    },
+    {
+      "id": 3,
+      "name_ar": "كبدة بقري",
+      "name_en": "Beef Liver",
+      "unit": "طبق",
+      "price_egp": 150
+    },
+    {
+      "id": 4,
+      "name_ar": "كبدة أمريكاني",
+      "name_en": "American-style Liver",
+      "unit": "طبق",
+      "price_egp": 170
+    },
+    {
+      "id": 5,
+      "name_ar": "سجق شرقي",
+      "name_en": "Oriental Sausage (Sogo')",
+      "unit": "طبق",
+      "price_egp": 140
+    },
+    {
+      "id": 6,
+      "name_ar": "جلاش",
+      "name_en": "Gollash (Phyllo-wrapped)",
+      "unit": "قطعة",
+      "price_egp": 90
+    },
+    {
+      "id": 7,
+      "name_ar": "سوسيس",
+      "name_en": "Sausage",
+      "unit": "طبق",
+      "price_egp": 130
+    },
+    {
+      "id": 8,
+      "name_ar": "ريش",
+      "name_en": "Ribs",
+      "unit": "طبق/كيلو",
+      "price_egp": 380
+    },
+    {
+      "id": 9,
+      "name_ar": "برجر بلدي",
+      "name_en": "Balady Burger",
+      "unit": "قطعة",
+      "price_egp": 90
+    },
+    {
+      "id": 10,
+      "name_ar": "برجر",
+      "name_en": "Burger",
+      "unit": "قطعة",
+      "price_egp": 110
+    },
+    {
+      "id": 11,
+      "name_ar": "لحمة مفرومة",
+      "name_en": "Minced Meat",
+      "unit": "طبق/كيلو",
+      "price_egp": 260
+    },
+    {
+      "id": 12,
+      "name_ar": "استربس",
+      "name_en": "Strips",
+      "unit": "طبق",
+      "price_egp": 150
+    },
+    {
+      "id": 13,
+      "name_ar": "شيش",
+      "name_en": "Shish (Kebab/Tawook)",
+      "unit": "طبق",
+      "price_egp": 250
+    },
+    {
+      "id": 14,
+      "name_ar": "بانيه",
+      "name_en": "Breaded Cutlet (Paneh)",
+      "unit": "طبق/قطعة",
+      "price_egp": 140
+    },
+    {
+      "id": 15,
+      "name_ar": "بانيه موزاريلا",
+      "name_en": "Mozzarella Breaded Cutlet",
+      "unit": "طبق/قطعة",
+      "price_egp": 170
+    },
+    {
+      "id": 16,
+      "name_ar": "دبوس بلدي",
+      "name_en": "Balady Dabous (Skewer)",
+      "unit": "سيخ",
+      "price_egp": 60
+    },
+    {
+      "id": 17,
+      "name_ar": "كفتة",
+      "name_en": "Kofta",
+      "unit": "طبق/كيلو",
+      "price_egp": 230
+    },
+    {
+      "id": 18,
+      "name_ar": "حواوشي",
+      "name_en": "Hawawshi",
+      "unit": "قطعة",
+      "price_egp": 100
+    },
+    {
+      "id": 19,
+      "name_ar": "حواوشي فراخ",
+      "name_en": "Chicken Hawawshi",
+      "unit": "قطعة",
+      "price_egp": 90
+    },
+    {
+      "id": 20,
+      "name_ar": "حواوشي أرز",
+      "name_en": "Rice-crust Hawawshi",
+      "unit": "قطعة",
+      "price_egp": 100
+    },
+    {
+      "id": 21,
+      "name_ar": "حواوشي بلدي",
+      "name_en": "Balady Hawawshi",
+      "unit": "قطعة",
+      "price_egp": 95
+    }
+  ]
+}

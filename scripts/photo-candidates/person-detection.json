@@ -1,0 +1,602 @@
+[
+  {
+    "file": "alexandrian-sausage-crepe-meat-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "alexandrian-sausage-pizza-meat.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "alfredo-pasta-pasta.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "baked-mozzarella-potato-appetizers.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "baked-rice-dessert.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "baladi-sausage-crepe-meat-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "baladi-sausage-pizza-meat.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "basbousa-kunafa-sweet-feteer.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "bbq-chicken-crepe-chicken-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "bbq-chicken-pizza-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "beef-meat.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "beef-rocket-roll.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "cheddar-potato-appetizers.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "cheddar-potato-crepe-assorted-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "cheese-mix-crepe-mix-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "cheese-mix-hawawshi-hawawshi.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "cheese-mix-pizza-mixes.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-add-ons.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-bbq-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-fajita-crepe-chicken-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-hawawshi-hawawshi.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-mix-crepe-mix-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-mix-hawawshi-hawawshi.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-mix-pizza-mixes.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-mix-tagine-tagine.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-mozzarella-tagine-tagine.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-pasta-pasta.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-pizza-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-ranch-pizza-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-shawarma-crepe-chicken-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-strips-pizza-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chicken-tagine-tagine.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chocolate-banana-crepe-sweet-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chocolate-banana-sweet-feteer.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chocolate-crepe-sweet-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chocolate-oreo-crepe-sweet-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "chocolate-oreo-sweet-feteer.jpg",
+    "faces": 1,
+    "label": "PERSON"
+  },
+  {
+    "file": "crispy-chicken-crepe-chicken-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "crispy-chicken-pizza-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "crispy-pizza-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "crunchy-chicken-crepe-chicken-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "crunchy-chicken-pizza-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "custard-dessert.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "estris-crepe-chicken-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "fajita-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "fajita-pizza-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "helwany-mix-pizza-mixes.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "hot-dog-crepe-meat-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "hot-dog-pasta-pasta.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "jumbo-can-delivery-cans.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "kiri-cheese-piece-add-ons.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "kiri-cheese-pizza-cheese.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "kofta-crepe-meat-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "kofta-meat.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "kofta-pizza-meat.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "kunafa-sweet-feteer.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "legend-mix-crepe-mix-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "lotus-crepe-sweet-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "lotus-sweet-feteer.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "margherita-cheese.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "margherita-pizza-cheese.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-add-ons.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-burger-crepe-meat-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-crepe-meat-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-hawawshi-hawawshi.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-mix-hawawshi-hawawshi.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-mix-mix.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-mix-pizza-mixes.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-mix-tagine-tagine.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-mozzarella-tagine-tagine.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-pasta-pasta.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meat-tagine-tagine.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "meshaltet-butter-meshaltet.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "mexican-hot-dog-crepe-meat-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "minced-meat-pizza-meat.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "mozzarella-add-ons.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "mozzarella-cheese.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "mozzarella-crepe-assorted-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "mozzarella-pizza-cheese.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "mushroom-crepe-assorted-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "napolitana-pasta-pasta.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "negresco-pasta-pasta.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "orabi-can-delivery-cans.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "orabi-qalbana-crepe-mix-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "orabi-revolution-pizza-mixes.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "pastrami-pizza-meat.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "pate-crepe-chicken-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "potato-bag-appetizers.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "potato-crepe-assorted-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "ranch-chicken-crepe-chicken-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "regular-can-delivery-cans.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "regular-rice-dessert.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "roman-cheese-crepe-assorted-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "roman-cheese-pizza-cheese.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "salami-pizza-meat.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "sausage-hawawshi-hawawshi.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "sausage-kiri-rocket-roll.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "sausage-pasta-pasta.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "sausage-pizza-meat.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "seafood-pizza-seafood.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "sekket-alia-crepe-mix-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "shawarma-pane-mix-crepe-mix-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "shawarma-potato-bbq-mix-crepe-mix-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "shish-pizza-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "shrimp-pasta-pasta.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "shrimp-pizza-seafood.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "shrimp-seafood.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "smoked-helwany-mix-pizza-mixes.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "smoked-turkey-pizza-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "strips-chicken.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "super-can-delivery-cans.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "super-crunchy-crepe-mix-crepe.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "super-supreme-pizza-mixes.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "tuna-hawawshi-hawawshi.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "tuna-pizza-seafood.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "tuna-seafood.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "vegetable-pizza-cheese.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "vegetables-cheese.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "water-dessert.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  },
+  {
+    "file": "white-chocolate-sweet-feteer.jpg",
+    "faces": 0,
+    "label": "CLEAN"
+  }
+]
