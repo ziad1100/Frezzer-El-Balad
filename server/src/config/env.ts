@@ -1,10 +1,20 @@
 import dotenv from 'dotenv';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
+// When bundled (e.g. esbuild → dist/server.js), import.meta.url points to dist/.
+// We need to resolve from the project root (two levels up) OR from server/ (one
+// level up). Try both so the dev and prod bundles both find server/.env.
+const envPath = path.resolve(__dirname, '../../.env');
+const envLocalPath = path.resolve(__dirname, '../../.env.local');
+const altEnvPath = path.resolve(__dirname, '../.env');
+const altEnvLocalPath = path.resolve(__dirname, '../.env.local');
+if (fs.existsSync(envPath)) dotenv.config({ path: envPath });
+if (fs.existsSync(envLocalPath)) dotenv.config({ path: envLocalPath });
+if (fs.existsSync(altEnvPath)) dotenv.config({ path: altEnvPath });
+if (fs.existsSync(altEnvLocalPath)) dotenv.config({ path: altEnvLocalPath });
 
 const MISSING_ENV_HINT =
   'Missing required environment variable "%s". This server requires explicit configuration: ' +

@@ -10,7 +10,7 @@ export function Logo({ className }: { className?: string }) {
       aria-label="فريزر البلد"
     >
       {/* Background circle */}
-      <circle cx="50" cy="50" r="48" fill="#1E3A5F" />
+      <circle cx="50" cy="50" r="48" fill="#0F172A" />
       
       {/* Snowflake icon */}
       <g transform="translate(50,50)" stroke="#38BDF8" strokeWidth="2.5" strokeLinecap="round">
