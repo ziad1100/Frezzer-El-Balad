@@ -184,7 +184,7 @@ export function AdminLayout() {
               <Link to="/" className="flex items-center gap-2">
                 <Logo className="h-9 w-9 rounded-lg" />
                 <span className="text-lg font-extrabold text-night-50">
-                  ORABI<span className="text-brand-500">Admin</span>
+                  فريزر<span className="text-brand-500"> البلد</span>
                 </span>
               </Link>
               <button

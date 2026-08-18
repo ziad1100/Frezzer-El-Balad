@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 import pg from 'pg';
 
-const CONTAINER = 'orabi-test-pg';
+const CONTAINER = 'freezer-el-balad-test-pg';
 const TEST_PORT = 54329;
 const TEST_DB_URL =
   process.env.TEST_DATABASE_URL ?? `postgresql://postgres:postgres@127.0.0.1:${TEST_PORT}/postgres`;

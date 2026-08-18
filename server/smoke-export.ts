@@ -11,7 +11,7 @@ app.use('/api/v1/analytics', analyticsRoutes);
 
 (async () => {
   try {
-    const admin = (await query<{ id: string }>(`SELECT id FROM users WHERE email = 'admin@pizzahouse.dev'`))[0];
+    const admin = (await query<{ id: string }>(`SELECT id FROM users WHERE email = 'admin@frezzerelbalad.dev'`))[0];
     const token = signAccessToken(admin.id);
     const exportRes = await request(app)
       .get('/api/v1/analytics/export')

@@ -8,7 +8,7 @@ export const pool = new Pool({
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
   statement_timeout: 15_000,
-  application_name: 'orabi-api',
+  application_name: 'freezer-el-balad-api',
 });
 
 pool.on('error', (err) => {

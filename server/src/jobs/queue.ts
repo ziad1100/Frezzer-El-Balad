@@ -2,8 +2,8 @@ import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import env from '../config/env';
 
-export const EMAIL_QUEUE = 'orabi-email';
-export const ANALYTICS_QUEUE = 'orabi-analytics';
+export const EMAIL_QUEUE = 'freezer-email';
+export const ANALYTICS_QUEUE = 'freezer-analytics';
 
 export const buildRedisConnection = (): Redis => {
   const redis = new Redis(env.redisUrl, {

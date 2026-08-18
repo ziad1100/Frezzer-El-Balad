@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { Pizza, X } from 'lucide-react';
+import { Snowflake, X } from 'lucide-react';
 import { getPendingReviewOrders } from '@/api/reviews';
 import { getSettings } from '@/api/orders';
 import { useAppSelector } from '@/hooks';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button';
 //  - a cooldown between showings (settings: reviewPromptCooldownDays, default 3)
 //  - a delay after the order was delivered (settings: reviewPromptDelayHours, default 24)
 //  - a permanent per-order dismissal ("Maybe later")
-const LS_KEY = 'orabi:reviewPrompt';
+const LS_KEY = 'frezzer:reviewPrompt';
 
 interface StoredState {
   lastShownAt?: number;
@@ -101,10 +101,10 @@ export function ReviewPrompt() {
 
   return (
     <div className="container-px">
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-600/30 bg-gradient-to-r from-brand-600/10 via-night-900 to-gold-500/10 px-5 py-4">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-600/30 bg-gradient-to-r from-brand-600/10 via-night-900 to-brand-500/10 px-5 py-4">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600/15 text-brand-400">
-            <Pizza className="h-6 w-6" />
+            <Snowflake className="h-6 w-6" />
           </span>
           <div>
             <p className="font-bold text-night-50">{t('review.promptTitle')}</p>

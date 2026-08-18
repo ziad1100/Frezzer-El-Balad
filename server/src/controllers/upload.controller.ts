@@ -16,7 +16,7 @@ export const uploadSingle = asyncHandler(async (req: Request, res: Response) => 
 
   if (cloudinaryConfigured) {
     const result = await cloudinary.uploader.upload(file.path, {
-      folder: 'pizza-house',
+      folder: 'freezer-el-balad',
       transformation: [{ quality: 'auto', fetch_format: 'webp' }],
     });
     url = result.secure_url;
@@ -36,7 +36,7 @@ export const uploadMultiple = asyncHandler(async (req: Request, res: Response) =
   for (const file of files) {
     if (cloudinaryConfigured) {
       const result = await cloudinary.uploader.upload(file.path, {
-        folder: 'pizza-house',
+        folder: 'freezer-el-balad',
         transformation: [{ quality: 'auto', fetch_format: 'webp' }],
       });
       urls.push(result.secure_url);
@@ -50,7 +50,7 @@ export const uploadMultiple = asyncHandler(async (req: Request, res: Response) =
 
 export const listFiles = asyncHandler(async (_req: Request, res: Response) => {
   if (cloudinaryConfigured) {
-    const result = await cloudinary.api.resources({ type: 'upload', prefix: 'pizza-house', max_results: 100 });
+    const result = await cloudinary.api.resources({ type: 'upload', prefix: 'freezer-el-balad', max_results: 100 });
     res.json(new ApiResponse(200, result.resources.map((r: { secure_url?: string }) => r.secure_url)));
     return;
   }
@@ -65,7 +65,7 @@ export const removeFile = asyncHandler(async (req: Request, res: Response) => {
   const filename = path.basename(String(req.params.filename || ''));
   if (!filename) throw new ApiError(400, 'Filename is required');
   if (cloudinaryConfigured) {
-    await cloudinary.uploader.destroy(`pizza-house/${filename.replace(/\.[^.]+$/, '')}`);
+    await cloudinary.uploader.destroy(`freezer-el-balad/${filename.replace(/\.[^.]+$/, '')}`);
   } else {
     deleteLocalFile(filename);
   }

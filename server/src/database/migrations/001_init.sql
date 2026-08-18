@@ -1,5 +1,5 @@
 -- 001_init_schema.sql
--- ORABI restaurant + e-commerce: full PostgreSQL schema (source of truth).
+-- Frezzer El Balad frozen food e-commerce: full PostgreSQL schema (source of truth).
 -- Migrated from MongoDB (Mongoose) — column names are camelCase (quoted) so the
 -- API contract (camelCase JSON) maps 1:1 with zero renaming drift.
 -- RLS: ENABLE ROW LEVEL SECURITY everywhere; policies mirror public endpoints.
