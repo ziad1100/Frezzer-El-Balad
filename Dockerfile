@@ -27,11 +27,12 @@ COPY --from=build /app/public ./public
 
 RUN mkdir -p /app/server/uploads && chown node:node /app/server/uploads
 
-EXPOSE 5000
+EXPOSE ${PORT:-5000}
 USER node
 
 # Liveness probe — returns 200 from GET /health once the API is up.
+# Uses $PORT (set by Render) or falls back to 5000 for local Docker testing.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "const p=process.env.PORT||5000;fetch('http://127.0.0.1:'+p+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "server/dist/server.js"]
