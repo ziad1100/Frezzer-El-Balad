@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Banknote, CalendarDays, Download, Eraser, Package, RefreshCw, ShoppingBag, Star, TrendingUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { adminListOrders, adminReviewStats, clearDashboardStats, exportDashboard, getDashboard, getDashboardDay, refreshDashboard } from '@/api/admin';
+import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, refreshDashboard, systemReset } from '@/api/admin';
 import { getErrorMessage } from '@/lib/api';
 import { Card, CardContent, EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -55,19 +55,20 @@ export function AdminIndexPage() {
   const [resetTyped, setResetTyped] = useState('');
 
   const clearMutation = useMutation({
-    mutationFn: clearDashboardStats,
+    mutationFn: systemReset,
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'day'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'reviews'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'offers'] }),
       ]);
-      toast.success(t('admin.clearStatsSuccess'));
+      toast.success(t('admin.systemResetSuccess'));
       setConfirmClear(false);
       setResetTyped('');
     },
-    onError: () => toast.error(t('admin.clearStatsError')),
+    onError: () => toast.error(t('admin.systemResetError')),
   });
 
   const closeClearModal = () => {
@@ -175,10 +176,10 @@ export function AdminIndexPage() {
               loading={clearMutation.isPending}
               disabled={clearMutation.isPending}
               onClick={() => setConfirmClear(true)}
-              title={t('admin.clearStatsTitle')}
+              title={t('admin.systemResetTitle')}
             >
               <Eraser className="h-4 w-4" />
-              {t('admin.clearStats')}
+              {t('admin.systemReset')}
             </Button>
             <Button
               variant="outline"
@@ -471,23 +472,23 @@ export function AdminIndexPage() {
         </Card>
       </div>
 
-      <Modal open={confirmClear} onClose={closeClearModal} title={t('admin.clearStatsTitle')} size="sm">
+      <Modal open={confirmClear} onClose={closeClearModal} title={t('admin.systemResetTitle')} size="sm">
         <div className="mb-4 rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-relaxed text-night-200">
-          <p className="mb-2 font-bold text-red-400">⚠️ {t('admin.clearStatsWarning')}</p>
-          <p>{t('admin.clearStatsConfirm')}</p>
+          <p className="mb-2 font-bold text-red-400">⚠️ {t('admin.systemResetWarning')}</p>
+          <p>{t('admin.systemResetConfirm')}</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <div>
-              <p className="mb-1 text-xs font-bold text-red-400">{t('admin.clearStatsZeroTitle')}</p>
+              <p className="mb-1 text-xs font-bold text-red-400">{t('admin.systemResetClearTitle')}</p>
               <ul className="list-inside list-disc space-y-0.5 text-xs text-night-300">
-                {(t('admin.clearStatsZeroItems', { returnObjects: true }) as unknown as string[]).map((item) => (
+                {(t('admin.systemResetClearItems', { returnObjects: true }) as unknown as string[]).map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
             </div>
             <div>
-              <p className="mb-1 text-xs font-bold text-emerald-400">{t('admin.clearStatsKeepTitle')}</p>
+              <p className="mb-1 text-xs font-bold text-emerald-400">{t('admin.systemResetKeepTitle')}</p>
               <ul className="list-inside list-disc space-y-0.5 text-xs text-night-300">
-                {(t('admin.clearStatsKeepItems', { returnObjects: true }) as unknown as string[]).map((item) => (
+                {(t('admin.systemResetKeepItems', { returnObjects: true }) as unknown as string[]).map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
@@ -496,7 +497,7 @@ export function AdminIndexPage() {
         </div>
         <div className="mb-5">
           <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-night-500">
-            {t('admin.clearStatsTypeHint')}
+            {t('admin.systemResetTypeHint')}
           </label>
           <Input
             value={resetTyped}
@@ -518,7 +519,7 @@ export function AdminIndexPage() {
             disabled={resetTyped.trim().toUpperCase() !== 'RESET'}
             onClick={() => clearMutation.mutate()}
           >
-            {t('admin.clearStats')}
+            {t('admin.systemReset')}
           </Button>
         </div>
       </Modal>

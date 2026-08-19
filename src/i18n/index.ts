@@ -11,10 +11,34 @@ export const LANGUAGES = {
 
 export type LanguageCode = keyof typeof LANGUAGES;
 
+/** Language-aware document title */
+const TITLES: Record<LanguageCode, string> = {
+  ar: 'فريزر البلد | لحوم وفراخ ومجمدات',
+  en: 'Freezer El Balad | Meat, Chicken & Frozen Foods',
+};
+
+/** Language-aware meta description */
+const META_DESCRIPTIONS: Record<LanguageCode, string> = {
+  ar: 'فريزر البلد — متجر إلكتروني للحوم والفراخ والمصنعات والمجمدات.',
+  en: 'Freezer El Balad — Your online store for meat, chicken, processed foods and frozen products.',
+};
+
 const applyDocumentDirection = (lng: string): void => {
   const lang = (Object.keys(LANGUAGES).includes(lng) ? lng : 'ar') as LanguageCode;
   document.documentElement.lang = lang;
   document.documentElement.dir = LANGUAGES[lang].dir;
+
+  // Update document title
+  document.title = TITLES[lang];
+
+  // Update meta description
+  let meta = document.querySelector('meta[name="description"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute('name', 'description');
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute('content', META_DESCRIPTIONS[lang]);
 };
 
 const initialLanguage = (() => {

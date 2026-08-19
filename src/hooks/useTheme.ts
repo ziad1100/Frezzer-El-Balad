@@ -9,7 +9,9 @@ export function useTheme(): { theme: ThemeMode; toggleTheme: () => void; setThem
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0D0D0D' : '#FAFAFA');
+    // Update theme-color meta tag
+    const themeColor = theme === 'dark' ? '#0F172A' : '#F8FAFC';
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColor);
   }, [theme]);
 
   return {

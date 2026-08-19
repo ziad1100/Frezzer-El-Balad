@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  /* Brand colors — same in both modes */
   --color-brand-50: #E0F2FE;
   --color-brand-100: #bae6fd;
   --color-brand-200: #7dd3fc;
@@ -12,6 +13,7 @@
   --color-brand-800: #1e3a8a;
   --color-brand-900: #0f172a;
 
+  /* Gold = Fresh Green */
   --color-gold-50: #f0fdf4;
   --color-gold-100: #dcfce7;
   --color-gold-200: #bbf7d0;
@@ -21,10 +23,12 @@
   --color-gold-600: #16a34a;
   --color-gold-700: #15803d;
 
+  /* Semantic tokens */
   --color-discount: #F97316;
   --color-fresh: #22C55E;
   --color-ice: #E0F2FE;
 
+  /* Night palette — dynamically themed via CSS vars */
   --color-night-50: var(--tw-night-50);
   --color-night-100: var(--tw-night-100);
   --color-night-200: var(--tw-night-200);
@@ -46,64 +50,50 @@
   --animate-scale-in: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 
   @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(24px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   @keyframes scale-in {
-    from {
-      opacity: 0;
-      transform: scale(0.96);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
   }
 }
 
+/* ── Dark Mode (default) ─────────────────────────────────────────────── */
 :root,
 [data-theme="dark"] {
-  --tw-night-50: #f6f6f6;
-  --tw-night-100: #e7e7e7;
-  --tw-night-200: #d1d1d1;
-  --tw-night-300: #b0b0b0;
-  --tw-night-400: #888888;
-  --tw-night-500: #6d6d6d;
-  --tw-night-600: #5d5d5d;
-  --tw-night-700: #4f4f4f;
-  --tw-night-800: #2a2a2a;
-  --tw-night-850: #1e1e1e;
-  --tw-night-900: #161616;
-  --tw-night-950: #0d0d0d;
+  --tw-night-50: #F8FAFC;
+  --tw-night-100: #CBD5E1;
+  --tw-night-200: #94A3B8;
+  --tw-night-300: #94A3B8;
+  --tw-night-400: #94A3B8;
+  --tw-night-500: #64748B;
+  --tw-night-600: #475569;
+  --tw-night-700: #334155;
+  --tw-night-800: #1E293B;
+  --tw-night-850: #172554;
+  --tw-night-900: #0F172A;
+  --tw-night-950: #0B1120;
 }
 
+/* ── Light Mode ──────────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --tw-night-50: #0c0c0c;
-  --tw-night-100: #1b1b1b;
-  --tw-night-200: #303030;
-  --tw-night-300: #4b4b4b;
-  --tw-night-400: #686868;
-  --tw-night-500: #767676;
-  --tw-night-600: #8a8a8a;
-  --tw-night-700: #b5b5b5;
-  --tw-night-800: #e3e3e3;
-  --tw-night-850: #ececec;
-  --tw-night-900: #f4f4f4;
-  --tw-night-950: #fafafa;
+  --tw-night-50: #0F172A;
+  --tw-night-100: #0F172A;
+  --tw-night-200: #334155;
+  --tw-night-300: #475569;
+  --tw-night-400: #64748B;
+  --tw-night-500: #64748B;
+  --tw-night-600: #94A3B8;
+  --tw-night-700: #CBD5E1;
+  --tw-night-800: #E2E8F0;
+  --tw-night-850: #F1F5F9;
+  --tw-night-900: #F8FAFC;
+  --tw-night-950: #FFFFFF;
 }
 
 @layer base {
@@ -112,7 +102,22 @@
   }
 
   body {
-    @apply bg-[#0F172A] text-night-100 font-sans antialiased;
+    @apply font-sans antialiased;
+    background: var(--tw-night-950, #0F172A);
+    color: var(--tw-night-100, #CBD5E1);
+  }
+
+  /* Dark mode body */
+  :root body,
+  [data-theme="dark"] body {
+    background: #0F172A;
+    color: #CBD5E1;
+  }
+
+  /* Light mode body */
+  [data-theme="light"] body {
+    background: #F8FAFC;
+    color: #0F172A;
   }
 
   button:not(:disabled) {
@@ -124,12 +129,13 @@
   }
 
   ::selection {
-    @apply bg-brand-500 text-white;
+    background: #2563EB;
+    color: #FFFFFF;
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-night-700) transparent;
+    scrollbar-color: var(--tw-night-700) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -138,7 +144,8 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-night-700 rounded-full;
+    background: var(--tw-night-700);
+    border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-track {

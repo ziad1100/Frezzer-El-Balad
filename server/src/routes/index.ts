@@ -20,6 +20,7 @@ import analyticsRoutes from './analytics.routes';
 import uploadRoutes from './upload.routes';
 import postRoutes from './post.routes';
 import adminUserRoutes from './adminUser.routes';
+import systemResetRoutes from './systemReset.routes';
 import { adminApiLimiter } from '../middlewares/rateLimiter';
 
 const router = Router();
@@ -45,5 +46,6 @@ router.use('/analytics', analyticsRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/posts', postRoutes);
 router.use('/admin/users', adminApiLimiter, adminUserRoutes);
+router.use('/system', systemResetRoutes);
 
 export default router;

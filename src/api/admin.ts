@@ -212,6 +212,21 @@ export const refreshDashboard = (): Promise<{ ok: boolean }> =>
 export const clearDashboardStats = (): Promise<{ ok: boolean }> =>
   unwrap(api.post<ApiEnvelope<{ ok: boolean }>>('/analytics/clear'));
 
+export interface SystemResetResult {
+  ok: boolean;
+  summary: {
+    ordersDeleted: number;
+    cartsCleared: number;
+    offersDeleted: number;
+    productsReset: number;
+    sizesReset: number;
+    extrasReset: number;
+  };
+}
+
+export const systemReset = (): Promise<SystemResetResult> =>
+  unwrap(api.post<ApiEnvelope<SystemResetResult>>('/system/reset'));
+
 export const exportDashboard = async (date?: string, period = 'today'): Promise<{ blob: Blob; filename: string }> => {
   const res = await api.get<Blob>('/analytics/export', {
     params: { date: date || undefined, period },
