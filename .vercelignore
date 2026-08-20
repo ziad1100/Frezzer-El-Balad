@@ -1,0 +1,25 @@
+# Vite build output (root dist/) — not needed for API serverless functions
+/dist
+/dist-ssr
+
+# Dev artifacts
+node_modules
+.vscode
+.idea
+
+# Test/playwright
+playwright-report
+test-results
+
+# Database backups
+backups
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Server-side (NOT the API functions — those are in api/)
+# Keep server/dist/ available — api/app.js imports from there
+server/uploads
+server/.data
