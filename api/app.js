@@ -5,7 +5,11 @@
 // Express app routes exactly as it does on the container host (same code,
 // same routes — no redesign). Express 4 apps are plain (req, res) handlers,
 // which is what Vercel's Node runtime invokes.
-import app from '../server/dist/handler.js';
+//
+// _handler.mjs is a self-contained esbuild bundle (all npm packages inlined)
+// built by `npm run build:api`. It has zero bare imports, so Vercel can run
+// it without relying on node_modules resolution.
+import app from './_handler.mjs';
 
 export const config = { maxDuration: 60 };
 
