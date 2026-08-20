@@ -1,15 +1,11 @@
-// Vercel serverless health endpoint — lightweight, no Express dependency.
-// Checks liveness (/health) and readiness (/health/ready — DB check).
-// Self-contained: imports pg directly to avoid pulling in the full Express app.
-import pg from 'pg';
+// Vercel serverless health endpoint — zero npm dependencies.
+// Uses only Node.js built-ins to check liveness and readiness (DB probe).
+// This avoids workspace-dependency resolution issues on Vercel.
+
+import { connect } from 'node:net';
+import tls from 'node:tls';
 
 export const config = { maxDuration: 30 };
-
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
-  max: 1,
-});
 
 const send = (res, status, body) => {
   res.statusCode = status;
@@ -18,17 +14,52 @@ const send = (res, status, body) => {
   res.end(JSON.stringify(body));
 };
 
+// Parse DATABASE_URL without any external library
+function parseDbUrl(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return { host: u.hostname, port: Number(u.port) || 5432, ssl: url.includes('sslmode=require') };
+  } catch {
+    return null;
+  }
+}
+
+function checkDb(host, port, ssl, timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    if (ssl) {
+      const socket = tls.connect({ host, port, rejectUnauthorized: false, servername: host }, () => {
+        socket.destroy();
+        resolve({ ok: true, ms: Date.now() - start });
+      });
+      socket.on('error', () => resolve({ ok: false, ms: Date.now() - start }));
+      socket.setTimeout(timeoutMs, () => { socket.destroy(); resolve({ ok: false, ms: Date.now() - start }); });
+    } else {
+      const socket = connect({ host, port }, () => {
+        socket.destroy();
+        resolve({ ok: true, ms: Date.now() - start });
+      });
+      socket.on('error', () => resolve({ ok: false, ms: Date.now() - start }));
+      socket.setTimeout(timeoutMs, () => { socket.destroy(); resolve({ ok: false, ms: Date.now() - start }); });
+    }
+  });
+}
+
 export default async function handler(req, res) {
   const url = req.url || '';
 
+  // Readiness — check database TCP connectivity (no pg dependency needed)
   if (url.includes('/health/ready')) {
     const checks = { database: 'down', redis: 'disabled' };
     let ready = true;
 
-    try {
-      await pool.query('SELECT 1');
-      checks.database = 'up';
-    } catch {
+    const db = parseDbUrl(process.env.DATABASE_URL);
+    if (db) {
+      const result = await checkDb(db.host, db.port, db.ssl);
+      if (result.ok) checks.database = 'up';
+      else { ready = false; }
+    } else {
       ready = false;
     }
 
