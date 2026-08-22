@@ -10,7 +10,7 @@
     "dev": "vite",
     "dev:server": "npm run dev --workspace server",
     "dev:all": "concurrently -n server,client -c red,cyan \"npm run dev:server\" \"npm run dev\"",
-    "build": "tsc -b && vite build && npm run build:api",
+    "build": "tsc -b && vite build",
     "build:api": "esbuild scripts/api-handler-entry.ts --bundle --platform=node --format=esm --packages=external --outfile=server/dist/handler.js && esbuild scripts/health-entry.ts --bundle --platform=node --format=esm --packages=external --outfile=server/dist/health.js && esbuild scripts/api-handler-entry.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=api/_handler.mjs",
     "build:server": "npm run build --workspace server",
     "lint": "eslint .",

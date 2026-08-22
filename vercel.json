@@ -1,26 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "api/app.js": {
-      "maxDuration": 60
-    },
-    "api/health.js": {
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
-    {
-      "source": "/health",
-      "destination": "/api/health"
-    },
-    {
-      "source": "/health/ready",
-      "destination": "/api/health"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/app?url=/api/:path*"
-    },
     {
       "source": "/((?!api/|uploads/|assets/|images/|favicon|.*\\.(?:js|css|svg|png|jpe?g|webp|gif|avif|ico|woff2?|json|txt)$).*)",
       "destination": "/index.html"

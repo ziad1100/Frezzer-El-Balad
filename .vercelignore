@@ -1,6 +1,11 @@
-# Vite build output (root dist/) — not needed for API serverless functions
-/dist
-/dist-ssr
+# Server backend — NOT deployed to Vercel (Render handles this)
+/server/
+
+# Vercel serverless function helpers at root — no longer needed
+/api/
+
+# Build scripts for serverless functions
+/scripts/
 
 # Dev artifacts
 node_modules
@@ -10,16 +15,28 @@ node_modules
 # Test/playwright
 playwright-report
 test-results
+/e2e
 
 # Database backups
-backups
+/backups
 
 # Local secrets
 .env
 .env.*
 !.env.example
 
-# Server-side (NOT the API functions — those are in api/)
-# Keep server/dist/ available — api/app.js imports from there
-server/uploads
-server/.data
+# Docker / Render config
+Dockerfile
+docker-compose.yml
+render.yaml
+.dockerignore
+
+# k6 load testing
+/k6
+
+# Dev logs
+*.log
+
+# Miscellaneous
+/docs/
+/images/
