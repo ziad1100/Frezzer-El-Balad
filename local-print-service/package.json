@@ -1,0 +1,16 @@
+{
+  "name": "freezer-elbalad-print-service",
+  "version": "1.0.0",
+  "description": "Local thermal receipt printer service for Freezer El Balad",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "escpos": "^3.0.0-alpha.4",
+    "escpos-usb": "^3.0.0-alpha.2",
+    "escpos-network": "^3.0.0-alpha.2",
+    "node-fetch": "^3.3.2"
+  }
+}

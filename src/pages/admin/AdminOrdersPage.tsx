@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, Eye, Gift, ChevronDown } from 'lucide-react';
+import { Ban, Eye, Gift, Printer, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminCancelOrder, adminListOrders, adminMarkComplimentary, updateOrderStatus } from '@/api/admin';
 import { getErrorMessage } from '@/lib/api';
@@ -12,6 +12,10 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog, PageHeader, Pagination, SearchBox, StatusBadge, TableWrap, Td, Th } from '@/components/admin/primitives';
 import type { Order, OrderStatus } from '@/types';
 import { formatPrice } from '@/lib/utils';
+import { buildReceiptFromOrder, generateReceiptText } from '@/lib/receiptFormatter';
+import { printReceipt } from '@/lib/browserPrint';
+import { markOrderPrinted, createPrintJob, getOrderPrintJobs } from '@/api/print';
+import { useAppSelector } from '@/hooks';
 
 type AdminOrder = Omit<Order, 'user'> & {
   user: string | { fullName: string; email: string; phone: string };
@@ -85,6 +89,72 @@ export function AdminOrdersPage() {
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
+
+  // Print-related state and mutations
+  const [printJobs, setPrintJobs] = useState<Array<{ id: string; status: string; createdAt: string }>>([]);
+  const [printLoading, setPrintLoading] = useState(false);
+
+  const fetchPrintJobs = async (orderId: string): Promise<void> => {
+    try {
+      const jobs = await getOrderPrintJobs(orderId);
+      setPrintJobs(jobs);
+    } catch {
+      setPrintJobs([]);
+    }
+  };
+
+  const handlePrintInvoice = async (order: AdminOrder, isReprint = false): Promise<void> => {
+    if (isReprint && !window.confirm(lang === 'ar' ? 'إعادة طباعة الفاتورة؟' : 'Reprint invoice?')) {
+      return;
+    }
+    setPrintLoading(true);
+    try {
+      // Build receipt data
+      const receipt = buildReceiptFromOrder(
+        {
+          orderNo: order.orderNo,
+          createdAt: order.createdAt,
+          customerName: order.customerName,
+          phone: order.phone,
+          deliveryAddress: order.deliveryAddress,
+          status: order.status,
+          items: order.items.map((i) => ({
+            name: i.name,
+            nameEn: i.nameEn,
+            size: i.size,
+            qty: i.qty,
+            unitPrice: i.unitPrice,
+            lineTotal: i.lineTotal,
+          })),
+          subtotal: order.subtotal,
+          deliveryFee: order.deliveryFee,
+          discount: order.discount,
+          total: order.total,
+          payment: order.payment,
+        },
+        '80', // Default paper width — can be made configurable
+        lang === 'ar' ? 'ar' : 'en',
+      );
+
+      // Try to create a print job for the local service first
+      try {
+        await createPrintJob(order._id, receipt as unknown as Record<string, unknown>);
+        toast.success(lang === 'ar' ? 'تم إرسال الفاتورة للطابعة' : 'Invoice sent to printer');
+      } catch {
+        // Local print service unavailable — fall back to browser print
+        printReceipt(receipt);
+      }
+
+      // Mark as printed
+      await markOrderPrinted(order._id);
+      void invalidateAll();
+      await fetchPrintJobs(order._id);
+    } catch {
+      toast.error(lang === 'ar' ? 'فشلت الطباعة' : 'Print failed');
+    } finally {
+      setPrintLoading(false);
+    }
+  };
 
   const complimentaryMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) => adminMarkComplimentary(id, reason),
@@ -238,7 +308,7 @@ export function AdminOrdersPage() {
                     </div>
                   </Td>
                   <Td className="text-end">
-                    <Button variant="ghost" size="icon" onClick={() => setSelected(o)} aria-label={t('common.viewAll')}>
+                    <Button variant="ghost" size="icon" onClick={() => { setSelected(o); void fetchPrintJobs(o._id); }} aria-label={t('common.viewAll')}>
                       <Eye className="h-4 w-4" />
                     </Button>
                   </Td>
@@ -290,6 +360,28 @@ export function AdminOrdersPage() {
                       {next === 'refunded' ? t('admin.refundOrder') : t(`admin.status.${next}`)}
                     </Button>
                   ))}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-blue-500/40 text-blue-400"
+                    loading={printLoading}
+                    onClick={() => void handlePrintInvoice(selected, false)}
+                  >
+                    <Printer className="h-4 w-4" />
+                    {lang === 'ar' ? 'طباعة الفاتورة' : 'Print Invoice'}
+                  </Button>
+                  {printJobs.length > 0 ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-blue-500/40 text-blue-300"
+                      loading={printLoading}
+                      onClick={() => void handlePrintInvoice(selected, true)}
+                    >
+                      <Printer className="h-4 w-4" />
+                      {lang === 'ar' ? 'إعادة طباعة' : 'Reprint'}
+                    </Button>
+                  ) : null}
                   <Button
                     size="sm"
                     variant="outline"
@@ -404,6 +496,30 @@ export function AdminOrdersPage() {
                 </p>
               </div>
             </div>
+
+            {/* Print History */}
+            {printJobs.length > 0 ? (
+              <div className="rounded-xl border border-night-800 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-night-500">
+                  {lang === 'ar' ? 'سجل الطباعة' : 'Print History'}
+                </p>
+                <div className="mt-2 space-y-1">
+                  {printJobs.map((pj) => (
+                    <div key={pj.id} className="flex items-center justify-between text-xs">
+                      <span className="text-night-400">{fmtDate(pj.createdAt)}</span>
+                      <span className={
+                        pj.status === 'printed' ? 'text-emerald-400' :
+                        pj.status === 'failed' ? 'text-red-400' :
+                        pj.status === 'pending' ? 'text-amber-400' :
+                        'text-blue-400'
+                      }>
+                        {pj.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </Modal>
