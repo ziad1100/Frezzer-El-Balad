@@ -15,8 +15,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 // ── Constants ──────────────────────────────────────────────────────────
 
-const ADMIN_EMAIL = 'admin@frezzerelbalad.dev';
-const ADMIN_PASSWORD = 'Frezzer123!';
+const ADMIN_EMAIL = 'admin@frezzerelbalad.com';
+const ADMIN_PASSWORD = 'frezzerbalad@007';
 const CUSTOMER_EMAIL = 'customer@frezzerelbalad.dev';
 const CUSTOMER_PASSWORD = 'Frezzer123!';
 
