@@ -325,7 +325,7 @@ export interface Order {
   updatedAt: string;
 }
 
-export type OrderStatus = 'pending' | 'preparing' | 'on_delivery' | 'completed' | 'cancelled' | 'refunded' | 'complimentary';
+export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready_for_delivery' | 'on_delivery' | 'completed' | 'cancelled' | 'delivery_failed' | 'refunded' | 'complimentary';
 export type PaymentMethod = 'cash' | 'card' | 'vodafone_cash';
 
 export interface Contact {

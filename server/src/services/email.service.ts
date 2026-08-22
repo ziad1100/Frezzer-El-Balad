@@ -6,7 +6,7 @@ export { smtpConfigured };
 
 const shellHtml = (body: string): string =>
   `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;background:#0d0d0d;color:#fff;border-radius:12px">
-    <h1 style="color:#38bdf8;text-align:center">فريزر البلد | Frezzer El Balad</h1>
+    <h1 style="color:#38bdf8;text-align:center">فريزر البلد | Freezer El Balad</h1>
     ${body}
   </div>`;
 

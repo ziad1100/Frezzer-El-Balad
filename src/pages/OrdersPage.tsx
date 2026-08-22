@@ -12,10 +12,13 @@ import { formatPrice } from '@/lib/utils';
 
 const statusTone: Record<string, 'brand' | 'gold' | 'success' | 'neutral'> = {
   pending: 'gold',
+  confirmed: 'brand',
   preparing: 'brand',
+  ready_for_delivery: 'brand',
   on_delivery: 'brand',
   completed: 'success',
   cancelled: 'neutral',
+  delivery_failed: 'neutral',
   refunded: 'neutral',
   complimentary: 'gold',
 };
@@ -93,7 +96,7 @@ export function OrdersPage() {
                   <span className="text-lg font-extrabold text-brand-500">
                     {formatPrice(order.total, i18n.language)}
                   </span>
-                  {order.status === 'pending' ? (
+                  {order.status === 'pending' || order.status === 'confirmed' ? (
                     <Button
                       variant="ghost"
                       size="sm"

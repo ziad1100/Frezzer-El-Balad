@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, Eye, Gift } from 'lucide-react';
+import { Ban, Eye, Gift, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminCancelOrder, adminListOrders, adminMarkComplimentary, updateOrderStatus } from '@/api/admin';
 import { getErrorMessage } from '@/lib/api';
@@ -17,14 +17,21 @@ type AdminOrder = Omit<Order, 'user'> & {
   user: string | { fullName: string; email: string; phone: string };
 };
 
-const TERMINAL: OrderStatus[] = ['cancelled', 'refunded', 'complimentary'];
+const TERMINAL: OrderStatus[] = ['cancelled', 'delivery_failed', 'refunded', 'complimentary'];
 
+/** Statuses that require a confirmation dialog before applying. */
+const CONFIRM_STATUSES: OrderStatus[] = ['completed', 'cancelled', 'delivery_failed'];
+
+/** Next allowed statuses per current status. */
 const NEXT_STATUSES: Record<OrderStatus, OrderStatus[]> = {
-  pending: ['preparing'],
-  preparing: ['on_delivery'],
-  on_delivery: ['completed'],
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['preparing', 'cancelled'],
+  preparing: ['ready_for_delivery', 'cancelled'],
+  ready_for_delivery: ['on_delivery', 'cancelled'],
+  on_delivery: ['completed', 'delivery_failed', 'cancelled'],
   completed: ['refunded'],
   cancelled: [],
+  delivery_failed: [],
   refunded: [],
   complimentary: [],
 };
@@ -42,6 +49,8 @@ export function AdminOrdersPage() {
   const [cancelReason, setCancelReason] = useState('');
   const [complimentaryTarget, setComplimentaryTarget] = useState<AdminOrder | null>(null);
   const [complimentaryReason, setComplimentaryReason] = useState('');
+  /** Confirmation dialog for irreversible status changes */
+  const [confirmStatusTarget, setConfirmStatusTarget] = useState<{ order: AdminOrder; next: OrderStatus } | null>(null);
 
   const orders = useQuery({
     queryKey: ['admin', 'orders', { page, q: search, status }],
@@ -94,6 +103,23 @@ export function AdminOrdersPage() {
 
   const itemName = (item: { name: string; nameEn?: string }): string => (lang === 'ar' ? item.name : (item.nameEn ?? item.name));
 
+  /** Handle status change — shows confirmation dialog for irreversible actions */
+  const handleStatusChange = (order: AdminOrder, next: OrderStatus): void => {
+    if (CONFIRM_STATUSES.includes(next)) {
+      setConfirmStatusTarget({ order, next });
+    } else {
+      statusMutation.mutate({ id: order._id, next });
+    }
+  };
+
+  /** Confirm the irreversible status change */
+  const confirmStatusChange = (): void => {
+    if (confirmStatusTarget) {
+      statusMutation.mutate({ id: confirmStatusTarget.order._id, next: confirmStatusTarget.next });
+      setConfirmStatusTarget(null);
+    }
+  };
+
   const cancelNote = selected
     ? [...selected.statusHistory].reverse().find((h) => h.status === 'cancelled' && h.reason)
     : undefined;
@@ -102,6 +128,29 @@ export function AdminOrdersPage() {
     : undefined;
   const adjustedBy = selected?.adjustedBy;
   const adjustedByName = typeof adjustedBy === 'object' && adjustedBy ? adjustedBy.fullName : '';
+
+  /** Confirmation message for irreversible status changes */
+  const confirmStatusMessage = confirmStatusTarget
+    ? (() => {
+        const { next, order } = confirmStatusTarget;
+        if (next === 'completed') {
+          return lang === 'ar'
+            ? `هل أنت متأكد من تغيير حالة الطلب ${order.orderNo} إلى تم التسليم؟`
+            : `Are you sure you want to mark order ${order.orderNo} as Delivered?`;
+        }
+        if (next === 'cancelled') {
+          return lang === 'ar'
+            ? `هل أنت متأكد من إلغاء الطلب ${order.orderNo}؟`
+            : `Are you sure you want to cancel order ${order.orderNo}?`;
+        }
+        if (next === 'delivery_failed') {
+          return lang === 'ar'
+            ? `هل أنت متأكد من تغيير حالة الطلب ${order.orderNo} إلى فشل التسليم؟`
+            : `Are you sure you want to mark order ${order.orderNo} as Delivery Failed?`;
+        }
+        return '';
+      })()
+    : '';
 
   return (
     <div>
@@ -112,10 +161,13 @@ export function AdminOrdersPage() {
         <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="h-10 w-44">
           <option value="">{t('admin.allStatuses')}</option>
           <option value="pending">{t('admin.status.pending')}</option>
+          <option value="confirmed">{t('admin.status.confirmed')}</option>
           <option value="preparing">{t('admin.status.preparing')}</option>
+          <option value="ready_for_delivery">{t('admin.status.ready_for_delivery')}</option>
           <option value="on_delivery">{t('admin.status.on_delivery')}</option>
           <option value="completed">{t('admin.status.completed')}</option>
           <option value="cancelled">{t('admin.status.cancelled')}</option>
+          <option value="delivery_failed">{t('admin.status.delivery_failed')}</option>
           <option value="refunded">{t('admin.status.refunded')}</option>
           <option value="complimentary">{t('admin.status.complimentary')}</option>
         </Select>
@@ -160,20 +212,28 @@ export function AdminOrdersPage() {
                     <div className="flex items-center gap-2">
                       <StatusBadge status={o.status} />
                       {!TERMINAL.includes(o.status) ? (
-                        <Select
-                          value=""
-                          onChange={(e) => statusMutation.mutate({ id: o._id, next: e.target.value as OrderStatus })}
-                          disabled={statusMutation.isPending}
-                          className="h-8 w-32"
-                          aria-label={t('admin.statusChange')}
-                        >
-                          <option value="">{t('admin.statusChange')}…</option>
-                          {NEXT_STATUSES[o.status].map((s) => (
-                            <option key={s} value={s}>
-                              {t(`admin.status.${s}`)}
-                            </option>
-                          ))}
-                        </Select>
+                        <div className="relative">
+                          <Select
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleStatusChange(o, e.target.value as OrderStatus);
+                                e.target.value = '';
+                              }
+                            }}
+                            disabled={statusMutation.isPending}
+                            className="h-8 w-36 appearance-none pr-7"
+                            aria-label={t('admin.statusChange')}
+                          >
+                            <option value="">{t('admin.statusChange')}…</option>
+                            {NEXT_STATUSES[o.status].map((s) => (
+                              <option key={s} value={s}>
+                                {t(`admin.status.${s}`)}
+                              </option>
+                            ))}
+                          </Select>
+                          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-night-400" />
+                        </div>
                       ) : null}
                     </div>
                   </Td>
@@ -210,10 +270,22 @@ export function AdminOrdersPage() {
                     <Button
                       key={next}
                       size="sm"
-                      variant={next === 'refunded' ? 'outline' : 'primary'}
-                      className={next === 'refunded' ? 'border-slate-500/40 text-slate-300' : ''}
+                      variant={
+                        next === 'refunded' || next === 'cancelled' || next === 'delivery_failed'
+                          ? 'outline'
+                          : 'primary'
+                      }
+                      className={
+                        next === 'refunded'
+                          ? 'border-slate-500/40 text-slate-300'
+                          : next === 'cancelled'
+                          ? 'border-red-500/40 text-red-400'
+                          : next === 'delivery_failed'
+                          ? 'border-orange-500/40 text-orange-400'
+                          : ''
+                      }
                       loading={statusMutation.isPending}
-                      onClick={() => statusMutation.mutate({ id: selected._id, next })}
+                      onClick={() => handleStatusChange(selected, next)}
                     >
                       {next === 'refunded' ? t('admin.refundOrder') : t(`admin.status.${next}`)}
                     </Button>
@@ -335,6 +407,30 @@ export function AdminOrdersPage() {
           </div>
         ) : null}
       </Modal>
+
+      {/* Confirmation dialog for irreversible status changes */}
+      <ConfirmDialog
+        open={Boolean(confirmStatusTarget)}
+        onClose={() => setConfirmStatusTarget(null)}
+        title={
+          confirmStatusTarget?.next === 'completed'
+            ? (lang === 'ar' ? 'تأكيد التسليم' : 'Confirm Delivery')
+            : confirmStatusTarget?.next === 'cancelled'
+            ? t('admin.confirmCancelTitle')
+            : (lang === 'ar' ? 'تأكيد فشل التسليم' : 'Confirm Delivery Failed')
+        }
+        message={confirmStatusMessage}
+        confirmLabel={
+          confirmStatusTarget?.next === 'completed'
+            ? (lang === 'ar' ? 'تم التسليم' : 'Mark Delivered')
+            : confirmStatusTarget?.next === 'cancelled'
+            ? t('admin.cancelOrder')
+            : (lang === 'ar' ? 'فشل التسليم' : 'Mark Delivery Failed')
+        }
+        confirmVariant={confirmStatusTarget?.next === 'cancelled' ? 'primary' : 'primary'}
+        loading={statusMutation.isPending}
+        onConfirm={confirmStatusChange}
+      />
 
       <ConfirmDialog
         open={Boolean(cancelTarget)}

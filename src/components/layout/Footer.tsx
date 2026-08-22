@@ -91,7 +91,7 @@ export function Footer() {
             ))}
           </div>
           <p className="mt-4 text-sm text-night-500">
-            © {new Date().getFullYear()} Frezzer El Balad. {t('footer.rights')}
+            © {new Date().getFullYear()} Freezer El Balad. {t('footer.rights')}
           </p>
         </div>
       </div>

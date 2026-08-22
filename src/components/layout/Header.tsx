@@ -63,7 +63,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-night-800 bg-night-950/90 backdrop-blur-md">
       <div className="container-px flex h-16 items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2" aria-label="Frezzer El Balad">
+        <Link to="/" className="flex items-center gap-2" aria-label="Freezer El Balad">
           <Logo className="h-10 w-10 rounded-xl" />
           <span className="hidden text-xl font-extrabold tracking-tight text-night-50 min-[344px]:inline">
             فريزر<span className="text-brand-500"> البلد</span>

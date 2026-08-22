@@ -12,10 +12,9 @@ import { withTransaction } from './index';
  *   - Analytics rollup table
  *
  * What gets RESET:
- *   - Product basePrice → 0
- *   - Product sizes price → 0
- *   - Product extras price → 0
  *   - Product isOffer → false (since offers are cleared)
+ *
+ * IMPORTANT: Product prices are NEVER reset. Existing prices are preserved.
  *
  * What is PRESERVED:
  *   - Users / admins
@@ -66,19 +65,16 @@ export const systemReset = async (): Promise<{
     // 9. Truncate analytics table
     await tx.query('TRUNCATE TABLE analytics');
 
-    // 10. Reset product base prices to 0
-    const productsResult = await tx.query('UPDATE products SET "basePrice" = 0, "isOffer" = false');
+    // 10. Reset isOffer flag on products (since offers are cleared)
+    const productsResult = await tx.query('UPDATE products SET "isOffer" = false');
     const productsReset = productsResult.rowCount ?? 0;
 
-    // 11. Reset product_sizes prices to 0
-    const sizesResult = await tx.query('UPDATE product_sizes SET price = 0');
-    const sizesReset = sizesResult.rowCount ?? 0;
+    // NOTE: Product prices and variant prices are intentionally NOT reset.
+    // Prices are preserved so that the system reset does not destroy product pricing data.
+    const sizesReset = 0;
+    const extrasReset = 0;
 
-    // 12. Reset product_extras prices to 0
-    const extrasResult = await tx.query('UPDATE product_extras SET price = 0');
-    const extrasReset = extrasResult.rowCount ?? 0;
-
-    // 13. Reset the stats cutoff so dashboard shows clean state
+    // 11. Reset the stats cutoff so dashboard shows clean state
     await tx.query(
       `INSERT INTO settings (key, value) VALUES ('statsClearedAt', $1::jsonb)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,

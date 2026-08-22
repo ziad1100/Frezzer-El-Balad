@@ -207,7 +207,7 @@ export const stats = async (): Promise<Record<string, unknown>> => {
       (SELECT count(*) FROM orders WHERE status = 'cancelled')::int AS "cancelledOrders",
       (SELECT count(*) FROM orders WHERE status = 'refunded')::int AS "refundedOrders",
       (SELECT count(*) FROM orders WHERE status = 'complimentary')::int AS "complimentaryOrders",
-      (SELECT count(*)::int FROM orders WHERE status = 'pending') AS "pendingOrders",
+      (SELECT count(*)::int FROM orders WHERE status IN ('pending', 'confirmed')) AS "pendingOrders",
       (SELECT COALESCE(SUM(total), 0)::float8 FROM orders WHERE status = 'completed') AS "revenue",
       (SELECT COALESCE(SUM(total), 0)::float8 FROM orders WHERE status = 'completed') AS "netRevenue",
       (SELECT COALESCE(SUM(subtotal + "deliveryFee"), 0)::float8 FROM orders WHERE status = 'completed') AS "grossRevenue",
