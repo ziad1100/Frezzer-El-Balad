@@ -32,9 +32,8 @@ server/uploads/
 # Secrets — never commit these
 .env
 server/.env
-.env.*
-!.env.example
-!server/.env.example
+.env*
+local-print-service/.env
 *.pem
 *.key
 *.p12
@@ -43,7 +42,6 @@ server/.env
 # Backups (received copies, DB dumps, scheduled-task artifacts)
 backups/
 .vercel
-.env*
 
 # Playwright test artifacts
 playwright-report/
