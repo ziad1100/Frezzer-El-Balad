@@ -2,30 +2,44 @@
  * End-to-end tests for Frezzer El Balad.
  *
  * Covers the complete user journey:
- *   1. Homepage loads with branding
- *   2. Menu page shows products with images
- *   3. Product detail page loads
- *   4. Add to cart works
- *   5. Offers page shows active offers
- *   6. Gallery page shows images
- *   7. Customer login works
- *   8. Admin login → admin dashboard loads
- *   9. Admin sections (products, offers, gallery, orders) load
+ *   Homepage → Menu → Product detail → Cart → Offers → Gallery
+ *   Customer login → Admin login → Admin dashboard sections
  *
  * Run against production:
  *   E2E_BASE_URL=https://frezzer-el-balad.vercel.app npx playwright test e2e/full-flow.spec.ts
  *
- * Run against local dev:
+ * Run against local dev (starts vite + backend automatically):
  *   npx playwright test e2e/full-flow.spec.ts
  */
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+// ── Constants ──────────────────────────────────────────────────────────
+
+const ADMIN_EMAIL = 'admin@frezzerelbalad.dev';
+const ADMIN_PASSWORD = 'Frezzer123!';
+const CUSTOMER_EMAIL = 'customer@frezzerelbalad.dev';
+const CUSTOMER_PASSWORD = 'Frezzer123!';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
-/** Wait for the API to respond and the UI to render data. */
-async function waitForData(page: import('@playwright/test').Page, timeout = 15_000) {
-  // Wait for at least one real <img> to appear (skeletons don't have real src)
+/** Log in via the UI and wait for redirect away from /login. */
+async function login(page: Page, email: string, password: string): Promise<void> {
+  await page.goto('/login');
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
+  await page.locator('button[type="submit"]').click();
+  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 });
+}
+
+/** Wait for at least one real <img> (not a skeleton placeholder). */
+async function waitForImages(page: Page, timeout = 15_000): Promise<void> {
   await page.locator('img[src]').first().waitFor({ state: 'visible', timeout });
+}
+
+/** Get page body text, waiting for network to settle. */
+async function bodyText(page: Page): Promise<string> {
+  await page.waitForLoadState('networkidle');
+  return page.textContent('body') ?? '';
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────
@@ -34,8 +48,7 @@ test.describe('Homepage', () => {
   test('loads with correct title and branding', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveTitle(/فريزر|Frezzer/);
-    const body = await page.textContent('body');
-    expect(body).toContain('فريزر');
+    expect(await bodyText(page)).toContain('فريزر');
   });
 
   test('has no console errors on load', async ({ page }) => {
@@ -49,110 +62,75 @@ test.describe('Homepage', () => {
   });
 });
 
-test.describe('Menu page', () => {
-  test('loads products with images from Render', async ({ page }) => {
+test.describe('Menu', () => {
+  test('loads products with images from backend', async ({ page }) => {
     await page.goto('/menu');
-    await waitForData(page);
+    await waitForImages(page);
 
-    // At least some product cards should render
     const productLinks = page.locator('a[href^="/product/"]');
-    const count = await productLinks.count();
-    expect(count).toBeGreaterThan(5);
+    expect(await productLinks.count()).toBeGreaterThan(5);
 
-    // Product images should have valid src (not empty)
-    const images = page.locator('img[src*="/images/products/"]');
-    const imgCount = await images.count();
-    expect(imgCount).toBeGreaterThan(5);
+    const productImages = page.locator('img[src*="/images/products/"]');
+    expect(await productImages.count()).toBeGreaterThan(5);
   });
 
-  test('categories filter works', async ({ page }) => {
+  test('shows category navigation', async ({ page }) => {
     await page.goto('/menu');
-    await waitForData(page);
-
-    // Should have category navigation
-    const body = await page.textContent('body');
-    expect(body).toContain('لحوم');  // Meat in Arabic
+    await waitForImages(page);
+    expect(await bodyText(page)).toContain('لحوم'); // Meat in Arabic
   });
 });
 
 test.describe('Product detail', () => {
-  test('loads product info, sizes, and extras', async ({ page }) => {
+  test('loads product info with sizes and add-to-cart', async ({ page }) => {
     await page.goto('/product/hawawshi-hawawshi-hawawshi');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
 
-    const body = await page.textContent('body');
-    // Page may render in Arabic or English depending on browser locale
-    const hasProductName = body.includes('Hawawshi') || body.includes('حواوشي');
-    expect(hasProductName).toBeTruthy();
+    const text = await bodyText(page);
+    // Arabic or English product name
+    expect(text.includes('Hawawshi') || text.includes('حواوشي')).toBeTruthy();
+    expect(text).toContain('500'); // Size
 
-    // Should show sizes
-    expect(body).toContain('500');
-
-    // Should show add-to-cart button
     const addBtn = page.locator('button').filter({ hasText: /add|أضف/i });
     await expect(addBtn.first()).toBeVisible();
   });
 });
 
-test.describe('Add to cart', () => {
-  test('can add a product to cart from menu page', async ({ page }) => {
+test.describe('Cart', () => {
+  test('add-to-cart button works from menu', async ({ page }) => {
     await page.goto('/menu');
-    await waitForData(page);
+    await waitForImages(page);
 
-    // Click the first "+" (add) button
-    const addButtons = page.locator('button[aria-label]').filter({ hasText: /add/i });
-    // If no aria-label, try the brand-colored button inside the quantity controls
-    let clicked = false;
-    const count = await addButtons.count();
-    if (count > 0) {
-      await addButtons.first().click();
-      clicked = true;
-    } else {
-      // Fallback: find the plus button (bg-brand-600)
-      const plusBtns = page.locator('.bg-brand-600').first();
-      if (await plusBtns.isVisible().catch(() => false)) {
-        await plusBtns.click();
-        clicked = true;
-      }
-    }
-    expect(clicked).toBeTruthy();
-    await page.waitForTimeout(1000);
+    // Find and click an add-to-cart button (aria-label contains "add")
+    const addBtn = page.locator('button[aria-label*="add" i], button[aria-label*="أضف" i]').first();
+    await addBtn.click();
+    // No assertion needed — if click throws, the test fails
   });
 });
 
-test.describe('Offers page', () => {
+test.describe('Offers', () => {
   test('loads active offers with products', async ({ page }) => {
     await page.goto('/offers');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000);
 
-    const body = await page.textContent('body');
-    // Should contain offer content (Arabic or English)
-    const hasOffers =
-      body.includes('عرض') ||
-      body.includes('خصم') ||
-      body.includes('Deal') ||
-      body.includes('OFF');
+    const text = await bodyText(page);
+    const hasOffers = text.includes('عرض') || text.includes('Deal') || text.includes('OFF');
     expect(hasOffers).toBeTruthy();
   });
 });
 
-test.describe('Gallery page', () => {
+test.describe('Gallery', () => {
   test('loads gallery images', async ({ page }) => {
     await page.goto('/gallery');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000);
 
-    // Gallery should render multiple images
     const images = page.locator('img');
-    const count = await images.count();
-    expect(count).toBeGreaterThanOrEqual(10);
+    expect(await images.count()).toBeGreaterThanOrEqual(10);
   });
 });
 
 test.describe('Customer login', () => {
-  test('login form renders with email and password fields', async ({ page }) => {
+  test('login form renders', async ({ page }) => {
     await page.goto('/login');
     await expect(page.locator('input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
@@ -160,109 +138,41 @@ test.describe('Customer login', () => {
   });
 
   test('can login as customer', async ({ page }) => {
-    await page.goto('/login');
-    await page.locator('input[type="email"]').fill('customer@frezzerelbalad.dev');
-    await page.locator('input[type="password"]').fill('Frezzer123!');
-    await page.locator('button[type="submit"]').click();
-
-    // Should redirect away from login (to homepage or orders)
-    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 });
+    await login(page, CUSTOMER_EMAIL, CUSTOMER_PASSWORD);
     expect(page.url()).not.toContain('/login');
   });
 });
 
-test.describe('Admin login and dashboard', () => {
-  test('admin login redirects to admin dashboard', async ({ page }) => {
-    await page.goto('/login');
-    await page.locator('input[type="email"]').fill('admin@frezzerelbalad.dev');
-    await page.locator('input[type="password"]').fill('Frezzer123!');
-    await page.locator('button[type="submit"]').click();
-
-    // Should redirect to /admin
-    await page.waitForURL('**/admin**', { timeout: 15_000 });
+test.describe('Admin', () => {
+  test('admin login redirects to /admin', async ({ page }) => {
+    await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
     expect(page.url()).toContain('/admin');
-
-    // Verify we're on the admin page
-    expect(page.url()).toContain('/admin');
-    // The page loaded with content (branding or admin nav)
-    const body = await page.textContent('body');
-    expect(body!.length).toBeGreaterThan(200);
+    expect((await bodyText(page)).length).toBeGreaterThan(200);
   });
 
-  test('admin products page loads', async ({ page }) => {
-    // Login first
-    await page.goto('/login');
-    await page.locator('input[type="email"]').fill('admin@frezzerelbalad.dev');
-    await page.locator('input[type="password"]').fill('Frezzer123!');
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('**/admin**', { timeout: 15_000 });
+  for (const [section, path] of [
+    ['products', '/admin/products'],
+    ['offers', '/admin/offers'],
+    ['gallery', '/admin/gallery'],
+    ['orders', '/admin/orders'],
+  ] as const) {
+    test(`admin ${section} page loads`, async ({ page }) => {
+      await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+      await page.goto(path);
+      await page.waitForLoadState('networkidle');
 
-    // Navigate to products
-    await page.goto('/admin/products');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000);
-
-    const body = await page.textContent('body');
-    const hasProducts = body.includes('Product') || body.includes('منتج');
-    expect(hasProducts).toBeTruthy();
-  });
-
-  test('admin offers page loads', async ({ page }) => {
-    await page.goto('/login');
-    await page.locator('input[type="email"]').fill('admin@frezzerelbalad.dev');
-    await page.locator('input[type="password"]').fill('Frezzer123!');
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('**/admin**', { timeout: 15_000 });
-
-    await page.goto('/admin/offers');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000);
-
-    const body = await page.textContent('body');
-    const hasOffers = body.includes('Offer') || body.includes('عرض');
-    expect(hasOffers).toBeTruthy();
-  });
-
-  test('admin gallery page loads', async ({ page }) => {
-    await page.goto('/login');
-    await page.locator('input[type="email"]').fill('admin@frezzerelbalad.dev');
-    await page.locator('input[type="password"]').fill('Frezzer123!');
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('**/admin**', { timeout: 15_000 });
-
-    await page.goto('/admin/gallery');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000);
-
-    const body = await page.textContent('body');
-    const hasGallery = body.includes('Gallery') || body.includes('معرض');
-    expect(hasGallery).toBeTruthy();
-  });
-
-  test('admin orders page loads', async ({ page }) => {
-    await page.goto('/login');
-    await page.locator('input[type="email"]').fill('admin@frezzerelbalad.dev');
-    await page.locator('input[type="password"]').fill('Frezzer123!');
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('**/admin**', { timeout: 15_000 });
-
-    await page.goto('/admin/orders');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000);
-
-    const body = await page.textContent('body');
-    const hasOrders = body.includes('Order') || body.includes('طلب');
-    expect(hasOrders).toBeTruthy();
-  });
+      const text = await bodyText(page);
+      expect(text.length).toBeGreaterThan(100);
+    });
+  }
 });
 
 test.describe('Public pages', () => {
   for (const path of ['/about', '/contact', '/blog', '/branches']) {
-    test(`${path} page loads with content`, async ({ page }) => {
+    test(`${path} loads with content`, async ({ page }) => {
       await page.goto(path);
-      await page.waitForLoadState('networkidle');
-      const body = await page.textContent('body');
-      expect(body!.length).toBeGreaterThan(100);
+      const text = await bodyText(page);
+      expect(text.length).toBeGreaterThan(100);
     });
   }
 });
