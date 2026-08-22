@@ -181,4 +181,32 @@ export interface SeedGalleryImage {
   image: string;
 }
 
-export const galleryImagesSeed: SeedGalleryImage[] = [];
+export const galleryImagesSeed: SeedGalleryImage[] = [
+  // Fresh Meat
+  { ar: 'لحمة فلانك', en: 'Flank Meat', image: '/images/products/flank-meat-fresh-meat.jpg' },
+  { ar: 'لحمة استيك', en: 'Steak Meat', image: '/images/products/steak-meat-fresh-meat.jpg' },
+  { ar: 'لحمة مفرومة', en: 'Minced Meat', image: '/images/products/minced-meat-fresh-meat.jpg' },
+  // Liver
+  { ar: 'كبدة بقري', en: 'Beef Liver', image: '/images/products/beef-liver-liver.jpg' },
+  { ar: 'كبدة أمريكاني', en: 'American Liver', image: '/images/products/american-liver-liver.jpg' },
+  // Processed
+  { ar: 'سجق شرقي', en: 'Eastern Sausage', image: '/images/products/eastern-sausage-sausage-sosis.jpg' },
+  { ar: 'سوسيس', en: 'Sosis', image: '/images/products/sosis-sausage-sosis.jpg' },
+  { ar: 'جلاش', en: 'Goulash', image: '/images/products/goulash-other-products.jpg' },
+  // Burger & Kofta
+  { ar: 'برجر', en: 'Burger', image: '/images/products/burger-burger-kofta.jpg' },
+  { ar: 'برجر بلدي', en: 'Baladi Burger', image: '/images/products/baladi-burger-burger-kofta.jpg' },
+  { ar: 'كفتة', en: 'Kofta', image: '/images/products/kofta-burger-kofta.jpg' },
+  { ar: 'استربس', en: 'Strips', image: '/images/products/strips-burger-kofta.jpg' },
+  // Chicken
+  { ar: 'ريش', en: 'Wings', image: '/images/products/wings-frozen-chicken.jpg' },
+  { ar: 'شيش', en: 'Shish', image: '/images/products/shish-frozen-chicken.jpg' },
+  // Ready Chicken
+  { ar: 'بانيه', en: 'Pane', image: '/images/products/pane-pane-strips.jpg' },
+  { ar: 'بانيه موزاريلا', en: 'Mozzarella Pane', image: '/images/products/mozzarella-pane-pane-strips.jpg' },
+  // Hawawshi
+  { ar: 'حواوشي', en: 'Hawawshi', image: '/images/products/hawawshi-hawawshi.jpg' },
+  { ar: 'حواوشي فراخ', en: 'Chicken Hawawshi', image: '/images/products/chicken-hawawshi-hawawshi.jpg' },
+  { ar: 'حواوشي أرز', en: 'Rice Hawawshi', image: '/images/products/rice-hawawshi-hawawshi.jpg' },
+  { ar: 'حواوشي بلدي', en: 'Baladi Hawawshi', image: '/images/products/baladi-hawawshi-hawawshi.jpg' },
+];

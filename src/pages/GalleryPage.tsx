@@ -24,7 +24,10 @@ export function GalleryPage() {
   // every image); fall back to the curated static list only on error so the
   // page keeps working when the API is unreachable.
   const dbItems = gallery.data ?? [];
-  const useDb = !gallery.isLoading && !gallery.isError;
+  // Use DB items when the API responds with data; fall back to static list
+  // on error or when the API returns empty (e.g. freshly deployed without
+  // gallery images seeded yet).
+  const useDb = !gallery.isLoading && !gallery.isError && dbItems.length > 0;
 
   const renderDb = (item: GalleryImage): RenderedGalleryItem => ({
     key: item._id,
