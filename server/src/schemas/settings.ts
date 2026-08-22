@@ -24,4 +24,15 @@ export const settingsUpdateSchema = z.object({
   freeDeliveryOver: z.coerce.number().min(0).optional(),
   reviewPromptCooldownDays: z.coerce.number().int().min(0).max(365).optional(),
   reviewPromptDelayHours: z.coerce.number().int().min(0).max(24 * 30).optional(),
+  printerConfig: z
+    .object({
+      name: z.string().trim().max(100).optional(),
+      type: z.string().trim().max(50).optional(),
+      paperWidth: z.enum(['58', '80']).optional(),
+      connection: z.enum(['usb', 'lan', 'bluetooth', 'wifi']).optional(),
+      ipAddress: z.string().trim().max(50).optional(),
+      port: z.string().trim().max(10).optional(),
+      isActive: z.boolean().optional(),
+    })
+    .optional(),
 });

@@ -26,6 +26,7 @@ const ORDER_CORE = `
   o."adjustmentReason" AS "adjustmentReason",
   o."adjustedAt" AS "adjustedAt",
   o.status::text AS "status", o."deliveryAddress", o.phone, o."customerName", o.notes,
+  o."printedAt", o."printCount",
   o."statusHistory", o."createdAt", o."updatedAt",
   jsonb_build_object(
     'method', o."paymentMethod",
