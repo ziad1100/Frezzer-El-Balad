@@ -243,6 +243,8 @@ export interface PlaceOrderInput {
   customerName: string;
   notes: string;
   statusHistory: Array<{ status: string; changedBy: string; at: Date }>;
+  /** Initial order status — defaults to 'pending'. Pass 'confirmed' to skip the customer confirmation workflow (admin-created orders). */
+  initialStatus?: string;
 }
 
 interface LockedCoupon {
@@ -329,6 +331,7 @@ export const placeOrder = async (input: PlaceOrderInput): Promise<Record<string,
       finalTotal = Math.max(0, input.subtotal + input.deliveryFee - finalDiscount);
     }
 
+    const initialStatus = input.initialStatus || 'pending';
     const inserted = await tx.query<{ id: string }>(
       `INSERT INTO orders ("orderNo", "userId", "status", subtotal, "deliveryFee", discount,
          "couponCode", total, "paymentMethod", "paymentStatus", "paymentReference",
@@ -337,7 +340,7 @@ export const placeOrder = async (input: PlaceOrderInput): Promise<Record<string,
          $9::payment_method, $10::payment_status, $11, $12, $13::jsonb, $14, $15, $16, $17::jsonb)
        RETURNING id`,
       [
-        input.orderNo, input.userId, 'pending', input.subtotal, input.deliveryFee,
+        input.orderNo, input.userId, initialStatus, input.subtotal, input.deliveryFee,
         finalDiscount, couponCode, finalTotal, input.paymentMethod, 'pending',
         input.paymentReference, input.paymentAmount, input.deliveryAddress, input.phone,
         input.customerName, input.notes, JSON.stringify(input.statusHistory),

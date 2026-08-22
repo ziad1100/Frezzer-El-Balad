@@ -12,7 +12,7 @@ import { generateOrderNo } from '../utils';
 import type { AuthRequest } from '../middlewares/auth';
 import { validateCoupon } from '../services/coupon.service';
 import { enqueueOrderConfirmation } from '../services/email.service';
-import { ORDER_STATUS, ORDER_STATUS_LABELS, ORDER_STATUS_TRANSITIONS, PAYMENT_METHODS, TERMINAL_ORDER_STATUSES } from '../constants';
+import { ORDER_STATUS, ORDER_STATUS_LABELS, ORDER_STATUS_TRANSITIONS, PAYMENT_METHODS, TERMINAL_ORDER_STATUSES, ROLES } from '../constants';
 import { getSettingsMap } from '../db/settings';
 
 interface OrderItemInput {
@@ -91,8 +91,13 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
 
   const method = Object.values(PAYMENT_METHODS).includes(paymentMethod) ? paymentMethod : PAYMENT_METHODS.CASH;
 
+  // Determine if the authenticated user is an admin/manager — admin-created orders
+  // are auto-confirmed and skip the customer confirmation workflow.
+  const isAdmin = req.user!.role === ROLES.ADMIN || req.user!.role === ROLES.MANAGER;
+  const initialStatus = isAdmin ? ORDER_STATUS.CONFIRMED : ORDER_STATUS.PENDING;
+
   let order: Record<string, unknown> | null = null;
-  const statusHistory = [{ status: ORDER_STATUS.PENDING, changedBy: userId, at: new Date() }];
+  const statusHistory = [{ status: initialStatus, changedBy: userId, at: new Date() }];
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const orderNo = await generateOrderNo();
     try {
@@ -113,6 +118,7 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
         customerName: req.body.customerName || 'عميل',
         notes: notes ?? '',
         statusHistory,
+        initialStatus,
       });
       break;
     } catch (err) {

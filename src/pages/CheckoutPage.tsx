@@ -17,6 +17,7 @@ import { Card, CardContent, EmptyState } from '@/components/ui/Card';
 import { FieldError, Input, Label, Textarea } from '@/components/ui/Input';
 import { EGYPTIAN_MOBILE_REGEX } from '@/lib/validation';
 import { cn, formatPrice } from '@/lib/utils';
+import type { Role } from '@/types';
 
 export function CheckoutPage() {
   const { t, i18n } = useTranslation();
@@ -64,6 +65,9 @@ export function CheckoutPage() {
     onError: (error) => setCouponError(getErrorMessage(error)),
   });
 
+  const user = useAppSelector((state) => state.auth.user);
+  const isAdmin = user?.role === ('admin' as Role) || user?.role === ('manager' as Role);
+
   const orderMutation = useMutation({
     mutationFn: (values: FormValues) =>
       createOrder({
@@ -89,7 +93,8 @@ export function CheckoutPage() {
       dispatch(clearCoupon());
       dispatch(clearCart());
       toast.success(t('checkout.orderSuccess'));
-      navigate('/orders', { replace: true });
+      // Admin-created orders are auto-confirmed — redirect to admin orders dashboard
+      navigate(isAdmin ? '/admin/orders' : '/orders', { replace: true });
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
