@@ -12,10 +12,9 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog, PageHeader, Pagination, SearchBox, StatusBadge, TableWrap, Td, Th } from '@/components/admin/primitives';
 import type { Order, OrderStatus } from '@/types';
 import { formatPrice } from '@/lib/utils';
-import { buildReceiptFromOrder, generateReceiptText } from '@/lib/receiptFormatter';
+import { buildReceiptFromOrder } from '@/lib/receiptFormatter';
 import { printReceipt } from '@/lib/browserPrint';
 import { markOrderPrinted, createPrintJob, getOrderPrintJobs } from '@/api/print';
-import { useAppSelector } from '@/hooks';
 
 type AdminOrder = Omit<Order, 'user'> & {
   user: string | { fullName: string; email: string; phone: string };
