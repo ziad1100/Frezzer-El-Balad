@@ -30,6 +30,23 @@ import { EscPos } from 'escpos';
 import EscposUSB from 'escpos-usb';
 import EscposNetwork from 'escpos-network';
 import fetch from 'node-fetch';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+// Load .env file manually (no dotenv dependency needed)
+const envPath = resolve(process.cwd(), '.env');
+if (existsSync(envPath)) {
+  const lines = readFileSync(envPath, 'utf8').split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx === -1) continue;
+    const key = trimmed.slice(0, eqIdx).trim();
+    const val = trimmed.slice(eqIdx + 1).trim();
+    if (!process.env[key]) process.env[key] = val;
+  }
+}
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 const CONFIG = {
@@ -159,12 +176,21 @@ function buildEscpos(receipt) {
 
 // ─── Printer Connection ──────────────────────────────────────────────────────
 let printer = null;
+let lastReconnectAttempt = 0;
+const RECONNECT_COOLDOWN = 10000; // Don't retry reconnect more than once per 10 seconds
 
 async function connectPrinter() {
+  // Don't hammer the printer with reconnection attempts
+  const now = Date.now();
+  if (now - lastReconnectAttempt < RECONNECT_COOLDOWN && printer === null) {
+    return;
+  }
+  lastReconnectAttempt = now;
+
   try {
     if (CONFIG.printerConnection === 'lan' || CONFIG.printerConnection === 'wifi') {
       console.log(`[printer] Connecting to ${CONFIG.printerIp}:${CONFIG.printerPort}...`);
-      const device = new EscposNetwork(CONFIG.printerIp, CONFIG.printerPort);
+      const device = new EscposNetwork(CONFIG.printerIp, CONFIG.printerPort, { timeout: 5000 });
       printer = new EscPos(device);
       console.log('[printer] Connected via network');
     } else if (CONFIG.printerConnection === 'usb') {
@@ -191,14 +217,33 @@ async function printEscpos(escposData) {
   if (!printer) {
     throw new Error('Printer not connected');
   }
-  try {
-    printer.raw(escposData);
-    return true;
-  } catch (err) {
-    console.error('[printer] Print error:', err.message);
-    printer = null; // Mark as disconnected for reconnection
-    throw err;
-  }
+  return new Promise((resolve, reject) => {
+    try {
+      printer.open((err) => {
+        if (err) {
+          console.error('[printer] Open error:', err.message);
+          printer = null;
+          reject(new Error('Printer not connected'));
+          return;
+        }
+        printer.raw(escposData, (printErr) => {
+          if (printErr) {
+            console.error('[printer] Print error:', printErr.message);
+            printer = null;
+            reject(new Error(printErr.message));
+          } else {
+            printer.close(() => {
+              resolve(true);
+            });
+          }
+        });
+      });
+    } catch (err) {
+      console.error('[printer] Print error:', err.message);
+      printer = null;
+      reject(err);
+    }
+  });
 }
 
 // ─── API Communication ───────────────────────────────────────────────────────
@@ -304,6 +349,43 @@ console.log(`Poll:        every ${CONFIG.pollInterval}ms`);
 console.log('═══════════════════════════════════════════════════');
 
 await connectPrinter();
+
+// --test flag: print a test receipt and exit
+if (process.argv.includes('--test')) {
+  console.log('[service] Test mode — printing test receipt...');
+  const testReceipt = {
+    storeNameAr: '\u0641\u0631\u064a\u0632\u0631 \u0627\u0644\u0628\u0644\u062f',
+    storeNameEn: 'Freezer Elbalad',
+    orderNo: 'TEST-001',
+    date: new Date().toLocaleDateString(),
+    time: new Date().toLocaleTimeString(),
+    customerName: 'Test Customer',
+    customerPhone: '01000000000',
+    customerAddress: 'Test Address',
+    status: 'Test',
+    items: [
+      { name: '\u0644\u062d\u0645\u0629 \u0627\u0633\u062a\u064a\u0643', nameEn: 'Steak Meat', size: '500g', qty: 2, unitPrice: 300, lineTotal: 600 },
+      { name: '\u0628\u0631\u062c\u0631', nameEn: 'Burger', size: '1kg', qty: 1, unitPrice: 340, lineTotal: 340 },
+    ],
+    subtotal: 940,
+    deliveryFee: 0,
+    discount: 0,
+    total: 940,
+    paymentMethod: 'cash',
+    footerAr: '\u0634\u0643\u0631\u064b\u0627 \u0644\u062a\u0633\u0648\u0642\u0643 \u0645\u0646 \u0641\u0631\u064a\u0632\u0631 \u0627\u0644\u0628\u0644\u062f',
+    footerEn: 'Thank you for shopping with Freezer Elbalad!',
+    paperWidth: CONFIG.paperWidth,
+    language: 'ar',
+  };
+  try {
+    const escposData = buildEscpos(testReceipt);
+    await printEscpos(escposData);
+    console.log('[service] Test receipt printed successfully!');
+  } catch (err) {
+    console.error('[service] Test print failed:', err.message);
+  }
+  process.exit(0);
+}
 
 // Start polling loop
 setInterval(poll, CONFIG.pollInterval);

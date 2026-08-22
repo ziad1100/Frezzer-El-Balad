@@ -33,6 +33,7 @@ server/uploads/
 .env
 server/.env
 .env*
+!local-print-service/.env.example
 local-print-service/.env
 *.pem
 *.key
