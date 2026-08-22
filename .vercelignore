@@ -1,7 +1,4 @@
-# Server backend — NOT deployed to Vercel (Render handles this)
-/server/
-
-# Vercel serverless function helpers at root — no longer needed
+# Vercel serverless function helpers — no longer needed
 /api/
 
 # Build scripts for serverless functions
@@ -40,3 +37,8 @@ render.yaml
 # Miscellaneous
 /docs/
 /images/
+
+# Server data (not needed for frontend build)
+server/.data
+server/uploads
+server/seed_out.log
