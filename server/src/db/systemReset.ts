@@ -20,8 +20,8 @@ import { withTransaction } from './index';
  *   - Users / admins
  *   - Products (names, descriptions, images, categories, etc.)
  *   - Categories
- *   - Product sizes (names, relationships — only price zeroed)
- *   - Product extras (names, relationships — only price zeroed)
+ *   - Product sizes (names, relationships — prices preserved)
+ *   - Product extras (names, relationships — prices preserved)
  *   - Reviews / ratings
  *   - Coupons (structure preserved, only redemptions cleared)
  *   - Banners, branches, posts, contacts, settings, notifications
