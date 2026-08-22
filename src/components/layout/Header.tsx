@@ -66,7 +66,7 @@ export function Header() {
         <Link to="/" className="flex items-center gap-2" aria-label="Freezer El Balad">
           <Logo className="h-10 w-10 rounded-xl" />
           <span className="hidden text-xl font-extrabold tracking-tight text-night-50 min-[344px]:inline">
-            Freezer <span className="text-brand-500">Elbalad</span>
+            {i18n.t('nav.brand')}
           </span>
         </Link>
 
