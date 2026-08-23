@@ -9,6 +9,7 @@ router.use(requireAuth);
 
 // Admin routes — print job management
 router.post('/', requirePermission('orders', 'update'), print.createPrintJob);
+router.post('/test', requirePermission('orders', 'update'), print.createTestPrintJob);
 router.get('/recent', requirePermission('orders', 'read'), print.listRecentJobs);
 router.get('/order/:orderId', requirePermission('orders', 'read'), print.getOrderPrintJobs);
 router.patch('/:jobId/success', requirePermission('orders', 'update'), print.reportSuccess);

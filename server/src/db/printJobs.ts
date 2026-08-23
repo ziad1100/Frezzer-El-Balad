@@ -87,3 +87,17 @@ export const listRecent = async (limit = 20): Promise<PrintJob[]> => {
     [limit],
   );
 };
+
+/** Create a test print job (no real order). Uses a placeholder orderId. */
+export const createTestPrintJob = async (
+  receipt: Record<string, unknown>,
+): Promise<PrintJob> => {
+  const placeholderId = '00000000-0000-0000-0000-000000000000';
+  const rows = await query<PrintJob>(
+    `INSERT INTO print_jobs ("orderId", "orderNo", receipt)
+     VALUES ($1::uuid, $2, $3::jsonb)
+     RETURNING *`,
+    [placeholderId, 'TEST', JSON.stringify(receipt)],
+  );
+  return rows[0];
+};

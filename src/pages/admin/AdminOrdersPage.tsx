@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ban, Eye, Gift, Printer, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { adminCancelOrder, adminListOrders, adminMarkComplimentary, updateOrderStatus } from '@/api/admin';
+import { adminCancelOrder, adminListOrders, adminMarkComplimentary, getAdminSettings, updateOrderStatus } from '@/api/admin';
 import { getErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, EmptyState, Skeleton } from '@/components/ui/Card';
@@ -12,9 +12,10 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog, PageHeader, Pagination, SearchBox, StatusBadge, TableWrap, Td, Th } from '@/components/admin/primitives';
 import type { Order, OrderStatus } from '@/types';
 import { formatPrice } from '@/lib/utils';
-import { buildReceiptFromOrder } from '@/lib/receiptFormatter';
+import { buildReceiptFromOrder, type ReceiptData } from '@/lib/receiptFormatter';
 import { printReceipt } from '@/lib/browserPrint';
 import { markOrderPrinted, createPrintJob, getOrderPrintJobs } from '@/api/print';
+import { PrintInvoiceDialog, type PrinterConfig } from '@/components/admin/PrintInvoiceDialog';
 
 type AdminOrder = Omit<Order, 'user'> & {
   user: string | { fullName: string; email: string; phone: string };
@@ -60,6 +61,31 @@ export function AdminOrdersPage() {
     queryFn: () => adminListOrders({ page, limit: 15, q: search, status }),
   });
 
+  const settingsQuery = useQuery({ queryKey: ['admin', 'settings'], queryFn: getAdminSettings });
+  const printers: PrinterConfig[] = useMemo(() => {
+    const raw = settingsQuery.data?.printerConfig;
+    if (Array.isArray(raw)) return raw as PrinterConfig[];
+    if (raw && typeof raw === 'object' && 'name' in raw) {
+      const legacy = raw as Record<string, unknown>;
+      return [{
+        id: 'default',
+        name: String(legacy.name || 'Default Printer'),
+        paperWidth: (legacy.paperWidth === '58' ? '58' : '80') as '58' | '80',
+        connection: (legacy.connection || 'lan') as PrinterConfig['connection'],
+        ipAddress: String(legacy.ipAddress || ''),
+        port: String(legacy.port || '9100'),
+        isDefault: true,
+        isActive: legacy.isActive !== false,
+      }];
+    }
+    return [];
+  }, [settingsQuery.data]);
+
+  // Print dialog state
+  const [printDialogOrder, setPrintDialogOrder] = useState<AdminOrder | null>(null);
+  const [printDialogReceipt, setPrintDialogReceipt] = useState<ReceiptData | null>(null);
+  const [printLoading, setPrintLoading] = useState(false);
+
   const invalidateAll = (): Promise<unknown> =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] }),
@@ -89,9 +115,8 @@ export function AdminOrdersPage() {
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
-  // Print-related state and mutations
+  // Print-related state
   const [printJobs, setPrintJobs] = useState<Array<{ id: string; status: string; createdAt: string }>>([]);
-  const [printLoading, setPrintLoading] = useState(false);
 
   const fetchPrintJobs = async (orderId: string): Promise<void> => {
     try {
@@ -102,52 +127,72 @@ export function AdminOrdersPage() {
     }
   };
 
-  const handlePrintInvoice = async (order: AdminOrder, isReprint = false): Promise<void> => {
-    if (isReprint && !window.confirm(lang === 'ar' ? 'إعادة طباعة الفاتورة؟' : 'Reprint invoice?')) {
-      return;
-    }
+  const buildReceipt = (order: AdminOrder, paperWidth: '58' | '80' = '80'): ReceiptData =>
+    buildReceiptFromOrder(
+      {
+        orderNo: order.orderNo,
+        createdAt: order.createdAt,
+        customerName: order.customerName,
+        phone: order.phone,
+        deliveryAddress: order.deliveryAddress,
+        status: order.status,
+        items: order.items.map((i) => ({
+          name: i.name,
+          nameEn: i.nameEn,
+          size: i.size,
+          qty: i.qty,
+          unitPrice: i.unitPrice,
+          lineTotal: i.lineTotal,
+        })),
+        subtotal: order.subtotal,
+        deliveryFee: order.deliveryFee,
+        discount: order.discount,
+        total: order.total,
+        payment: order.payment,
+      },
+      paperWidth,
+      lang === 'ar' ? 'ar' : 'en',
+    );
+
+  const openPrintDialog = async (order: AdminOrder): Promise<void> => {
+    const receipt = buildReceipt(order, '80');
+    setPrintDialogOrder(order);
+    setPrintDialogReceipt(receipt);
+    await fetchPrintJobs(order._id);
+  };
+
+  const handlePrintFromDialog = async (printerId: string, paperWidth: '58' | '80', copies: number): Promise<void> => {
+    if (!printDialogOrder) return;
     setPrintLoading(true);
     try {
-      // Build receipt data
-      const receipt = buildReceiptFromOrder(
-        {
-          orderNo: order.orderNo,
-          createdAt: order.createdAt,
-          customerName: order.customerName,
-          phone: order.phone,
-          deliveryAddress: order.deliveryAddress,
-          status: order.status,
-          items: order.items.map((i) => ({
-            name: i.name,
-            nameEn: i.nameEn,
-            size: i.size,
-            qty: i.qty,
-            unitPrice: i.unitPrice,
-            lineTotal: i.lineTotal,
-          })),
-          subtotal: order.subtotal,
-          deliveryFee: order.deliveryFee,
-          discount: order.discount,
-          total: order.total,
-          payment: order.payment,
-        },
-        '80', // Default paper width — can be made configurable
-        lang === 'ar' ? 'ar' : 'en',
-      );
-
-      // Try to create a print job for the local service first
-      try {
-        await createPrintJob(order._id, receipt as unknown as Record<string, unknown>);
-        toast.success(lang === 'ar' ? 'تم إرسال الفاتورة للطابعة' : 'Invoice sent to printer');
-      } catch {
-        // Local print service unavailable — fall back to browser print
-        printReceipt(receipt);
+      const receipt = buildReceipt(printDialogOrder, paperWidth);
+      for (let i = 0; i < copies; i++) {
+        try {
+          await createPrintJob(printDialogOrder._id, receipt as unknown as Record<string, unknown>);
+        } catch {
+          printReceipt(receipt);
+        }
       }
-
-      // Mark as printed
-      await markOrderPrinted(order._id);
+      await markOrderPrinted(printDialogOrder._id);
       void invalidateAll();
-      await fetchPrintJobs(order._id);
+      await fetchPrintJobs(printDialogOrder._id);
+      toast.success(lang === 'ar' ? 'تم إرسال الفاتورة للطابعة' : 'Invoice sent to printer');
+    } catch {
+      toast.error(lang === 'ar' ? 'فشلت الطباعة' : 'Print failed');
+    } finally {
+      setPrintLoading(false);
+    }
+  };
+
+  const handleBrowserPrintFromDialog = async (paperWidth: '58' | '80'): Promise<void> => {
+    if (!printDialogOrder) return;
+    setPrintLoading(true);
+    try {
+      const receipt = buildReceipt(printDialogOrder, paperWidth);
+      printReceipt(receipt);
+      await markOrderPrinted(printDialogOrder._id);
+      void invalidateAll();
+      await fetchPrintJobs(printDialogOrder._id);
     } catch {
       toast.error(lang === 'ar' ? 'فشلت الطباعة' : 'Print failed');
     } finally {
@@ -363,8 +408,7 @@ export function AdminOrdersPage() {
                     size="sm"
                     variant="outline"
                     className="border-blue-500/40 text-blue-400"
-                    loading={printLoading}
-                    onClick={() => void handlePrintInvoice(selected, false)}
+                    onClick={() => void openPrintDialog(selected)}
                   >
                     <Printer className="h-4 w-4" />
                     {lang === 'ar' ? 'طباعة الفاتورة' : 'Print Invoice'}
@@ -374,8 +418,7 @@ export function AdminOrdersPage() {
                       size="sm"
                       variant="outline"
                       className="border-blue-500/40 text-blue-300"
-                      loading={printLoading}
-                      onClick={() => void handlePrintInvoice(selected, true)}
+                      onClick={() => void openPrintDialog(selected)}
                     >
                       <Printer className="h-4 w-4" />
                       {lang === 'ar' ? 'إعادة طباعة' : 'Reprint'}
@@ -522,6 +565,20 @@ export function AdminOrdersPage() {
           </div>
         ) : null}
       </Modal>
+
+      {/* Print Invoice Dialog */}
+      {printDialogOrder && printDialogReceipt ? (
+        <PrintInvoiceDialog
+          open={Boolean(printDialogOrder)}
+          onClose={() => { setPrintDialogOrder(null); setPrintDialogReceipt(null); }}
+          orderNo={printDialogOrder.orderNo}
+          receipt={printDialogReceipt}
+          printers={printers}
+          onPrint={handlePrintFromDialog}
+          onBrowserPrint={handleBrowserPrintFromDialog}
+          printLoading={printLoading}
+        />
+      ) : null}
 
       {/* Confirmation dialog for irreversible status changes */}
       <ConfirmDialog

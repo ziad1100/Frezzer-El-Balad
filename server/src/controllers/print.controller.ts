@@ -61,6 +61,15 @@ export const retryPrintJob = asyncHandler(async (req: Request, res: Response) =>
   res.json(new ApiResponse(200, null, 'Job queued for retry'));
 });
 
+/** Create a test print job (no order required). */
+export const createTestPrintJob = asyncHandler(async (req: Request, res: Response) => {
+  const { receipt } = req.body;
+  if (!receipt) throw new ApiError(400, 'receipt is required');
+  // Use a placeholder order ID for test prints — the local service just needs the receipt payload
+  const job = await printJobsRepo.createTestPrintJob(receipt);
+  res.status(201).json(new ApiResponse(201, job, 'Test print job created'));
+});
+
 /** Update order print metadata (manual mark as printed). */
 export const markOrderPrinted = asyncHandler(async (req: Request, res: Response) => {
   const { orderId } = req.params;

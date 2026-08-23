@@ -26,6 +26,9 @@ export interface PrinterConfig {
 export const createPrintJob = (orderId: string, receipt: Record<string, unknown>): Promise<PrintJob> =>
   unwrap(api.post<ApiEnvelope<PrintJob>>('/print', { orderId, receipt }));
 
+export const createTestPrintJob = (receipt: Record<string, unknown>): Promise<PrintJob> =>
+  unwrap(api.post<ApiEnvelope<PrintJob>>('/print/test', { receipt }));
+
 export const getOrderPrintJobs = (orderId: string): Promise<PrintJob[]> =>
   unwrap(api.get<ApiEnvelope<PrintJob[]>>(`/print/order/${orderId}`));
 
