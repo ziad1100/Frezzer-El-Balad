@@ -368,3 +368,186 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
   const fileName = `Freezer-Elbalad-Order-${order.orderNo}.pdf`;
   doc.save(fileName);
 }
+
+/**
+ * Generate a PDF and return as data URL (for preview).
+ */
+export function generateOrderPdfDataUrl(order: Order, lang: string = 'ar'): string {
+  const isAr = lang === 'ar';
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 15;
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const addText = (text: string, fontSize: number, isBold = false, align: 'left' | 'center' | 'right' = 'left') => {
+    doc.setFontSize(fontSize);
+    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+    if (align === 'center') doc.text(text, pageWidth / 2, y, { align: 'center' });
+    else if (align === 'right') doc.text(text, pageWidth - margin, y, { align: 'right' });
+    else doc.text(text, margin, y);
+    y += fontSize * 0.5;
+  };
+
+  const addArabicText = (text: string, fontSize: number, align: 'left' | 'center' | 'right' = 'left') => {
+    if (!text) return;
+    const dataUrl = renderArabicToImage(text, fontSize * 2, contentWidth);
+    const imgWidth = Math.min(contentWidth, 120);
+    const imgHeight = imgWidth * 0.15;
+    let x = margin;
+    if (align === 'center') x = (pageWidth - imgWidth) / 2;
+    else if (align === 'right') x = pageWidth - margin - imgWidth;
+    doc.addImage(dataUrl, 'PNG', x, y - imgHeight + 2, imgWidth, imgHeight);
+    y += fontSize * 0.5 + 2;
+  };
+
+  const drawLine = () => {
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 3;
+  };
+
+  const checkPageBreak = (needed: number) => {
+    if (y + needed > doc.internal.pageSize.getHeight() - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // ── Header ──
+  const storeName = isAr ? 'فريزر البلد' : 'Freezer Elbalad';
+  if (isAr) addArabicText(storeName, 22, 'center');
+  else addText(storeName, 22, true, 'center');
+
+  const subtitle = isAr ? 'لحوم وفراخ ومجمدات' : 'Meat, Chicken & Frozen Products';
+  if (isAr) addArabicText(subtitle, 12, 'center');
+  else addText(subtitle, 12, false, 'center');
+
+  y += 2;
+  drawLine();
+
+  // ── Order title ──
+  const orderTitle = isAr ? `طلب رقم #${order.orderNo}` : `Order #${order.orderNo}`;
+  if (isAr) addArabicText(orderTitle, 16, 'center');
+  else addText(orderTitle, 16, true, 'center');
+  y += 2;
+
+  // ── Order info ──
+  addText(`${isAr ? 'التاريخ' : 'Date'}: ${fmtDate(order.createdAt, lang)}`, 10);
+  if (isAr) addArabicText(`${isAr ? 'الحالة' : 'Status'}: ${statusLabel(order.status, lang)}`, 10);
+  else addText(`${isAr ? 'الحالة' : 'Status'}: ${statusLabel(order.status, lang)}`, 10);
+  if (order.payment) {
+    if (isAr) addArabicText(`${isAr ? 'طريقة الدفع' : 'Payment'}: ${paymentLabel(order.payment.method, lang)} (${fmtPrice(order.payment.amount)})`, 10);
+    else addText(`${isAr ? 'طريقة الدفع' : 'Payment'}: ${paymentLabel(order.payment.method, lang)} (${fmtPrice(order.payment.amount)})`, 10);
+  }
+
+  y += 3;
+  drawLine();
+
+  // ── Customer info ──
+  const customerTitle = isAr ? 'معلومات العميل' : 'Customer Information';
+  if (isAr) addArabicText(customerTitle, 13, 'center');
+  else addText(customerTitle, 13, true, 'center');
+  y += 2;
+
+  if (order.customerName) {
+    if (isAr) addArabicText(`${isAr ? 'الاسم' : 'Name'}: ${order.customerName}`, 10);
+    else addText(`${isAr ? 'الاسم' : 'Name'}: ${order.customerName}`, 10);
+  }
+  if (order.phone) addText(`${isAr ? 'الهاتف' : 'Phone'}: ${order.phone}`, 10);
+  if (order.deliveryAddress) {
+    const addr = order.deliveryAddress;
+    if (addr.city) {
+      if (isAr) addArabicText(`${isAr ? 'المدينة' : 'City'}: ${addr.city}`, 10);
+      else addText(`${isAr ? 'المدينة' : 'City'}: ${addr.city}`, 10);
+    }
+    if (addr.street) {
+      if (isAr) addArabicText(`${isAr ? 'الشارع' : 'Street'}: ${addr.street}`, 10);
+      else addText(`${isAr ? 'الشارع' : 'Street'}: ${addr.street}`, 10);
+    }
+    if (addr.building) {
+      if (isAr) addArabicText(`${isAr ? 'المبنى' : 'Building'}: ${addr.building}`, 10);
+      else addText(`${isAr ? 'المبنى' : 'Building'}: ${addr.building}`, 10);
+    }
+  }
+
+  y += 3;
+  drawLine();
+
+  // ── Items ──
+  const itemsTitle = isAr ? 'المنتجات' : 'Order Items';
+  if (isAr) addArabicText(itemsTitle, 13, 'center');
+  else addText(itemsTitle, 13, true, 'center');
+  y += 2;
+
+  const tableBody = order.items.map((item) => {
+    const name = isAr ? item.name : (item.nameEn ?? item.name);
+    return [name, item.size || '—', String(item.qty), fmtPrice(item.unitPrice), fmtPrice(item.lineTotal)];
+  });
+
+  autoTable(doc, {
+    startY: y,
+    head: [[isAr ? 'المنتج' : 'Product', isAr ? 'النوع' : 'Variant', isAr ? 'الكمية' : 'Qty', isAr ? 'سعر الوحدة' : 'Unit Price', isAr ? 'الإجمالي' : 'Total']],
+    body: tableBody,
+    margin: { left: margin, right: margin },
+    styles: { fontSize: 9, cellPadding: 3, halign: 'center', font: 'helvetica' },
+    headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+    alternateRowStyles: { fillColor: [245, 245, 250] },
+    columnStyles: {
+      0: { halign: isAr ? 'right' : 'left', cellWidth: 'auto' },
+      1: { halign: 'center', cellWidth: 25 },
+      2: { halign: 'center', cellWidth: 15 },
+      3: { halign: 'center', cellWidth: 30 },
+      4: { halign: 'center', cellWidth: 30 },
+    },
+  });
+
+  y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 5;
+
+  // ── Totals ──
+  drawLine();
+  const addTotalLine = (label: string, value: string, bold = false, color?: [number, number, number]) => {
+    checkPageBreak(8);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    if (color) doc.setTextColor(...color);
+    if (isAr) {
+      doc.text(label, pageWidth - margin, y, { align: 'right' });
+      doc.text(value, margin, y);
+    } else {
+      doc.text(label, margin, y);
+      doc.text(value, pageWidth - margin, y, { align: 'right' });
+    }
+    doc.setTextColor(0, 0, 0);
+    y += 5;
+  };
+
+  addTotalLine(isAr ? 'المجموع الفرعي' : 'Subtotal', fmtPrice(order.subtotal));
+  addTotalLine(isAr ? 'التوصيل' : 'Delivery', order.deliveryFee > 0 ? fmtPrice(order.deliveryFee) : (isAr ? 'مجاني' : 'FREE'));
+  if (order.discount > 0) addTotalLine(isAr ? 'الخصم' : 'Discount', `-${fmtPrice(order.discount)}`, false, [220, 50, 50]);
+
+  y += 1;
+  doc.setDrawColor(30, 58, 95);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 5;
+  addTotalLine(isAr ? 'الإجمالي' : 'Total', fmtPrice(order.total), true);
+
+  y += 5;
+  drawLine();
+
+  if (order.notes) {
+    checkPageBreak(15);
+    if (isAr) { addArabicText(`${isAr ? 'ملاحظات' : 'Notes'}:`, 11); addArabicText(order.notes, 10); }
+    else { addText(`${isAr ? 'ملاحظات' : 'Notes'}:`, 11, true); addText(order.notes, 10); }
+    y += 3;
+  }
+
+  checkPageBreak(15);
+  drawLine();
+  if (isAr) addArabicText('شكراً لتسوقكم من فريزر البلد!', 10, 'center');
+  else addText('Thank you for shopping with Freezer Elbalad!', 10, false, 'center');
+  addText(`${isAr ? 'تم الإنشاء' : 'Generated'}: ${fmtDate(new Date().toISOString(), lang)}`, 8, false, 'center');
+
+  return doc.output('datauristring');
+}

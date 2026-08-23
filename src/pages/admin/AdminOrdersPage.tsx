@@ -18,6 +18,7 @@ import { printReceipt } from '@/lib/browserPrint';
 import { generateOrderPdf } from '@/lib/orderPdf';
 import { markOrderPrinted, createPrintJob, getOrderPrintJobs } from '@/api/print';
 import { PrintInvoiceDialog, type PrinterConfig } from '@/components/admin/PrintInvoiceDialog';
+import { PdfPreviewDialog } from '@/components/admin/PdfPreviewDialog';
 
 type AdminOrder = Omit<Order, 'user'> & {
   user: string | { fullName: string; email: string; phone: string };
@@ -87,6 +88,9 @@ export function AdminOrdersPage() {
   const [printDialogOrder, setPrintDialogOrder] = useState<AdminOrder | null>(null);
   const [printDialogReceipt, setPrintDialogReceipt] = useState<ReceiptData | null>(null);
   const [printLoading, setPrintLoading] = useState(false);
+
+  // PDF preview dialog state
+  const [pdfPreviewOrder, setPdfPreviewOrder] = useState<AdminOrder | null>(null);
 
   const invalidateAll = (): Promise<unknown> =>
     Promise.all([
@@ -424,14 +428,7 @@ export function AdminOrdersPage() {
                     size="sm"
                     variant="outline"
                     className="border-emerald-500/40 text-emerald-400"
-                    onClick={() => {
-                      try {
-                        generateOrderPdf(selected, lang === 'ar' ? 'ar' : 'en');
-                        toast.success(lang === 'ar' ? 'تم تحميل ملف PDF' : 'PDF downloaded');
-                      } catch {
-                        toast.error(lang === 'ar' ? 'تعذر إنشاء ملف PDF، حاول مرة أخرى' : 'Unable to generate PDF. Please try again.');
-                      }
-                    }}
+                    onClick={() => setPdfPreviewOrder(selected)}
                   >
                     <FileDown className="h-4 w-4" />
                     {lang === 'ar' ? 'تصدير PDF' : 'Export PDF'}
@@ -600,6 +597,15 @@ export function AdminOrdersPage() {
           onPrint={handlePrintFromDialog}
           onBrowserPrint={handleBrowserPrintFromDialog}
           printLoading={printLoading}
+        />
+      ) : null}
+
+      {/* PDF Preview Dialog */}
+      {pdfPreviewOrder ? (
+        <PdfPreviewDialog
+          open={Boolean(pdfPreviewOrder)}
+          onClose={() => setPdfPreviewOrder(null)}
+          order={pdfPreviewOrder}
         />
       ) : null}
 
