@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Printer, X, Eye, Send, RefreshCw } from 'lucide-react';
+import { Printer, X, Eye, Send, RefreshCw, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { cn, formatPrice } from '@/lib/utils';
 import type { ReceiptData } from '@/lib/receiptFormatter';
 import { generateReceiptText } from '@/lib/receiptFormatter';
+import { renderReceiptToCanvas, canvasToDataURL, hasArabic } from '@/lib/receiptImage';
 
 export interface PrinterConfig {
   id: string;
@@ -52,12 +53,30 @@ export function PrintInvoiceDialog({
   const [paperWidth, setPaperWidth] = useState<'58' | '80'>(defaultPrinter?.paperWidth ?? '80');
   const [copies, setCopies] = useState(1);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'text' | 'image'>('text');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+
+  // Detect if receipt contains Arabic text
+  const containsArabic = useMemo(() => {
+    return hasArabic(receipt.storeNameAr) || receipt.language === 'ar' ||
+      receipt.items.some((i) => hasArabic(i.name));
+  }, [receipt]);
 
   // Build receipt text for the selected paper width
   const previewReceipt = useMemo(() => {
     const receiptForPaper = { ...receipt, paperWidth };
     return generateReceiptText(receiptForPaper);
   }, [receipt, paperWidth]);
+
+  // Render image preview when Arabic is detected or user requests it
+  useEffect(() => {
+    if (!showPreview) return;
+    if (previewMode === 'image' || containsArabic) {
+      const canvas = renderReceiptToCanvas({ ...receipt, paperWidth });
+      setImageDataUrl(canvasToDataURL(canvas));
+    }
+  }, [showPreview, previewMode, receipt, paperWidth, containsArabic]);
 
   const handlePrint = () => {
     if (selectedPrinterId) {
@@ -145,7 +164,7 @@ export function PrintInvoiceDialog({
         </div>
 
         {/* Receipt Preview Toggle */}
-        <div>
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setShowPreview(!showPreview)}
@@ -156,19 +175,72 @@ export function PrintInvoiceDialog({
               ? (lang === 'ar' ? 'إخفاء المعاينة' : 'Hide Preview')
               : (lang === 'ar' ? 'معاينة الفاتورة' : 'Preview Invoice')}
           </button>
+          {showPreview && (
+            <div className="flex items-center gap-1 rounded-lg border border-night-800 p-0.5">
+              <button
+                type="button"
+                onClick={() => setPreviewMode('text')}
+                className={cn(
+                  'rounded-md px-2 py-1 text-xs font-semibold transition-colors',
+                  previewMode === 'text' ? 'bg-night-700 text-night-100' : 'text-night-500 hover:text-night-300',
+                )}
+              >
+                Text
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewMode('image')}
+                className={cn(
+                  'rounded-md px-2 py-1 text-xs font-semibold transition-colors',
+                  previewMode === 'image' ? 'bg-night-700 text-night-100' : 'text-night-500 hover:text-night-300',
+                )}
+              >
+                <Image className="inline h-3 w-3" />
+                {' '}Image
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Receipt Preview */}
         {showPreview && (
           <div className="rounded-xl border border-night-800 bg-night-950 p-4">
-            <div
-              className={cn(
-                'mx-auto font-mono text-xs leading-relaxed text-night-200 whitespace-pre-wrap',
-                paperWidth === '80' ? 'max-w-[300px]' : 'max-w-[220px]',
-              )}
-            >
-              {previewReceipt}
-            </div>
+            {previewMode === 'image' || containsArabic ? (
+              /* Image-based preview — renders Arabic correctly */
+              <div className="flex flex-col items-center gap-2">
+                {containsArabic && previewMode !== 'image' ? (
+                  <p className="text-xs text-gold-400">
+                    {lang === 'ar'
+                      ? '⚠️ العربية تُعرض كصورة لضمان الطباعة الصحيحة'
+                      : '⚠️ Arabic rendered as image for correct printing'}
+                  </p>
+                ) : null}
+                {imageDataUrl ? (
+                  <img
+                    src={imageDataUrl}
+                    alt={lang === 'ar' ? 'معاينة الفاتورة' : 'Invoice Preview'}
+                    className={cn(
+                      'rounded-lg border border-night-700',
+                      paperWidth === '80' ? 'max-w-[300px]' : 'max-w-[220px]',
+                    )}
+                  />
+                ) : (
+                  <p className="text-sm text-night-500">
+                    {lang === 'ar' ? 'جاري التحميل...' : 'Loading...'}
+                  </p>
+                )}
+              </div>
+            ) : (
+              /* Text-based preview */
+              <div
+                className={cn(
+                  'mx-auto font-mono text-xs leading-relaxed text-night-200 whitespace-pre-wrap',
+                  paperWidth === '80' ? 'max-w-[300px]' : 'max-w-[220px]',
+                )}
+              >
+                {previewReceipt}
+              </div>
+            )}
           </div>
         )}
 

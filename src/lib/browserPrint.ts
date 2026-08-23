@@ -3,10 +3,14 @@
  *
  * Opens a printer-friendly receipt in a new window and triggers the browser's
  * native print dialog. Used when the local print service is unavailable.
+ *
+ * For Arabic text, renders the receipt as a canvas image to ensure correct
+ * display on printers without native Arabic support.
  */
 
 import type { ReceiptData } from './receiptFormatter';
 import { generateReceiptText } from './receiptFormatter';
+import { renderReceiptToCanvas, canvasToDataURL, hasArabic } from './receiptImage';
 
 const RECEIPT_STYLES = `
   @page {
@@ -57,10 +61,22 @@ const RECEIPT_STYLES = `
 
 export const printReceipt = (data: ReceiptData): void => {
   const receiptText = generateReceiptText(data);
+  const isArabic = data.language === 'ar' || hasArabic(data.storeNameAr);
+
+  // For Arabic text, render as image for correct printer output
+  let imageHtml = '';
+  if (isArabic) {
+    try {
+      const canvas = renderReceiptToCanvas(data);
+      const dataUrl = canvasToDataURL(canvas);
+      imageHtml = `<img src="${dataUrl}" style="max-width:100%;display:block;margin:0 auto;" />`;
+    } catch {
+      // Fall back to text if canvas fails
+    }
+  }
 
   const printWindow = window.open('', '_blank', 'width=400,height=600');
   if (!printWindow) {
-    // Popup blocked — try direct print
     console.warn('Popup blocked. Allowing browser print directly.');
     return;
   }
@@ -78,8 +94,9 @@ export const printReceipt = (data: ReceiptData): void => {
           <button class="print-btn" onclick="window.print()">
             🖨️ ${data.language === 'ar' ? 'اطبع الفاتورة' : 'Print Invoice'}
           </button>
+          ${isArabic ? `<p style="text-align:center;font-size:11px;color:#888;">${data.language === 'ar' ? 'يتم العرض كصورة لضمان الطباعة الصحيحة للعربية' : 'Rendered as image for correct Arabic printing'}</p>` : ''}
         </div>
-        <div class="receipt-text">${escapeHtml(receiptText)}</div>
+        ${imageHtml || `<div class="receipt-text">${escapeHtml(receiptText)}</div>`}
         <div class="no-print">
           <button class="print-btn" onclick="window.print()">
             🖨️ ${data.language === 'ar' ? 'اطبع الفاتورة' : 'Print Invoice'}
@@ -95,6 +112,18 @@ export const printReceipt = (data: ReceiptData): void => {
 /** Simpler text-only print (no UI buttons). */
 export const printReceiptDirect = (data: ReceiptData): void => {
   const receiptText = generateReceiptText(data);
+  const isArabic = data.language === 'ar' || hasArabic(data.storeNameAr);
+
+  let imageHtml = '';
+  if (isArabic) {
+    try {
+      const canvas = renderReceiptToCanvas(data);
+      const dataUrl = canvasToDataURL(canvas);
+      imageHtml = `<img src="${dataUrl}" style="max-width:100%;display:block;margin:0 auto;" />`;
+    } catch {
+      // Fall back to text
+    }
+  }
 
   const printWindow = window.open('', '_blank', 'width=400,height=600');
   if (!printWindow) return;
@@ -108,7 +137,7 @@ export const printReceiptDirect = (data: ReceiptData): void => {
     </head>
     <body>
       <div class="receipt">
-        <div class="receipt-text">${escapeHtml(receiptText)}</div>
+        ${imageHtml || `<div class="receipt-text">${escapeHtml(receiptText)}</div>`}
       </div>
       <script>window.onload = function() { window.print(); }</script>
     </body>

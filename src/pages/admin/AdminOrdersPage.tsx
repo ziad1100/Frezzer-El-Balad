@@ -13,6 +13,7 @@ import { ConfirmDialog, PageHeader, Pagination, SearchBox, StatusBadge, TableWra
 import type { Order, OrderStatus } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { buildReceiptFromOrder, type ReceiptData } from '@/lib/receiptFormatter';
+import { renderReceiptToCanvas, canvasToDataURL, hasArabic } from '@/lib/receiptImage';
 import { printReceipt } from '@/lib/browserPrint';
 import { markOrderPrinted, createPrintJob, getOrderPrintJobs } from '@/api/print';
 import { PrintInvoiceDialog, type PrinterConfig } from '@/components/admin/PrintInvoiceDialog';
@@ -166,9 +167,14 @@ export function AdminOrdersPage() {
     setPrintLoading(true);
     try {
       const receipt = buildReceipt(printDialogOrder, paperWidth);
+      // For Arabic text, render as image for printers without native Arabic support
+      const isArabic = hasArabic(receipt.storeNameAr) || receipt.language === 'ar';
+      const receiptPayload = isArabic
+        ? { ...receipt, imageDataUrl: canvasToDataURL(renderReceiptToCanvas(receipt)) }
+        : receipt;
       for (let i = 0; i < copies; i++) {
         try {
-          await createPrintJob(printDialogOrder._id, receipt as unknown as Record<string, unknown>);
+          await createPrintJob(printDialogOrder._id, receiptPayload as unknown as Record<string, unknown>);
         } catch {
           printReceipt(receipt);
         }

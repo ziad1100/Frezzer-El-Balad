@@ -27,6 +27,7 @@
  */
 
 import { EscPos } from 'escpos';
+import EscPosImage from 'escpos-image';
 import EscposUSB from 'escpos-usb';
 import EscposNetwork from 'escpos-network';
 import fetch from 'node-fetch';
@@ -74,6 +75,47 @@ const pad = (s, len, align = 'left') => {
 };
 
 const repeat = (ch, len) => ch.repeat(Math.max(0, len));
+
+// ─── Detect Arabic text ──────────────────────────────────────────────────────
+function hasArabic(text) {
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text || '');
+}
+
+// ─── Print image data (base64 PNG) ──────────────────────────────────────────
+async function printImage(base64Data) {
+  if (printer === 'simulated') {
+    console.log('[printer] SIMULATED — would print image');
+    return true;
+  }
+  if (!printer) throw new Error('Printer not connected');
+
+  // Decode base64 to buffer
+  const base64 = base64Data.replace(/^data:image\/png;base64,/, '');
+  const buffer = Buffer.from(base64, 'base64');
+
+  // Create image from buffer using escpos-image
+  const image = new EscPosImage(buffer);
+
+  return new Promise((resolve, reject) => {
+    printer.open((err) => {
+      if (err) {
+        printer = null;
+        reject(new Error('Printer not connected'));
+        return;
+      }
+      printer.align('center');
+      printer.image(image, (printErr) => {
+        if (printErr) {
+          printer = null;
+          reject(new Error(printErr.message));
+        } else {
+          printer.cut();
+          printer.close(() => resolve(true));
+        }
+      });
+    });
+  });
+}
 
 // ─── Build ESC/POS from receipt data ─────────────────────────────────────────
 function buildEscpos(receipt) {
@@ -309,9 +351,15 @@ async function processJob(job) {
     }
 
     const receipt = job.receipt;
-    const escposData = buildEscpos(receipt);
 
-    await printEscpos(escposData);
+    // If receipt contains a pre-rendered image (Arabic), print as image
+    if (receipt.imageDataUrl) {
+      console.log(`[service] Job ${job.id} has image data — printing as image (Arabic support)`);
+      await printImage(receipt.imageDataUrl);
+    } else {
+      const escposData = buildEscpos(receipt);
+      await printEscpos(escposData);
+    }
     await reportSuccess(job.id);
     processedJobs.add(job.id);
 
