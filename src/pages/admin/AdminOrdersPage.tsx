@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, Eye, Gift, Printer, ChevronDown } from 'lucide-react';
+import { Ban, Eye, Gift, Printer, ChevronDown, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminCancelOrder, adminListOrders, adminMarkComplimentary, getAdminSettings, updateOrderStatus } from '@/api/admin';
 import { getErrorMessage } from '@/lib/api';
@@ -15,6 +15,7 @@ import { formatPrice } from '@/lib/utils';
 import { buildReceiptFromOrder, type ReceiptData } from '@/lib/receiptFormatter';
 import { renderReceiptToCanvas, canvasToDataURL, hasArabic } from '@/lib/receiptImage';
 import { printReceipt } from '@/lib/browserPrint';
+import { generateOrderPdf } from '@/lib/orderPdf';
 import { markOrderPrinted, createPrintJob, getOrderPrintJobs } from '@/api/print';
 import { PrintInvoiceDialog, type PrinterConfig } from '@/components/admin/PrintInvoiceDialog';
 
@@ -418,6 +419,22 @@ export function AdminOrdersPage() {
                   >
                     <Printer className="h-4 w-4" />
                     {lang === 'ar' ? 'طباعة الفاتورة' : 'Print Invoice'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-emerald-500/40 text-emerald-400"
+                    onClick={() => {
+                      try {
+                        generateOrderPdf(selected, lang === 'ar' ? 'ar' : 'en');
+                        toast.success(lang === 'ar' ? 'تم تحميل ملف PDF' : 'PDF downloaded');
+                      } catch {
+                        toast.error(lang === 'ar' ? 'تعذر إنشاء ملف PDF، حاول مرة أخرى' : 'Unable to generate PDF. Please try again.');
+                      }
+                    }}
+                  >
+                    <FileDown className="h-4 w-4" />
+                    {lang === 'ar' ? 'تصدير PDF' : 'Export PDF'}
                   </Button>
                   {printJobs.length > 0 ? (
                     <Button
