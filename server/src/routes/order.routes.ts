@@ -4,13 +4,13 @@ import { requireAuth, requirePermission } from '../middlewares/auth';
 import { logActivity } from '../middlewares/activityLogger';
 import { zodBody } from '../middlewares/zod';
 import { invalidateCache } from '../middlewares/cache';
-import { createOrderSchema, updateStatusSchema, adminCancelOrderSchema, markComplimentarySchema } from '../schemas';
+import { createAdminOrderSchema, updateStatusSchema, adminCancelOrderSchema, markComplimentarySchema } from '../schemas';
 
 const router = Router();
 
 router.use(requireAuth);
 
-router.post('/', zodBody(createOrderSchema), invalidateCache('dashboard'), order.createOrder);
+router.post('/', zodBody(createAdminOrderSchema), invalidateCache('dashboard'), order.createOrder);
 router.post('/:id/cancel', invalidateCache('dashboard'), order.cancelOrder);
 router.post('/:id/admin-cancel', requirePermission('orders', 'update'), zodBody(adminCancelOrderSchema), logActivity('cancel', 'orders'), invalidateCache('dashboard'), order.adminCancel);
 router.post('/:id/complimentary', requirePermission('orders', 'update'), zodBody(markComplimentarySchema), logActivity('complimentary', 'orders'), invalidateCache('dashboard'), order.adminComplimentary);

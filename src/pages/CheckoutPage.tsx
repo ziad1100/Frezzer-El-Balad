@@ -68,33 +68,68 @@ export function CheckoutPage() {
   const user = useAppSelector((state) => state.auth.user);
   const isAdmin = user?.role === ('admin' as Role) || user?.role === ('manager' as Role);
 
+  // Admin: schema with optional customer info
+  const adminSchema = z.object({
+    customerName: z.string().optional(),
+    phone: z.string().optional(),
+    city: z.string().optional(),
+    street: z.string().optional(),
+    building: z.string().optional(),
+  });
+  type AdminFormValues = z.infer<typeof adminSchema>;
+
+  const { register: adminRegister, handleSubmit: adminHandleSubmit, formState: { errors: adminErrors } } = useForm<AdminFormValues>({
+    resolver: zodResolver(adminSchema),
+    mode: 'onBlur',
+    defaultValues: { customerName: '', phone: '', city: '', street: '', building: '' },
+  });
+
+  const buildOrderPayload = (values: FormValues | AdminFormValues) => {
+    const hasAddress = values.city && values.street && values.building;
+    return {
+      items: lines.map((line) => ({
+        product: line.productId,
+        size: line.size,
+        sizeName: line.sizeName,
+        extras: line.extras.map((e) => ({ name: e.name, price: e.price })),
+        qty: line.qty,
+      })),
+      couponCode: couponCode || undefined,
+      ...(hasAddress
+        ? {
+            address: {
+              label: 'Home',
+              city: values.city!,
+              street: values.street!,
+              building: values.building!,
+            },
+          }
+        : {}),
+      ...(values.phone ? { phone: values.phone } : {}),
+      ...(values.customerName ? { customerName: values.customerName } : {}),
+      notes: note,
+      paymentMethod: 'cash' as const,
+    };
+  };
+
   const orderMutation = useMutation({
-    mutationFn: (values: FormValues) =>
-      createOrder({
-        items: lines.map((line) => ({
-          product: line.productId,
-          size: line.size,
-          sizeName: line.sizeName,
-          extras: line.extras.map((e) => ({ name: e.name, price: e.price })),
-          qty: line.qty,
-        })),
-        couponCode: couponCode || undefined,
-        address: {
-          label: 'Home',
-          city: values.city,
-          street: values.street,
-          building: values.building,
-        },
-        phone: values.phone,
-        notes: note,
-        paymentMethod: 'cash',
-      }),
+    mutationFn: (values: FormValues) => createOrder(buildOrderPayload(values)),
     onSuccess: () => {
       dispatch(clearCoupon());
       dispatch(clearCart());
       toast.success(t('checkout.orderSuccess'));
-      // Admin-created orders are auto-confirmed — redirect to admin orders dashboard
       navigate(isAdmin ? '/admin/orders' : '/orders', { replace: true });
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
+  const adminOrderMutation = useMutation({
+    mutationFn: (values: AdminFormValues) => createOrder(buildOrderPayload(values)),
+    onSuccess: () => {
+      dispatch(clearCoupon());
+      dispatch(clearCart());
+      toast.success(t('checkout.orderSuccess'));
+      navigate('/admin/orders', { replace: true });
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
@@ -124,51 +159,105 @@ export function CheckoutPage() {
       <div className="grid gap-8 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardContent>
-            <form onSubmit={handleSubmit((values) => orderMutation.mutate(values))} className="space-y-5">
-              <Section title={t('checkout.contact')}>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <Label>{t('checkout.name')}</Label>
-                    <Input {...register('customerName')} error={Boolean(errors.customerName)} />
-                    <FieldError message={errors.customerName?.message} />
-                  </div>
-                  <div>
-                    <Label>{t('checkout.phone')}</Label>
-                    <Input dir="ltr" inputMode="numeric" maxLength={11} {...register('phone')} error={Boolean(errors.phone)} />
-                    <FieldError message={errors.phone?.message} />
-                  </div>
+            {isAdmin ? (
+              /* ── Admin: compact order-for-customer form ── */
+              <form onSubmit={adminHandleSubmit((values) => adminOrderMutation.mutate(values))} className="space-y-5">
+                <div className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-4 py-3 text-sm font-semibold text-gold-400">
+                  {i18n.language === 'ar' ? 'إنشاء طلب للعميل' : 'Creating order for customer'}
                 </div>
-              </Section>
 
-              <Section title={t('checkout.address')}>
-                <div className="space-y-4">
-                  <div>
-                    <Label>{t('checkout.city')}</Label>
-                    <Input {...register('city')} error={Boolean(errors.city)} />
-                    <FieldError message={errors.city?.message} />
+                <Section title={i18n.language === 'ar' ? 'معلومات العميل (اختياري)' : 'Customer Info (optional)'}>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label>{t('checkout.name')}</Label>
+                      <Input {...adminRegister('customerName')} error={Boolean(adminErrors.customerName)} />
+                      <FieldError message={adminErrors.customerName?.message} />
+                    </div>
+                    <div>
+                      <Label>{t('checkout.phone')}</Label>
+                      <Input dir="ltr" inputMode="numeric" maxLength={11} {...adminRegister('phone')} error={Boolean(adminErrors.phone)} />
+                      <FieldError message={adminErrors.phone?.message} />
+                    </div>
                   </div>
-                  <div>
-                    <Label>{t('checkout.street')}</Label>
-                    <Input {...register('street')} error={Boolean(errors.street)} />
-                    <FieldError message={errors.street?.message} />
-                  </div>
-                  <div>
-                    <Label>{t('checkout.building')}</Label>
-                    <Input {...register('building')} error={Boolean(errors.building)} />
-                    <FieldError message={errors.building?.message} />
-                  </div>
-                </div>
-              </Section>
+                </Section>
 
-              <Section title={t('checkout.notes')}>
-                <Textarea rows={3} value={note} onChange={(e) => dispatch({ type: 'cart/setNote', payload: e.target.value })} />
-              </Section>
+                <Section title={i18n.language === 'ar' ? 'عنوان التوصيل (اختياري)' : 'Delivery Address (optional)'}>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>{t('checkout.city')}</Label>
+                      <Input {...adminRegister('city')} error={Boolean(adminErrors.city)} />
+                      <FieldError message={adminErrors.city?.message} />
+                    </div>
+                    <div>
+                      <Label>{t('checkout.street')}</Label>
+                      <Input {...adminRegister('street')} error={Boolean(adminErrors.street)} />
+                      <FieldError message={adminErrors.street?.message} />
+                    </div>
+                    <div>
+                      <Label>{t('checkout.building')}</Label>
+                      <Input {...adminRegister('building')} error={Boolean(adminErrors.building)} />
+                      <FieldError message={adminErrors.building?.message} />
+                    </div>
+                  </div>
+                </Section>
 
-              <Button type="submit" size="lg" className="w-full" loading={orderMutation.isPending}>
-                <Lock className="h-5 w-5" />
-                {t('checkout.placeOrder')}
-              </Button>
-            </form>
+                <Section title={t('checkout.notes')}>
+                  <Textarea rows={3} value={note} onChange={(e) => dispatch({ type: 'cart/setNote', payload: e.target.value })} />
+                </Section>
+
+                <Button type="submit" size="lg" className="w-full" loading={adminOrderMutation.isPending}>
+                  <Lock className="h-5 w-5" />
+                  {i18n.language === 'ar' ? 'إنشاء الطلب' : t('checkout.placeOrder')}
+                </Button>
+              </form>
+            ) : (
+              /* ── Customer: existing checkout form (unchanged) ── */
+              <form onSubmit={handleSubmit((values) => orderMutation.mutate(values))} className="space-y-5">
+                <Section title={t('checkout.contact')}>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label>{t('checkout.name')}</Label>
+                      <Input {...register('customerName')} error={Boolean(errors.customerName)} />
+                      <FieldError message={errors.customerName?.message} />
+                    </div>
+                    <div>
+                      <Label>{t('checkout.phone')}</Label>
+                      <Input dir="ltr" inputMode="numeric" maxLength={11} {...register('phone')} error={Boolean(errors.phone)} />
+                      <FieldError message={errors.phone?.message} />
+                    </div>
+                  </div>
+                </Section>
+
+                <Section title={t('checkout.address')}>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>{t('checkout.city')}</Label>
+                      <Input {...register('city')} error={Boolean(errors.city)} />
+                      <FieldError message={errors.city?.message} />
+                    </div>
+                    <div>
+                      <Label>{t('checkout.street')}</Label>
+                      <Input {...register('street')} error={Boolean(errors.street)} />
+                      <FieldError message={errors.street?.message} />
+                    </div>
+                    <div>
+                      <Label>{t('checkout.building')}</Label>
+                      <Input {...register('building')} error={Boolean(errors.building)} />
+                      <FieldError message={errors.building?.message} />
+                    </div>
+                  </div>
+                </Section>
+
+                <Section title={t('checkout.notes')}>
+                  <Textarea rows={3} value={note} onChange={(e) => dispatch({ type: 'cart/setNote', payload: e.target.value })} />
+                </Section>
+
+                <Button type="submit" size="lg" className="w-full" loading={orderMutation.isPending}>
+                  <Lock className="h-5 w-5" />
+                  {t('checkout.placeOrder')}
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
 

@@ -25,10 +25,14 @@ interface OrderItemInput {
 export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { items: rawItems, couponCode, address, phone, notes, paymentMethod } = req.body;
   const userId = req.user!.id;
+  const isAdmin = req.user!.role === ROLES.ADMIN || req.user!.role === ROLES.MANAGER || req.user!.role === ROLES.EMPLOYEE;
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
     throw new ApiError(400, 'Order must contain at least one item');
   }
-  if (!address || !phone) throw new ApiError(400, 'Delivery address and phone are required');
+  // Customers must provide phone and address; admin/employee orders skip this requirement
+  if (!isAdmin && (!address || !phone)) {
+    throw new ApiError(400, 'Delivery address and phone are required');
+  }
 
   const items = rawItems as OrderItemInput[];
   const productIds = items.map((i) => i.product);
@@ -91,9 +95,7 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
 
   const method = Object.values(PAYMENT_METHODS).includes(paymentMethod) ? paymentMethod : PAYMENT_METHODS.CASH;
 
-  // Determine if the authenticated user is an admin/manager — admin-created orders
-  // are auto-confirmed and skip the customer confirmation workflow.
-  const isAdmin = req.user!.role === ROLES.ADMIN || req.user!.role === ROLES.MANAGER;
+  // Admin/manager/employee-created orders are auto-confirmed and skip the customer confirmation workflow.
   const initialStatus = isAdmin ? ORDER_STATUS.CONFIRMED : ORDER_STATUS.PENDING;
 
   let order: Record<string, unknown> | null = null;
@@ -113,8 +115,8 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
         paymentMethod: method,
         paymentReference: '',
         paymentAmount: total,
-        deliveryAddress: address,
-        phone,
+        deliveryAddress: address ?? {},
+        phone: phone ?? '',
         customerName: req.body.customerName || 'عميل',
         notes: notes ?? '',
         statusHistory,

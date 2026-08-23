@@ -4,7 +4,7 @@ import type { ApiEnvelope, CartItemInput, Order, Paginated, SettingsMap } from '
 export interface CreateOrderPayload {
   items: CartItemInput[];
   couponCode?: string;
-  address: {
+  address?: {
     label: string;
     city: string;
     street: string;
@@ -12,7 +12,8 @@ export interface CreateOrderPayload {
     apartment?: string;
     landmark?: string;
   };
-  phone: string;
+  phone?: string;
+  customerName?: string;
   notes?: string;
   paymentMethod: 'cash' | 'card';
 }

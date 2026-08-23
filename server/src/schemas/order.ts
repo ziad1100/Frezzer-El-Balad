@@ -15,6 +15,28 @@ const item = z.object({
     .max(99, 'Quantity must be at most 99'),
 });
 
+const addressSchema = z.object({
+  label: z.string().trim().max(50).optional(),
+  city: z.string().trim().min(1, 'City is required').max(100),
+  area: z.string().trim().max(100).optional(),
+  street: z.string().trim().min(1, 'Street is required').max(150),
+  building: z.string().trim().min(1, 'Building is required').max(100),
+});
+
+const phoneRegex = /^01[0125]\d{8}$/;
+
+/** Admin orders: phone & address are optional (admin creates on behalf of a customer). */
+export const createAdminOrderSchema = z.object({
+  items: z.array(item).min(1, 'At least one item is required').max(100),
+  couponCode: z.string().trim().max(40).optional(),
+  phone: z.string().trim().regex(phoneRegex).optional(),
+  customerName: z.string().trim().max(80).optional(),
+  notes: z.string().trim().max(1000).optional(),
+  address: addressSchema.optional(),
+  paymentMethod: z.enum(['cash', 'card']).default('cash'),
+});
+
+/** Customer orders: phone & address are required. */
 export const createOrderSchema = z.object({
   items: z.array(item).min(1, 'At least one item is required').max(100),
   couponCode: z.string().trim().max(40).optional(),
@@ -24,13 +46,7 @@ export const createOrderSchema = z.object({
     .regex(/^01[0125]\d{8}$/, 'Phone must be a valid 11-digit Egyptian mobile number (010/011/012/015)'),
   customerName: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(1000).optional(),
-  address: z.object({
-    label: z.string().trim().max(50).optional(),
-    city: z.string().trim().min(1, 'City is required').max(100),
-    area: z.string().trim().max(100).optional(),
-    street: z.string().trim().min(1, 'Street is required').max(150),
-    building: z.string().trim().min(1, 'Building is required').max(100),
-  }),
+  address: addressSchema,
   paymentMethod: z.enum(['cash', 'card']).default('cash'),
 });
 

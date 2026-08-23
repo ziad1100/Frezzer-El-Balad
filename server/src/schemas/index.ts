@@ -7,7 +7,7 @@ export {
   changeEmailSchema,
   verifyEmailChangeSchema,
 } from './auth';
-export { createOrderSchema, updateStatusSchema, adminCancelOrderSchema, markComplimentarySchema } from './order';
+export { createOrderSchema, createAdminOrderSchema, updateStatusSchema, adminCancelOrderSchema, markComplimentarySchema } from './order';
 export { addItemSchema, updateItemSchema, applyCouponSchema } from './cart';
 export { productCreateSchema, productUpdateSchema } from './product';
 export { categoryCreateSchema, categoryUpdateSchema } from './category';
