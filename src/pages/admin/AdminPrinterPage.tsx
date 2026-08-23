@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Printer, Send, RefreshCw, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Printer, Send, RefreshCw, CheckCircle, XCircle, AlertTriangle, Key, Copy, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminSettings, updateSettings } from '@/api/admin';
-import { listRecentPrintJobs, retryPrintJob } from '@/api/print';
+import { listRecentPrintJobs, retryPrintJob, generateServiceToken, listServiceTokens, revokeServiceToken } from '@/api/print';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, Skeleton } from '@/components/ui/Card';
 import { Input, Label, Select } from '@/components/ui/Input';
@@ -52,10 +52,13 @@ export function AdminPrinterPage() {
 
   const settings = useQuery({ queryKey: ['admin', 'settings'], queryFn: getAdminSettings });
   const printJobs = useQuery({ queryKey: ['admin', 'print-jobs'], queryFn: listRecentPrintJobs, refetchInterval: 10000 });
+  const serviceTokens = useQuery({ queryKey: ['admin', 'service-tokens'], queryFn: listServiceTokens });
 
   const savedConfig = (settings.data?.printerConfig as PrinterConfig | undefined) ?? defaultConfig;
   const [config, setConfig] = useState<PrinterConfig>(savedConfig);
   const [testPrinting, setTestPrinting] = useState(false);
+  const [newTokenName, setNewTokenName] = useState('');
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: () => updateSettings({ printerConfig: config }),
@@ -71,6 +74,25 @@ export function AdminPrinterPage() {
     onSuccess: () => {
       toast.success(lang === 'ar' ? 'تمت إعادة الإرسال' : 'Retried');
       void queryClient.invalidateQueries({ queryKey: ['admin', 'print-jobs'] });
+    },
+  });
+
+  const generateTokenMutation = useMutation({
+    mutationFn: () => generateServiceToken(newTokenName || 'Print Service'),
+    onSuccess: (data) => {
+      setGeneratedToken(data.rawToken);
+      setNewTokenName('');
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'service-tokens'] });
+      toast.success(lang === 'ar' ? 'تم إنشاء الرمز' : 'Token created');
+    },
+    onError: () => toast.error(lang === 'ar' ? 'فشل إنشاء الرمز' : 'Failed to create token'),
+  });
+
+  const revokeTokenMutation = useMutation({
+    mutationFn: (id: string) => revokeServiceToken(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'service-tokens'] });
+      toast.success(lang === 'ar' ? 'تم إلغاء الرمز' : 'Token revoked');
     },
   });
 
@@ -290,6 +312,99 @@ export function AdminPrinterPage() {
             ) : (
               <p className="py-8 text-center text-sm text-night-500">
                 {lang === 'ar' ? 'لا توجد jobs طباعة' : 'No print jobs yet'}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Service Tokens */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Key className="h-4 w-4 text-night-300" />
+              <h3 className="text-sm font-bold text-night-300">
+                {lang === 'ar' ? 'رموز الخدمة (للوحة الطباعة المحلية)' : 'Service Tokens (Local Print Service)'}
+              </h3>
+            </div>
+
+            {/* Generated token warning */}
+            {generatedToken ? (
+              <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <p className="mb-2 text-sm font-bold text-emerald-400">
+                  {lang === 'ar' ? '⚠️ احفظ هذا الرمز — لن يظهر مرة أخرى' : '⚠️ Save this token — it will not be shown again'}
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 break-all rounded-lg bg-night-950 p-2 text-xs text-emerald-300">{generatedToken}</code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { navigator.clipboard.writeText(generatedToken); toast.success(lang === 'ar' ? 'تم النسخ' : 'Copied'); }}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+                <p className="mt-2 text-xs text-night-400">
+                  {lang === 'ar'
+                    ? 'الصقه في ملف .env على جهاز الطباعة: API_TOKEN=fps_...'
+                    : 'Paste into .env on the print computer: API_TOKEN=fps_...'}
+                </p>
+              </div>
+            ) : null}
+
+            {/* Generate new token */}
+            <div className="mb-4 flex gap-2">
+              <Input
+                value={newTokenName}
+                onChange={(e) => setNewTokenName(e.target.value)}
+                placeholder={lang === 'ar' ? 'اسم الرمز (مثال: طابعة الكاونتر)' : 'Token name (e.g. Counter Printer)'}
+                className="flex-1"
+              />
+              <Button
+                onClick={() => generateTokenMutation.mutate()}
+                loading={generateTokenMutation.isPending}
+                disabled={!newTokenName.trim()}
+              >
+                <Key className="h-4 w-4" />
+                {lang === 'ar' ? 'إنشاء رمز' : 'Generate Token'}
+              </Button>
+            </div>
+
+            {/* Token list */}
+            {serviceTokens.isLoading ? (
+              <Skeleton className="h-24" />
+            ) : serviceTokens.data && serviceTokens.data.length > 0 ? (
+              <div className="space-y-2">
+                {serviceTokens.data.map((tk) => (
+                  <div key={tk.id} className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-bold text-night-100">{tk.name}</p>
+                      <p className="text-xs text-night-500">
+                        {tk.scope.join(', ')} · {lang === 'ar' ? 'أنشأ' : 'Created'} {new Date(tk.createdAt).toLocaleDateString()}
+                        {tk.lastUsedAt ? ` · ${lang === 'ar' ? 'آخر استخدام' : 'Last used'} ${new Date(tk.lastUsedAt).toLocaleDateString()}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cn('text-xs font-bold', tk.isActive ? 'text-emerald-400' : 'text-red-400')}>
+                        {tk.isActive ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'ملغي' : 'Revoked')}
+                      </span>
+                      {tk.isActive ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-400 hover:bg-red-500/10"
+                          onClick={() => revokeTokenMutation.mutate(tk.id)}
+                          loading={revokeTokenMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="py-4 text-center text-sm text-night-500">
+                {lang === 'ar' ? 'لا توجد رمز خدمة' : 'No service tokens yet'}
               </p>
             )}
           </CardContent>

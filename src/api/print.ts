@@ -44,3 +44,26 @@ export const getPrinterConfig = (): Promise<PrinterConfig | null> =>
 
 export const savePrinterConfig = (config: PrinterConfig): Promise<PrinterConfig> =>
   unwrap(api.patch<ApiEnvelope<PrinterConfig>>('/settings', { printerConfig: config }));
+
+// Service tokens for the local print service
+export interface ServiceToken {
+  id: string;
+  name: string;
+  scope: string[];
+  isActive: boolean;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface GeneratedToken extends ServiceToken {
+  rawToken: string;
+}
+
+export const generateServiceToken = (name: string): Promise<GeneratedToken> =>
+  unwrap(api.post<ApiEnvelope<GeneratedToken>>('/service-tokens', { name, scope: ['print'] }));
+
+export const listServiceTokens = (): Promise<ServiceToken[]> =>
+  unwrap(api.get<ApiEnvelope<ServiceToken[]>>('/service-tokens'));
+
+export const revokeServiceToken = (id: string): Promise<null> =>
+  unwrap(api.delete<ApiEnvelope<null>>(`/service-tokens/${id}`));

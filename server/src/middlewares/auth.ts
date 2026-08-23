@@ -1,6 +1,7 @@
 import type { Request, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 import * as usersRepo from '../db/users';
+import * as serviceTokensRepo from '../db/serviceTokens';
 import { ApiError } from '../utils/ApiError';
 import { verifyAccessToken } from '../utils/token';
 
@@ -20,6 +21,24 @@ export const requireAuth: RequestHandler = async (req, _res, next) => {
       throw new ApiError(401, 'Authentication required');
     }
     const token = header.split(' ')[1];
+
+    // Service tokens (prefixed fps_) authenticate as the token owner with admin role
+    if (token.startsWith('fps_')) {
+      const svcToken = await serviceTokensRepo.verifyToken(token);
+      if (!svcToken) {
+        throw new ApiError(401, 'Invalid or revoked service token');
+      }
+      const user = await usersRepo.getById(svcToken.userId);
+      if (!user || !user.isActive) {
+        throw new ApiError(401, 'Account not found or deactivated');
+      }
+      const permissions = await usersRepo.rolePermissions(user.role);
+      authReq.user = { id: user.id, role: user.role, permissions };
+      next();
+      return;
+    }
+
+    // Standard JWT access token
     let payload: jwt.JwtPayload;
     try {
       payload = verifyAccessToken(token) as jwt.JwtPayload;
