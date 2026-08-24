@@ -18,6 +18,7 @@ export interface ProductExtra {
 
 const SIZES_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', ps.id::text, 'name', ps.name, 'nameEn', ps."nameEn", 'price', ps.price::float8, 'isAvailable', ps."isAvailable") ORDER BY ps."sortOrder"), '[]'::jsonb) FROM product_sizes ps WHERE ps."productId" = p.id)`;
 const EXTRAS_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', pe.id::text, 'name', pe.name, 'nameEn', pe."nameEn", 'price', pe.price::float8) ORDER BY pe."sortOrder"), '[]'::jsonb) FROM product_extras pe WHERE pe."productId" = p.id)`;
+const LABELS_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', lb.id::text, 'name', lb.name, 'nameEn', lb."nameEn", 'color', lb.color, 'icon', lb.icon) ORDER BY lb.name), '[]'::jsonb) FROM labels lb JOIN product_labels pl ON pl."labelId" = lb.id WHERE pl."productId" = p.id)`;
 
 /** Public product projection — category emitted as a bare id string (matches Mongoose lean). */
 export const PUBLIC_COLS = `
@@ -27,7 +28,7 @@ export const PUBLIC_COLS = `
   p."categoryId"::text AS "category",
   p."isAvailable", p."isBestSeller", p."isOffer", p.discount::float8 AS "discount",
   p.rating::float8 AS "rating", p."reviewsCount", p."preparationTime", p.calories,
-  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras"`;
+  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras", ${LABELS_JSON} AS "labels"`;
 
 /** Admin projection — category emitted as a populated object {_id,name,nameEn}. */
 export const ADMIN_COLS = `
@@ -38,7 +39,7 @@ export const ADMIN_COLS = `
        ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
   p."isAvailable", p."isBestSeller", p."isOffer", p.discount::float8 AS "discount",
   p.rating::float8 AS "rating", p."reviewsCount", p."preparationTime", p.calories,
-  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras"`;
+  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras", ${LABELS_JSON} AS "labels"`;
 
 interface ListFilter {
   search?: string;
@@ -227,6 +228,7 @@ export const create = async (data: {
   sizes?: Array<{ name: string; nameEn?: string; price: number; isAvailable?: boolean }>;
   extras?: Array<{ name: string; nameEn?: string; price: number }>;
   sortOrder?: number;
+  labelIds?: string[];
 }): Promise<Record<string, unknown>> => {
   let id = '';
   await withTransaction(async (tx) => {
@@ -245,6 +247,11 @@ export const create = async (data: {
     id = inserted.rows[0].id;
     await syncSizes(tx.query.bind(tx), id, data.sizes);
     await syncExtras(tx.query.bind(tx), id, data.extras);
+    if (data.labelIds?.length) {
+      for (const labelId of data.labelIds) {
+        await tx.query('INSERT INTO product_labels ("productId", "labelId") VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING', [id, labelId]);
+      }
+    }
   });
   const created = await getByIdAdmin(id);
   if (!created) throw new ApiError(500, 'Product creation failed');
@@ -260,6 +267,7 @@ export const update = async (
     discount?: number; preparationTime?: number; calories?: number;
     sizes?: Array<{ name: string; nameEn?: string; price: number; isAvailable?: boolean }>;
     extras?: Array<{ name: string; nameEn?: string; price: number }>;
+    labelIds?: string[];
   },
 ): Promise<Record<string, unknown> | null> => {
   let updated = false;
@@ -292,6 +300,12 @@ export const update = async (
     }
     if (data.sizes !== undefined) await syncSizes(tx.query.bind(tx), id, data.sizes);
     if (data.extras !== undefined) await syncExtras(tx.query.bind(tx), id, data.extras);
+    if (data.labelIds !== undefined) {
+      await tx.query('DELETE FROM product_labels WHERE "productId" = $1::uuid', [id]);
+      for (const labelId of data.labelIds) {
+        await tx.query('INSERT INTO product_labels ("productId", "labelId") VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING', [id, labelId]);
+      }
+    }
   });
   if (!updated) return null;
   return getByIdAdmin(id);

@@ -53,6 +53,18 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
+export interface Label {
+  _id: string;
+  name: string;
+  nameEn: string;
+  color: string;
+  icon: string;
+  isActive: boolean;
+  productCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ProductSize {
   _id?: string;
   name: string;
@@ -91,6 +103,7 @@ export interface Product {
   isBestSeller: boolean;
   isOffer: boolean;
   tags: string[];
+  labels?: Label[];
   createdAt: string;
   updatedAt: string;
 }
@@ -452,6 +465,7 @@ export interface ProductPayload {
   isBestSeller?: boolean;
   isOffer?: boolean;
   tags?: string[];
+  labelIds?: string[];
 }
 
 export interface SettingsMap {

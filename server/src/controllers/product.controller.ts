@@ -126,6 +126,7 @@ const sanitizeBody = (body: Record<string, unknown>) => {
   if (body.images !== undefined) clean.images = body.images;
   if (body.sizes !== undefined) clean.sizes = body.sizes;
   if (body.extras !== undefined) clean.extras = body.extras;
+  if (body.labelIds !== undefined) clean.labelIds = Array.isArray(body.labelIds) ? body.labelIds.map(String) : [];
   for (const f of ['basePrice', 'discount', 'preparationTime', 'calories'] as const) {
     if (body[f] !== undefined) clean[f] = Number(body[f]);
   }

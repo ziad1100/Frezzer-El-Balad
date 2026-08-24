@@ -10,6 +10,9 @@ import {
   deleteProduct,
   toggleProduct,
   updateProduct,
+  adminListLabels,
+  createLabel,
+  createCategory,
 } from '@/api/admin';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, EmptyState, Skeleton } from '@/components/ui/Card';
@@ -65,6 +68,7 @@ interface ProductFormState {
   isAvailable: boolean;
   isBestSeller: boolean;
   isOffer: boolean;
+  labelIds: string[];
 }
 
 const defaultForm = (): ProductFormState => ({
@@ -86,6 +90,7 @@ const defaultForm = (): ProductFormState => ({
   isAvailable: true,
   isBestSeller: false,
   isOffer: false,
+  labelIds: [],
 });
 
 const fromProduct = (p: ProductListItem): ProductFormState => ({
@@ -107,6 +112,7 @@ const fromProduct = (p: ProductListItem): ProductFormState => ({
   isAvailable: p.isAvailable,
   isBestSeller: p.isBestSeller,
   isOffer: p.isOffer,
+  labelIds: (p.labels ?? []).map((l) => l._id),
 });
 
 export function AdminProductsPage() {
@@ -124,12 +130,24 @@ export function AdminProductsPage() {
     queryFn: () => adminListProducts({ page, limit: 12, q: search, availability, category }),
   });
   const categories = useQuery({ queryKey: ['admin', 'categories'], queryFn: adminListCategories });
+  const labels = useQuery({ queryKey: ['admin', 'labels'], queryFn: adminListLabels });
 
   const [editing, setEditing] = useState<ProductListItem | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<ProductFormState>(defaultForm());
   const [formError, setFormError] = useState('');
   const [deleting, setDeleting] = useState<ProductListItem | null>(null);
+
+  // Inline category creation
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatNameEn, setNewCatNameEn] = useState('');
+
+  // Inline label creation
+  const [showLabelModal, setShowLabelModal] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelNameEn, setNewLabelNameEn] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#38BDF8');
 
   const openCreate = (): void => {
     setEditing(null);
@@ -159,6 +177,51 @@ export function AdminProductsPage() {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
   };
 
+  // ── Inline category creation ──
+  const createCategoryMutation = useMutation({
+    mutationFn: async () => {
+      if (!newCatName.trim()) throw new Error(lang === 'ar' ? 'اسم القسم مطلوب' : 'Category name is required');
+      const cat = await createCategory({
+        name: newCatName.trim(),
+        nameEn: newCatNameEn.trim(),
+        type: 'sub' as const,
+      });
+      return cat;
+    },
+    onSuccess: (cat) => {
+      toast.success(lang === 'ar' ? 'تم إنشاء القسم' : 'Category created');
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'categories'] });
+      setField('category', cat._id);
+      setShowCategoryModal(false);
+      setNewCatName('');
+      setNewCatNameEn('');
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : t('admin.saveFailed')),
+  });
+
+  // ── Inline label creation ──
+  const createLabelMutation = useMutation({
+    mutationFn: async () => {
+      if (!newLabelName.trim()) throw new Error(lang === 'ar' ? 'اسم البطاقة مطلوب' : 'Label name is required');
+      const lbl = await createLabel({
+        name: newLabelName.trim(),
+        nameEn: newLabelNameEn.trim(),
+        color: newLabelColor,
+      });
+      return lbl;
+    },
+    onSuccess: (lbl) => {
+      toast.success(lang === 'ar' ? 'تم إنشاء البطاقة' : 'Label created');
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'labels'] });
+      setField('labelIds', [...form.labelIds, lbl._id]);
+      setShowLabelModal(false);
+      setNewLabelName('');
+      setNewLabelNameEn('');
+      setNewLabelColor('#38BDF8');
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : t('admin.saveFailed')),
+  });
+
   const saveMutation = useMutation({
     mutationFn: async (): Promise<void> => {
       const payload: ProductPayload = {
@@ -180,6 +243,7 @@ export function AdminProductsPage() {
         isAvailable: form.isAvailable,
         isBestSeller: form.isBestSeller,
         isOffer: form.isOffer,
+        labelIds: form.labelIds,
       };
       if (editing) {
         await updateProduct(editing._id, payload);
@@ -385,7 +449,13 @@ export function AdminProductsPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="p-cat">{t('admin.category')}</Label>
-              <Select id="p-cat" value={form.category} onChange={(e) => setField('category', e.target.value)}>
+              <Select id="p-cat" value={form.category} onChange={(e) => {
+                if (e.target.value === '__new__') {
+                  setShowCategoryModal(true);
+                } else {
+                  setField('category', e.target.value);
+                }
+              }}>
                 <option value="">—</option>
                 <optgroup label={t('admin.isSection')}>
                   {sectionOptions.map((c) => (
@@ -402,6 +472,9 @@ export function AdminProductsPage() {
                   ))}
                 </optgroup>
               </Select>
+              <button type="button" className="mt-1 text-xs font-semibold text-brand-400 hover:text-brand-300" onClick={() => setShowCategoryModal(true)}>
+                + {lang === 'ar' ? 'إنشاء قسم جديد' : 'Create New Category'}
+              </button>
             </div>
             <div>
               <Label htmlFor="p-price">{t('admin.basePrice')}</Label>
@@ -547,6 +620,46 @@ export function AdminProductsPage() {
             <Input id="p-tags" value={form.tags} onChange={(e) => setField('tags', e.target.value)} />
           </div>
 
+          {/* Labels multi-select */}
+          <div>
+            <Label>{lang === 'ar' ? 'البطاقات / التسميات' : 'Labels'}</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(labels.data ?? []).map((lbl) => {
+                const isSelected = form.labelIds.includes(lbl._id);
+                const labelName = lang === 'ar' ? lbl.name : (lbl.nameEn || lbl.name);
+                return (
+                  <button
+                    key={lbl._id}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setField('labelIds', form.labelIds.filter((id) => id !== lbl._id));
+                      } else {
+                        setField('labelIds', [...form.labelIds, lbl._id]);
+                      }
+                    }}
+                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-500/20 text-brand-300'
+                        : 'border-night-700 bg-night-800 text-night-400 hover:border-night-500'
+                    }`}
+                    style={isSelected ? { borderColor: lbl.color, backgroundColor: `${lbl.color}20`, color: lbl.color } : {}}
+                  >
+                    {labelName}
+                    {isSelected ? <span className="ml-1">×</span> : null}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setShowLabelModal(true)}
+                className="inline-flex items-center gap-1 rounded-full border border-dashed border-night-600 px-3 py-1 text-xs font-semibold text-night-400 hover:border-brand-500 hover:text-brand-400 transition-colors"
+              >
+                + {lang === 'ar' ? 'بطاقة جديدة' : 'New Label'}
+              </button>
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="p-desc">{t('admin.descriptionAr')}</Label>
@@ -594,6 +707,46 @@ export function AdminProductsPage() {
         message={t('admin.confirmDelete')}
         loading={deleteMutation.isPending}
       />
+
+      {/* Create New Category Modal */}
+      <Modal open={showCategoryModal} onClose={() => setShowCategoryModal(false)} title={lang === 'ar' ? 'إنشاء قسم جديد' : 'Create New Category'}>
+        <div className="space-y-4">
+          <div>
+            <Label>{lang === 'ar' ? 'اسم القسم بالعربي' : 'Category Name (Arabic)'}</Label>
+            <Input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder={lang === 'ar' ? 'مثال: لحوم مجمدة' : 'e.g. Frozen Meat'} />
+          </div>
+          <div>
+            <Label>{lang === 'ar' ? 'اسم القسم بالإنجليزي' : 'Category Name (English)'}</Label>
+            <Input value={newCatNameEn} onChange={(e) => setNewCatNameEn(e.target.value)} placeholder={lang === 'ar' ? 'مثال: Frozen Meat' : 'e.g. Frozen Meat'} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowCategoryModal(false)}>{t('common.cancel')}</Button>
+            <Button loading={createCategoryMutation.isPending} onClick={() => createCategoryMutation.mutate()}>{t('common.save')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create New Label Modal */}
+      <Modal open={showLabelModal} onClose={() => setShowLabelModal(false)} title={lang === 'ar' ? 'إنشاء بطاقة جديدة' : 'Create New Label'}>
+        <div className="space-y-4">
+          <div>
+            <Label>{lang === 'ar' ? 'اسم البطاقة بالعربي' : 'Label Name (Arabic)'}</Label>
+            <Input value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)} placeholder={lang === 'ar' ? 'مثال: مميز' : 'e.g. Premium'} />
+          </div>
+          <div>
+            <Label>{lang === 'ar' ? 'اسم البطاقة بالإنجليزي' : 'Label Name (English)'}</Label>
+            <Input value={newLabelNameEn} onChange={(e) => setNewLabelNameEn(e.target.value)} placeholder={lang === 'ar' ? 'مثال: Premium' : 'e.g. Premium'} />
+          </div>
+          <div>
+            <Label>{lang === 'ar' ? 'اللون' : 'Color'}</Label>
+            <input type="color" value={newLabelColor} onChange={(e) => setNewLabelColor(e.target.value)} className="h-10 w-20 rounded border border-night-700 bg-night-800" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowLabelModal(false)}>{t('common.cancel')}</Button>
+            <Button loading={createLabelMutation.isPending} onClick={() => createLabelMutation.mutate()}>{t('common.save')}</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

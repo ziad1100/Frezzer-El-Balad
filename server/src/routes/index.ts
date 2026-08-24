@@ -23,6 +23,7 @@ import adminUserRoutes from './adminUser.routes';
 import systemResetRoutes from './systemReset.routes';
 import printRoutes from './print.routes';
 import serviceTokenRoutes from './serviceToken.routes';
+import labelRoutes from './label.routes';
 import { adminApiLimiter } from '../middlewares/rateLimiter';
 
 const router = Router();
@@ -51,5 +52,6 @@ router.use('/admin/users', adminApiLimiter, adminUserRoutes);
 router.use('/system', systemResetRoutes);
 router.use('/print', printRoutes);
 router.use('/service-tokens', serviceTokenRoutes);
+router.use('/labels', labelRoutes);
 
 export default router;

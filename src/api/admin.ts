@@ -8,6 +8,7 @@ import type {
   Contact,
   Coupon,
   DashboardData,
+  Label,
   DayStats,
   GalleryImage,
   Offer,
@@ -297,3 +298,26 @@ export const uploadImage = async (file: File): Promise<string> => {
   });
   return data.data.url;
 };
+
+// ── Labels ──────────────────────────────────────────────────────────────────
+
+export const adminListLabels = (): Promise<Label[]> =>
+  unwrap(api.get<ApiEnvelope<Label[]>>('/labels/admin'));
+
+export const listLabels = (): Promise<Label[]> =>
+  unwrap(api.get<ApiEnvelope<Label[]>>('/labels'));
+
+export const createLabel = (payload: { name: string; nameEn?: string; color?: string; icon?: string }): Promise<Label> =>
+  unwrap(api.post<ApiEnvelope<Label>>('/labels', payload));
+
+export const updateLabel = (id: string, payload: Partial<Label>): Promise<Label> =>
+  unwrap(api.patch<ApiEnvelope<Label>>(`/labels/${id}`, payload));
+
+export const deleteLabel = (id: string): Promise<null> =>
+  unwrap(api.delete<ApiEnvelope<null>>(`/labels/${id}`));
+
+export const getProductLabels = (productId: string): Promise<Label[]> =>
+  unwrap(api.get<ApiEnvelope<Label[]>>(`/labels/product/${productId}`));
+
+export const setProductLabels = (productId: string, labelIds: string[]): Promise<Label[]> =>
+  unwrap(api.put<ApiEnvelope<Label[]>>(`/labels/product/${productId}`, { labelIds }));

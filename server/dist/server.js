@@ -473,7 +473,7 @@ var disconnectCache = async () => {
 };
 
 // src/routes/index.ts
-import { Router as Router25 } from "express";
+import { Router as Router26 } from "express";
 
 // src/routes/auth.routes.ts
 import { Router } from "express";
@@ -1904,6 +1904,7 @@ import { Router as Router3 } from "express";
 // src/db/products.ts
 var SIZES_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', ps.id::text, 'name', ps.name, 'nameEn', ps."nameEn", 'price', ps.price::float8, 'isAvailable', ps."isAvailable") ORDER BY ps."sortOrder"), '[]'::jsonb) FROM product_sizes ps WHERE ps."productId" = p.id)`;
 var EXTRAS_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', pe.id::text, 'name', pe.name, 'nameEn', pe."nameEn", 'price', pe.price::float8) ORDER BY pe."sortOrder"), '[]'::jsonb) FROM product_extras pe WHERE pe."productId" = p.id)`;
+var LABELS_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', lb.id::text, 'name', lb.name, 'nameEn', lb."nameEn", 'color', lb.color, 'icon', lb.icon) ORDER BY lb.name), '[]'::jsonb) FROM labels lb JOIN product_labels pl ON pl."labelId" = lb.id WHERE pl."productId" = p.id)`;
 var PUBLIC_COLS2 = `
   p.id::text AS "_id",
   p.name, p."nameEn", p.slug, p.description, p."descriptionEn",
@@ -1911,7 +1912,7 @@ var PUBLIC_COLS2 = `
   p."categoryId"::text AS "category",
   p."isAvailable", p."isBestSeller", p."isOffer", p.discount::float8 AS "discount",
   p.rating::float8 AS "rating", p."reviewsCount", p."preparationTime", p.calories,
-  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras"`;
+  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras", ${LABELS_JSON} AS "labels"`;
 var ADMIN_COLS2 = `
   p.id::text AS "_id",
   p.name, p."nameEn", p.slug, p.description, p."descriptionEn",
@@ -1920,7 +1921,7 @@ var ADMIN_COLS2 = `
        ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
   p."isAvailable", p."isBestSeller", p."isOffer", p.discount::float8 AS "discount",
   p.rating::float8 AS "rating", p."reviewsCount", p."preparationTime", p.calories,
-  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras"`;
+  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras", ${LABELS_JSON} AS "labels"`;
 var SEARCH_CLAUSE = (i) => `
   (p.name ILIKE '%' || $${i} || '%'
    OR p."nameEn" ILIKE '%' || $${i} || '%'
@@ -2090,6 +2091,11 @@ var create2 = async (data) => {
     id = inserted.rows[0].id;
     await syncSizes(tx.query.bind(tx), id, data.sizes);
     await syncExtras(tx.query.bind(tx), id, data.extras);
+    if (data.labelIds?.length) {
+      for (const labelId of data.labelIds) {
+        await tx.query('INSERT INTO product_labels ("productId", "labelId") VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING', [id, labelId]);
+      }
+    }
   });
   const created = await getByIdAdmin2(id);
   if (!created) throw new ApiError(500, "Product creation failed");
@@ -2127,6 +2133,12 @@ var update2 = async (id, data) => {
     }
     if (data.sizes !== void 0) await syncSizes(tx.query.bind(tx), id, data.sizes);
     if (data.extras !== void 0) await syncExtras(tx.query.bind(tx), id, data.extras);
+    if (data.labelIds !== void 0) {
+      await tx.query('DELETE FROM product_labels WHERE "productId" = $1::uuid', [id]);
+      for (const labelId of data.labelIds) {
+        await tx.query('INSERT INTO product_labels ("productId", "labelId") VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING', [id, labelId]);
+      }
+    }
   });
   if (!updated) return null;
   return getByIdAdmin2(id);
@@ -2257,6 +2269,7 @@ var sanitizeBody = (body) => {
   if (body.images !== void 0) clean.images = body.images;
   if (body.sizes !== void 0) clean.sizes = body.sizes;
   if (body.extras !== void 0) clean.extras = body.extras;
+  if (body.labelIds !== void 0) clean.labelIds = Array.isArray(body.labelIds) ? body.labelIds.map(String) : [];
   for (const f of ["basePrice", "discount", "preparationTime", "calories"]) {
     if (body[f] !== void 0) clean[f] = Number(body[f]);
   }
@@ -6107,33 +6120,181 @@ router24.get("/", requirePermission("settings", "read"), listTokens);
 router24.delete("/:id", requirePermission("settings", "update"), revokeToken);
 var serviceToken_routes_default = router24;
 
-// src/routes/index.ts
+// src/routes/label.routes.ts
+import { Router as Router25 } from "express";
+
+// src/db/labels.ts
+var LABEL_COLS = `
+  l.id::text AS "_id",
+  l.name, l."nameEn", l.color, l.icon,
+  l."isActive", l."createdAt", l."updatedAt"`;
+var list18 = async (all = false) => await query(
+  `SELECT ${LABEL_COLS} FROM labels l
+     ${all ? "" : 'WHERE l."isActive" = true'}
+     ORDER BY l.name`
+);
+var getById15 = async (id) => {
+  const rows = await query(`SELECT ${LABEL_COLS} FROM labels l WHERE l.id = $1::uuid LIMIT 1`, [id]);
+  return rows[0] ?? null;
+};
+var create21 = async (data) => {
+  const rows = await query(
+    `INSERT INTO labels (name, "nameEn", color, icon, "isActive")
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING ${LABEL_COLS}`,
+    [
+      data.name,
+      data.nameEn ?? "",
+      data.color ?? "#38BDF8",
+      data.icon ?? "",
+      data.isActive ?? true
+    ]
+  );
+  return rows[0];
+};
+var update20 = async (id, data) => {
+  const sets = [];
+  const values = [id];
+  const nxt = () => values.length;
+  const push = (col, v) => {
+    values.push(v);
+    sets.push(`"${col}" = $${nxt()}`);
+  };
+  if (data.name !== void 0) push("name", data.name);
+  if (data.nameEn !== void 0) push("nameEn", data.nameEn);
+  if (data.color !== void 0) push("color", data.color);
+  if (data.icon !== void 0) push("icon", data.icon);
+  if (data.isActive !== void 0) push("isActive", Boolean(data.isActive));
+  if (!sets.length) return getById15(id);
+  push("updatedAt", (/* @__PURE__ */ new Date()).toISOString());
+  const r = await query(`UPDATE labels SET ${sets.join(", ")} WHERE id = $1::uuid RETURNING id`, values);
+  if (!r.length) return null;
+  return getById15(id);
+};
+var remove20 = async (id) => {
+  const usage = await query('SELECT 1 FROM product_labels WHERE "labelId" = $1::uuid LIMIT 1', [id]);
+  if (usage.length) return { ok: false, inUse: true };
+  const r = await query("DELETE FROM labels WHERE id = $1::uuid RETURNING id", [id]);
+  return { ok: r.length > 0, inUse: false };
+};
+var getLabelsForProduct = async (productId) => await query(
+  `SELECT ${LABEL_COLS} FROM labels l
+     JOIN product_labels pl ON pl."labelId" = l.id
+     WHERE pl."productId" = $1::uuid
+     ORDER BY l.name`,
+  [productId]
+);
+var setLabelsForProduct = async (productId, labelIds) => {
+  await withTransaction(async (tx) => {
+    await tx.query('DELETE FROM product_labels WHERE "productId" = $1::uuid', [productId]);
+    for (const labelId of labelIds) {
+      await tx.query(
+        'INSERT INTO product_labels ("productId", "labelId") VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING',
+        [productId, labelId]
+      );
+    }
+  });
+};
+var listWithCounts = async () => await query(
+  `SELECT ${LABEL_COLS},
+       (SELECT count(*)::int FROM product_labels pl WHERE pl."labelId" = l.id) AS "productCount"
+     FROM labels l
+     ORDER BY l.name`
+);
+
+// src/controllers/label.controller.ts
+var list19 = asyncHandler(async (_req, res) => {
+  const all = _req.query.all === "true";
+  const labels = await list18(all);
+  res.json(new ApiResponse(200, labels));
+});
+var adminList7 = asyncHandler(async (_req, res) => {
+  const labels = await listWithCounts();
+  res.json(new ApiResponse(200, labels));
+});
+var getById16 = asyncHandler(async (req, res) => {
+  const label = await getById15(req.params.id);
+  if (!label) throw new ApiError(404, "Label not found");
+  res.json(new ApiResponse(200, label));
+});
+var create22 = asyncHandler(async (req, res) => {
+  const { name, nameEn, color, icon, isActive } = req.body;
+  if (!name || !String(name).trim()) throw new ApiError(400, "Label name is required");
+  const label = await create21({
+    name: String(name).trim(),
+    nameEn: nameEn ? String(nameEn).trim() : "",
+    color: color ? String(color) : void 0,
+    icon: icon ? String(icon) : void 0,
+    isActive: isActive !== void 0 ? Boolean(isActive) : void 0
+  });
+  res.status(201).json(new ApiResponse(201, label, "Label created"));
+});
+var update21 = asyncHandler(async (req, res) => {
+  const label = await update20(req.params.id, req.body);
+  if (!label) throw new ApiError(404, "Label not found");
+  res.json(new ApiResponse(200, label, "Label updated"));
+});
+var remove21 = asyncHandler(async (req, res) => {
+  const result = await remove20(req.params.id);
+  if (!result.ok) {
+    if (result.inUse) throw new ApiError(400, "Cannot delete label that is in use by products");
+    throw new ApiError(404, "Label not found");
+  }
+  res.json(new ApiResponse(200, null, "Label deleted"));
+});
+var getProductLabels = asyncHandler(async (req, res) => {
+  const labels = await getLabelsForProduct(req.params.productId);
+  res.json(new ApiResponse(200, labels));
+});
+var setProductLabels = asyncHandler(async (req, res) => {
+  const { labelIds } = req.body;
+  if (!Array.isArray(labelIds)) throw new ApiError(400, "labelIds must be an array");
+  await setLabelsForProduct(req.params.productId, labelIds.map(String));
+  const labels = await getLabelsForProduct(req.params.productId);
+  res.json(new ApiResponse(200, labels, "Product labels updated"));
+});
+
+// src/routes/label.routes.ts
 var router25 = Router25();
-router25.use("/auth", auth_routes_default);
-router25.use("/users/me", user_routes_default);
-router25.use("/products", product_routes_default);
-router25.use("/categories", category_routes_default);
-router25.use("/reviews", review_routes_default);
-router25.use("/wishlist", wishlist_routes_default);
-router25.use("/cart", cart_routes_default);
-router25.use("/orders", order_routes_default);
-router25.use("/coupons", coupon_routes_default);
-router25.use("/offers", offer_routes_default);
-router25.use("/banners", banner_routes_default);
-router25.use("/gallery", gallery_routes_default);
-router25.use("/branches", branch_routes_default);
-router25.use("/contacts", contact_routes_default);
-router25.use("/newsletter", newsletter_routes_default);
-router25.use("/settings", setting_routes_default);
-router25.use("/notifications", notification_routes_default);
-router25.use("/analytics", analytics_routes_default);
-router25.use("/upload", upload_routes_default);
-router25.use("/posts", post_routes_default);
-router25.use("/admin/users", adminApiLimiter, adminUser_routes_default);
-router25.use("/system", systemReset_routes_default);
-router25.use("/print", print_routes_default);
-router25.use("/service-tokens", serviceToken_routes_default);
-var routes_default = router25;
+router25.get("/", list19);
+router25.get("/admin", requireAuth, requirePermission("products", "read"), adminList7);
+router25.get("/:id", getById16);
+router25.use(requireAuth);
+router25.post("/", requirePermission("products", "create"), create22);
+router25.patch("/:id", requirePermission("products", "update"), update21);
+router25.delete("/:id", requirePermission("products", "delete"), remove21);
+router25.get("/product/:productId", requirePermission("products", "read"), getProductLabels);
+router25.put("/product/:productId", requirePermission("products", "update"), setProductLabels);
+var label_routes_default = router25;
+
+// src/routes/index.ts
+var router26 = Router26();
+router26.use("/auth", auth_routes_default);
+router26.use("/users/me", user_routes_default);
+router26.use("/products", product_routes_default);
+router26.use("/categories", category_routes_default);
+router26.use("/reviews", review_routes_default);
+router26.use("/wishlist", wishlist_routes_default);
+router26.use("/cart", cart_routes_default);
+router26.use("/orders", order_routes_default);
+router26.use("/coupons", coupon_routes_default);
+router26.use("/offers", offer_routes_default);
+router26.use("/banners", banner_routes_default);
+router26.use("/gallery", gallery_routes_default);
+router26.use("/branches", branch_routes_default);
+router26.use("/contacts", contact_routes_default);
+router26.use("/newsletter", newsletter_routes_default);
+router26.use("/settings", setting_routes_default);
+router26.use("/notifications", notification_routes_default);
+router26.use("/analytics", analytics_routes_default);
+router26.use("/upload", upload_routes_default);
+router26.use("/posts", post_routes_default);
+router26.use("/admin/users", adminApiLimiter, adminUser_routes_default);
+router26.use("/system", systemReset_routes_default);
+router26.use("/print", print_routes_default);
+router26.use("/service-tokens", serviceToken_routes_default);
+router26.use("/labels", label_routes_default);
+var routes_default = router26;
 
 // src/app.ts
 var app = express();

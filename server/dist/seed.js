@@ -403,6 +403,7 @@ var create2 = async (data) => {
 // src/db/products.ts
 var SIZES_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', ps.id::text, 'name', ps.name, 'nameEn', ps."nameEn", 'price', ps.price::float8, 'isAvailable', ps."isAvailable") ORDER BY ps."sortOrder"), '[]'::jsonb) FROM product_sizes ps WHERE ps."productId" = p.id)`;
 var EXTRAS_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', pe.id::text, 'name', pe.name, 'nameEn', pe."nameEn", 'price', pe.price::float8) ORDER BY pe."sortOrder"), '[]'::jsonb) FROM product_extras pe WHERE pe."productId" = p.id)`;
+var LABELS_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', lb.id::text, 'name', lb.name, 'nameEn', lb."nameEn", 'color', lb.color, 'icon', lb.icon) ORDER BY lb.name), '[]'::jsonb) FROM labels lb JOIN product_labels pl ON pl."labelId" = lb.id WHERE pl."productId" = p.id)`;
 var PUBLIC_COLS2 = `
   p.id::text AS "_id",
   p.name, p."nameEn", p.slug, p.description, p."descriptionEn",
@@ -410,7 +411,7 @@ var PUBLIC_COLS2 = `
   p."categoryId"::text AS "category",
   p."isAvailable", p."isBestSeller", p."isOffer", p.discount::float8 AS "discount",
   p.rating::float8 AS "rating", p."reviewsCount", p."preparationTime", p.calories,
-  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras"`;
+  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras", ${LABELS_JSON} AS "labels"`;
 var ADMIN_COLS = `
   p.id::text AS "_id",
   p.name, p."nameEn", p.slug, p.description, p."descriptionEn",
@@ -419,7 +420,7 @@ var ADMIN_COLS = `
        ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
   p."isAvailable", p."isBestSeller", p."isOffer", p.discount::float8 AS "discount",
   p.rating::float8 AS "rating", p."reviewsCount", p."preparationTime", p.calories,
-  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras"`;
+  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras", ${LABELS_JSON} AS "labels"`;
 var getBySlug = async (slug) => (await query(`SELECT ${PUBLIC_COLS2} FROM products p WHERE p.slug = $1 LIMIT 1`, [slug]))[0] ?? null;
 var getByIdAdmin = async (id) => {
   const rows = await query(`SELECT ${ADMIN_COLS} FROM products p LEFT JOIN categories c ON c.id = p."categoryId" WHERE p.id = $1::uuid LIMIT 1`, [id]);
@@ -478,6 +479,11 @@ var create3 = async (data) => {
     id = inserted.rows[0].id;
     await syncSizes(tx.query.bind(tx), id, data.sizes);
     await syncExtras(tx.query.bind(tx), id, data.extras);
+    if (data.labelIds?.length) {
+      for (const labelId of data.labelIds) {
+        await tx.query('INSERT INTO product_labels ("productId", "labelId") VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING', [id, labelId]);
+      }
+    }
   });
   const created = await getByIdAdmin(id);
   if (!created) throw new ApiError(500, "Product creation failed");
