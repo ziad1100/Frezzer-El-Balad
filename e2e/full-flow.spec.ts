@@ -1,5 +1,5 @@
 /**
- * End-to-end tests for Frezzer El Balad.
+ * End-to-end tests for Welad Halal.
  *
  * Covers the complete user journey:
  *   Homepage → Menu → Product detail → Cart → Offers → Gallery
@@ -47,8 +47,8 @@ async function bodyText(page: Page): Promise<string> {
 test.describe('Homepage', () => {
   test('loads with correct title and branding', async ({ page }) => {
     await page.goto('/');
-    await expect(page).toHaveTitle(/فريزر|Frezzer/);
-    expect(await bodyText(page)).toContain('فريزر');
+    await expect(page).toHaveTitle(/ولاد حلال|Welad Halal/);
+    expect(await bodyText(page)).toContain('ولاد حلال');
   });
 
   test('has no console errors on load', async ({ page }) => {
