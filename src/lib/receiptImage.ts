@@ -29,7 +29,6 @@ export function hasArabic(text: string): boolean {
 /** Render receipt data to a canvas and return the canvas element. */
 export function renderReceiptToCanvas(data: ReceiptData): HTMLCanvasElement {
   const width = PAPER_WIDTH_PX[data.paperWidth];
-  const isArabic = data.language === 'ar' || hasArabic(data.storeNameAr);
 
   // Pre-calculate lines to determine canvas height
   const lines = buildReceiptLines(data);

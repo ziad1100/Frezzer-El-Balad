@@ -18936,17 +18936,17 @@ var require_router = __commonJS({
     var toString = Object.prototype.toString;
     var proto = module.exports = function(options) {
       var opts = options || {};
-      function router24(req, res, next) {
-        router24.handle(req, res, next);
+      function router26(req, res, next) {
+        router26.handle(req, res, next);
       }
-      setPrototypeOf(router24, proto);
-      router24.params = {};
-      router24._params = [];
-      router24.caseSensitive = opts.caseSensitive;
-      router24.mergeParams = opts.mergeParams;
-      router24.strict = opts.strict;
-      router24.stack = [];
-      return router24;
+      setPrototypeOf(router26, proto);
+      router26.params = {};
+      router26._params = [];
+      router26.caseSensitive = opts.caseSensitive;
+      router26.mergeParams = opts.mergeParams;
+      router26.strict = opts.strict;
+      router26.stack = [];
+      return router26;
     };
     proto.param = function param(name, fn) {
       if (typeof name === "function") {
@@ -20079,14 +20079,14 @@ var require_etag = __commonJS({
   "node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash = crypto3.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash = crypto4.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash + '"';
     }
@@ -21963,7 +21963,7 @@ var require_application = __commonJS({
   "node_modules/express/lib/application.js"(exports, module) {
     "use strict";
     var finalhandler = require_finalhandler();
-    var Router24 = require_router();
+    var Router26 = require_router();
     var methods = require_methods();
     var middleware = require_init();
     var query2 = require_query();
@@ -22028,7 +22028,7 @@ var require_application = __commonJS({
     };
     app2.lazyrouter = function lazyrouter() {
       if (!this._router) {
-        this._router = new Router24({
+        this._router = new Router26({
           caseSensitive: this.enabled("case sensitive routing"),
           strict: this.enabled("strict routing")
         });
@@ -22037,17 +22037,17 @@ var require_application = __commonJS({
       }
     };
     app2.handle = function handle(req, res, callback) {
-      var router24 = this._router;
+      var router26 = this._router;
       var done = callback || finalhandler(req, res, {
         env: this.get("env"),
         onerror: logerror.bind(this)
       });
-      if (!router24) {
+      if (!router26) {
         debug("no routes defined on app");
         done();
         return;
       }
-      router24.handle(req, res, done);
+      router26.handle(req, res, done);
     };
     app2.use = function use(fn) {
       var offset = 0;
@@ -22067,15 +22067,15 @@ var require_application = __commonJS({
         throw new TypeError("app.use() requires a middleware function");
       }
       this.lazyrouter();
-      var router24 = this._router;
+      var router26 = this._router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router24.use(path5, fn2);
+          return router26.use(path5, fn2);
         }
         debug(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router24.use(path5, function mounted_app(req, res, next) {
+        router26.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             setPrototypeOf(req, orig.request);
@@ -22979,11 +22979,11 @@ var require_request = __commonJS({
 // node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "node_modules/cookie-signature/index.js"(exports) {
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     exports.sign = function(val2, secret) {
       if ("string" != typeof val2) throw new TypeError("Cookie value must be provided as a string.");
       if ("string" != typeof secret) throw new TypeError("Secret string must be provided.");
-      return val2 + "." + crypto3.createHmac("sha256", secret).update(val2).digest("base64").replace(/\=+$/, "");
+      return val2 + "." + crypto4.createHmac("sha256", secret).update(val2).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(val2, secret) {
       if ("string" != typeof val2) throw new TypeError("Signed cookie string must be provided.");
@@ -22992,7 +22992,7 @@ var require_cookie_signature = __commonJS({
       return sha1(mac) == sha1(val2) ? str2 : false;
     };
     function sha1(str2) {
-      return crypto3.createHash("sha1").update(str2).digest("hex");
+      return crypto4.createHash("sha1").update(str2).digest("hex");
     }
   }
 });
@@ -23892,7 +23892,7 @@ var require_express = __commonJS({
     var mixin = require_merge_descriptors();
     var proto = require_application();
     var Route = require_route();
-    var Router24 = require_router();
+    var Router26 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23915,7 +23915,7 @@ var require_express = __commonJS({
     exports.request = req;
     exports.response = res;
     exports.Route = Route;
-    exports.Router = Router24;
+    exports.Router = Router26;
     exports.json = bodyParser.json;
     exports.query = require_query();
     exports.raw = bodyParser.raw;
@@ -35764,7 +35764,7 @@ var require_main = __commonJS({
     var fs5 = __require("fs");
     var path5 = __require("path");
     var os2 = __require("os");
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var packageJson = require_package();
     var version2 = packageJson.version;
     var LINE = /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/mg;
@@ -35983,7 +35983,7 @@ var require_main = __commonJS({
       const authTag = ciphertext.subarray(-16);
       ciphertext = ciphertext.subarray(12, -16);
       try {
-        const aesgcm = crypto3.createDecipheriv("aes-256-gcm", key, nonce);
+        const aesgcm = crypto4.createDecipheriv("aes-256-gcm", key, nonce);
         aesgcm.setAuthTag(authTag);
         return `${aesgcm.update(ciphertext)}${aesgcm.final()}`;
       } catch (error) {
@@ -40293,9 +40293,9 @@ var require_disk = __commonJS({
     var fs5 = __require("fs");
     var os2 = __require("os");
     var path5 = __require("path");
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     function getFilename(req, file, cb) {
-      crypto3.randomBytes(16, function(err, raw) {
+      crypto4.randomBytes(16, function(err, raw) {
         cb(err, err ? void 0 : raw.toString("hex"));
       });
     }
@@ -52919,11 +52919,11 @@ var require_encodeDoubleArray = __commonJS({
 // node_modules/cloudinary/lib/auth_token.js
 var require_auth_token = __commonJS({
   "node_modules/cloudinary/lib/auth_token.js"(exports, module) {
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var smart_escape = require_smart_escape();
     var unsafe = /([ "#%&'/:;<=>?@[\]^`{|}~]+)/g;
     function digest(message, key) {
-      return crypto3.createHmac("sha256", Buffer.from(key, "hex")).update(message).digest("hex");
+      return crypto4.createHmac("sha256", Buffer.from(key, "hex")).update(message).digest("hex");
     }
     function escapeToLower(url) {
       const safeUrl = smart_escape(url, unsafe);
@@ -53596,7 +53596,7 @@ var require_qPolyfill = __commonJS({
 // node_modules/cloudinary/lib/utils/index.js
 var require_utils4 = __commonJS({
   "node_modules/cloudinary/lib/utils/index.js"(exports, module) {
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var querystring = __require("querystring");
     var { URL: URL2 } = __require("url");
     var compact = require_compact();
@@ -54441,7 +54441,7 @@ var require_utils4 = __commonJS({
       return base_api_url_v1_1()([resource_type, action], options);
     }
     function random_public_id() {
-      return crypto3.randomBytes(12).toString("base64").replace(/[^a-z0-9]/g, "");
+      return crypto4.randomBytes(12).toString("base64").replace(/[^a-z0-9]/g, "");
     }
     function signed_preloaded_image(result) {
       return `${result.resource_type}/upload/v${result.version}/${filter([result.public_id, result.format], utils2.present).join(".")}#${result.signature}`;
@@ -54470,7 +54470,7 @@ var require_utils4 = __commonJS({
       if (!SUPPORTED_SIGNATURE_ALGORITHMS.includes(signature_algorithm)) {
         throw new Error(`Signature algorithm ${signature_algorithm} is not supported. Supported algorithms: ${SUPPORTED_SIGNATURE_ALGORITHMS.join(", ")}`);
       }
-      const hash = crypto3.createHash(signature_algorithm).update(input).digest();
+      const hash = crypto4.createHash(signature_algorithm).update(input).digest();
       return Buffer.from(hash).toString(encoding);
     }
     function clear_blank(hash) {
@@ -58640,7 +58640,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto3 = require_utils6();
+    var crypto4 = require_utils6();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function saslprep(password2) {
       const nonAsciiSpace = /[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g;
@@ -58658,7 +58658,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto3.randomBytes(18).toString("base64");
+      const clientNonce = crypto4.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -58700,20 +58700,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto3.hashByName(hashName, peerCert);
+        const certHash = await crypto4.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto3.deriveKey(saslprep(password2), saltBytes, sv.iteration);
-      const clientKey = await crypto3.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto3.sha256(clientKey);
-      const clientSignature = await crypto3.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto4.deriveKey(saslprep(password2), saltBytes, sv.iteration);
+      const clientKey = await crypto4.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto4.sha256(clientKey);
+      const clientSignature = await crypto4.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto3.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto3.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto4.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto4.hmacSha256(serverKey, authMessage);
       session.message = "SASLResponse";
       session.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -60943,7 +60943,7 @@ var require_client = __commonJS({
     var Query2 = require_query2();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto3 = require_utils6();
+    var crypto4 = require_utils6();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -61194,7 +61194,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto3.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto4.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -77039,7 +77039,7 @@ var require_lib9 = __commonJS({
 // node_modules/uid2/index.js
 var require_uid2 = __commonJS({
   "node_modules/uid2/index.js"(exports, module) {
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var UIDCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     function tostr(bytes) {
       var r, i;
@@ -77051,9 +77051,9 @@ var require_uid2 = __commonJS({
     }
     function uid(length, cb) {
       if (typeof cb === "undefined") {
-        return tostr(crypto3.pseudoRandomBytes(length));
+        return tostr(crypto4.pseudoRandomBytes(length));
       } else {
-        crypto3.pseudoRandomBytes(length, function(err, bytes) {
+        crypto4.pseudoRandomBytes(length, function(err, bytes) {
           if (err) return cb(err);
           cb(null, tostr(bytes));
         });
@@ -77310,7 +77310,7 @@ var require_utils10 = __commonJS({
 // node_modules/oauth/lib/oauth.js
 var require_oauth = __commonJS({
   "node_modules/oauth/lib/oauth.js"(exports) {
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var sha1 = require_sha1();
     var http = __require("http");
     var https = __require("https");
@@ -77476,12 +77476,12 @@ var require_oauth = __commonJS({
         hash = key;
       } else if (this._signatureMethod == "RSA-SHA1") {
         key = this._privateKey || "";
-        hash = crypto3.createSign("RSA-SHA1").update(signatureBase).sign(key, "base64");
+        hash = crypto4.createSign("RSA-SHA1").update(signatureBase).sign(key, "base64");
       } else if (this._signatureMethod == "HMAC-SHA256") {
-        hash = crypto3.createHmac("sha256", key).update(signatureBase).digest("base64");
+        hash = crypto4.createHmac("sha256", key).update(signatureBase).digest("base64");
       } else {
-        if (crypto3.Hmac) {
-          hash = crypto3.createHmac("sha1", key).update(signatureBase).digest("base64");
+        if (crypto4.Hmac) {
+          hash = crypto4.createHmac("sha1", key).update(signatureBase).digest("base64");
         } else {
           hash = sha1.HMACSHA1(key, signatureBase);
         }
@@ -77826,7 +77826,7 @@ var require_oauth = __commonJS({
 var require_oauth2 = __commonJS({
   "node_modules/oauth/lib/oauth2.js"(exports) {
     var querystring = __require("querystring");
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var https = __require("https");
     var http = __require("http");
     var URL2 = __require("url");
@@ -78257,7 +78257,7 @@ var require_strategy2 = __commonJS({
     var passport2 = require_lib8();
     var url = __require("url");
     var uid = require_uid2();
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var base64url = require_base64url2();
     var util2 = __require("util");
     var utils2 = require_utils9();
@@ -78437,13 +78437,13 @@ var require_strategy2 = __commonJS({
         }
         var verifier, challenge;
         if (this._pkceMethod) {
-          verifier = base64url(crypto3.pseudoRandomBytes(32));
+          verifier = base64url(crypto4.pseudoRandomBytes(32));
           switch (this._pkceMethod) {
             case "plain":
               challenge = verifier;
               break;
             case "S256":
-              challenge = base64url(crypto3.createHash("sha256").update(verifier).digest());
+              challenge = base64url(crypto4.createHash("sha256").update(verifier).digest());
               break;
             default:
               return this.error(new Error("Unsupported code verifier transformation method: " + this._pkceMethod));
@@ -78859,7 +78859,7 @@ var require_strategy4 = __commonJS({
     var OAuth2Strategy = require_lib10();
     var util2 = __require("util");
     var uri = __require("url");
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var Profile = require_profile();
     var InternalOAuthError = require_lib10().InternalOAuthError;
     var FacebookAuthorizationError = require_facebookauthorizationerror();
@@ -78901,7 +78901,7 @@ var require_strategy4 = __commonJS({
     Strategy.prototype.userProfile = function(accessToken, done) {
       var url = uri.parse(this._profileURL);
       if (this._enableProof) {
-        var proof = crypto3.createHmac("sha256", this._clientSecret).update(accessToken).digest("hex");
+        var proof = crypto4.createHmac("sha256", this._clientSecret).update(accessToken).digest("hex");
         url.search = (url.search ? url.search + "&" : "") + "appsecret_proof=" + proof;
       }
       if (this._profileFields) {
@@ -81051,14 +81051,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports, module) {
     var Buffer3 = require_safe_buffer().Buffer;
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util2 = __require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto3.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto4.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -81148,17 +81148,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto3.createHmac("sha" + bits, secret);
+        var hmac = crypto4.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto3 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto4 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto3.timingSafeEqual(a, b);
+      return crypto4.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -81175,7 +81175,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto3.createSign("RSA-SHA" + bits);
+        var signer = crypto4.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -81185,7 +81185,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto3.createVerify("RSA-SHA" + bits);
+        var verifier = crypto4.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -81194,11 +81194,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto3.createSign("RSA-SHA" + bits);
+        var signer = crypto4.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto3.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto3.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto4.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto4.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -81208,12 +81208,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto3.createVerify("RSA-SHA" + bits);
+        var verifier = crypto4.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto3.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto3.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto4.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto4.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -81680,7 +81680,7 @@ var require_re = __commonJS({
       }
       return value;
     };
-    var createToken = (name, value, isGlobal) => {
+    var createToken2 = (name, value, isGlobal) => {
       const safe = makeSafeRegex(value);
       const index = R++;
       debug(name, index, value);
@@ -81690,52 +81690,52 @@ var require_re = __commonJS({
       re[index] = new RegExp(value, isGlobal ? "g" : void 0);
       safeRe[index] = new RegExp(safe, isGlobal ? "g" : void 0);
     };
-    createToken("NUMERICIDENTIFIER", "0|[1-9]\\d*");
-    createToken("NUMERICIDENTIFIERLOOSE", "\\d+");
-    createToken("NONNUMERICIDENTIFIER", `\\d*[a-zA-Z-]${LETTERDASHNUMBER}*`);
-    createToken("MAINVERSION", `(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})`);
-    createToken("MAINVERSIONLOOSE", `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})`);
-    createToken("PRERELEASEIDENTIFIER", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIER]})`);
-    createToken("PRERELEASEIDENTIFIERLOOSE", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIERLOOSE]})`);
-    createToken("PRERELEASE", `(?:-(${src[t.PRERELEASEIDENTIFIER]}(?:\\.${src[t.PRERELEASEIDENTIFIER]})*))`);
-    createToken("PRERELEASELOOSE", `(?:-?(${src[t.PRERELEASEIDENTIFIERLOOSE]}(?:\\.${src[t.PRERELEASEIDENTIFIERLOOSE]})*))`);
-    createToken("BUILDIDENTIFIER", `${LETTERDASHNUMBER}+`);
-    createToken("BUILD", `(?:\\+(${src[t.BUILDIDENTIFIER]}(?:\\.${src[t.BUILDIDENTIFIER]})*))`);
-    createToken("FULLPLAIN", `v?${src[t.MAINVERSION]}${src[t.PRERELEASE]}?${src[t.BUILD]}?`);
-    createToken("FULL", `^${src[t.FULLPLAIN]}$`);
-    createToken("LOOSEPLAIN", `[v=\\s]*${src[t.MAINVERSIONLOOSE]}${src[t.PRERELEASELOOSE]}?${src[t.BUILD]}?`);
-    createToken("LOOSE", `^${src[t.LOOSEPLAIN]}$`);
-    createToken("GTLT", "((?:<|>)?=?)");
-    createToken("XRANGEIDENTIFIERLOOSE", `${src[t.NUMERICIDENTIFIERLOOSE]}|x|X|\\*`);
-    createToken("XRANGEIDENTIFIER", `${src[t.NUMERICIDENTIFIER]}|x|X|\\*`);
-    createToken("XRANGEPLAIN", `[v=\\s]*(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:${src[t.PRERELEASE]})?${src[t.BUILD]}?)?)?`);
-    createToken("XRANGEPLAINLOOSE", `[v=\\s]*(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:${src[t.PRERELEASELOOSE]})?${src[t.BUILD]}?)?)?`);
-    createToken("XRANGE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAIN]}$`);
-    createToken("XRANGELOOSE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAINLOOSE]}$`);
-    createToken("COERCEPLAIN", `${"(^|[^\\d])(\\d{1,"}${MAX_SAFE_COMPONENT_LENGTH}})(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?`);
-    createToken("COERCE", `${src[t.COERCEPLAIN]}(?:$|[^\\d])`);
-    createToken("COERCEFULL", src[t.COERCEPLAIN] + `(?:${src[t.PRERELEASE]})?(?:${src[t.BUILD]})?(?:$|[^\\d])`);
-    createToken("COERCERTL", src[t.COERCE], true);
-    createToken("COERCERTLFULL", src[t.COERCEFULL], true);
-    createToken("LONETILDE", "(?:~>?)");
-    createToken("TILDETRIM", `(\\s*)${src[t.LONETILDE]}\\s+`, true);
+    createToken2("NUMERICIDENTIFIER", "0|[1-9]\\d*");
+    createToken2("NUMERICIDENTIFIERLOOSE", "\\d+");
+    createToken2("NONNUMERICIDENTIFIER", `\\d*[a-zA-Z-]${LETTERDASHNUMBER}*`);
+    createToken2("MAINVERSION", `(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})`);
+    createToken2("MAINVERSIONLOOSE", `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})`);
+    createToken2("PRERELEASEIDENTIFIER", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIER]})`);
+    createToken2("PRERELEASEIDENTIFIERLOOSE", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIERLOOSE]})`);
+    createToken2("PRERELEASE", `(?:-(${src[t.PRERELEASEIDENTIFIER]}(?:\\.${src[t.PRERELEASEIDENTIFIER]})*))`);
+    createToken2("PRERELEASELOOSE", `(?:-?(${src[t.PRERELEASEIDENTIFIERLOOSE]}(?:\\.${src[t.PRERELEASEIDENTIFIERLOOSE]})*))`);
+    createToken2("BUILDIDENTIFIER", `${LETTERDASHNUMBER}+`);
+    createToken2("BUILD", `(?:\\+(${src[t.BUILDIDENTIFIER]}(?:\\.${src[t.BUILDIDENTIFIER]})*))`);
+    createToken2("FULLPLAIN", `v?${src[t.MAINVERSION]}${src[t.PRERELEASE]}?${src[t.BUILD]}?`);
+    createToken2("FULL", `^${src[t.FULLPLAIN]}$`);
+    createToken2("LOOSEPLAIN", `[v=\\s]*${src[t.MAINVERSIONLOOSE]}${src[t.PRERELEASELOOSE]}?${src[t.BUILD]}?`);
+    createToken2("LOOSE", `^${src[t.LOOSEPLAIN]}$`);
+    createToken2("GTLT", "((?:<|>)?=?)");
+    createToken2("XRANGEIDENTIFIERLOOSE", `${src[t.NUMERICIDENTIFIERLOOSE]}|x|X|\\*`);
+    createToken2("XRANGEIDENTIFIER", `${src[t.NUMERICIDENTIFIER]}|x|X|\\*`);
+    createToken2("XRANGEPLAIN", `[v=\\s]*(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:${src[t.PRERELEASE]})?${src[t.BUILD]}?)?)?`);
+    createToken2("XRANGEPLAINLOOSE", `[v=\\s]*(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:${src[t.PRERELEASELOOSE]})?${src[t.BUILD]}?)?)?`);
+    createToken2("XRANGE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAIN]}$`);
+    createToken2("XRANGELOOSE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken2("COERCEPLAIN", `${"(^|[^\\d])(\\d{1,"}${MAX_SAFE_COMPONENT_LENGTH}})(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?`);
+    createToken2("COERCE", `${src[t.COERCEPLAIN]}(?:$|[^\\d])`);
+    createToken2("COERCEFULL", src[t.COERCEPLAIN] + `(?:${src[t.PRERELEASE]})?(?:${src[t.BUILD]})?(?:$|[^\\d])`);
+    createToken2("COERCERTL", src[t.COERCE], true);
+    createToken2("COERCERTLFULL", src[t.COERCEFULL], true);
+    createToken2("LONETILDE", "(?:~>?)");
+    createToken2("TILDETRIM", `(\\s*)${src[t.LONETILDE]}\\s+`, true);
     exports.tildeTrimReplace = "$1~";
-    createToken("TILDE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAIN]}$`);
-    createToken("TILDELOOSE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAINLOOSE]}$`);
-    createToken("LONECARET", "(?:\\^)");
-    createToken("CARETTRIM", `(\\s*)${src[t.LONECARET]}\\s+`, true);
+    createToken2("TILDE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAIN]}$`);
+    createToken2("TILDELOOSE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken2("LONECARET", "(?:\\^)");
+    createToken2("CARETTRIM", `(\\s*)${src[t.LONECARET]}\\s+`, true);
     exports.caretTrimReplace = "$1^";
-    createToken("CARET", `^${src[t.LONECARET]}${src[t.XRANGEPLAIN]}$`);
-    createToken("CARETLOOSE", `^${src[t.LONECARET]}${src[t.XRANGEPLAINLOOSE]}$`);
-    createToken("COMPARATORLOOSE", `^${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]})$|^$`);
-    createToken("COMPARATOR", `^${src[t.GTLT]}\\s*(${src[t.FULLPLAIN]})$|^$`);
-    createToken("COMPARATORTRIM", `(\\s*)${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]}|${src[t.XRANGEPLAIN]})`, true);
+    createToken2("CARET", `^${src[t.LONECARET]}${src[t.XRANGEPLAIN]}$`);
+    createToken2("CARETLOOSE", `^${src[t.LONECARET]}${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken2("COMPARATORLOOSE", `^${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]})$|^$`);
+    createToken2("COMPARATOR", `^${src[t.GTLT]}\\s*(${src[t.FULLPLAIN]})$|^$`);
+    createToken2("COMPARATORTRIM", `(\\s*)${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]}|${src[t.XRANGEPLAIN]})`, true);
     exports.comparatorTrimReplace = "$1$2$3";
-    createToken("HYPHENRANGE", `^\\s*(${src[t.XRANGEPLAIN]})\\s+-\\s+(${src[t.XRANGEPLAIN]})\\s*$`);
-    createToken("HYPHENRANGELOOSE", `^\\s*(${src[t.XRANGEPLAINLOOSE]})\\s+-\\s+(${src[t.XRANGEPLAINLOOSE]})\\s*$`);
-    createToken("STAR", "(<|>)?=?\\s*\\*");
-    createToken("GTE0", "^\\s*>=\\s*0\\.0\\.0\\s*$");
-    createToken("GTE0PRE", "^\\s*>=\\s*0\\.0\\.0-0\\s*$");
+    createToken2("HYPHENRANGE", `^\\s*(${src[t.XRANGEPLAIN]})\\s+-\\s+(${src[t.XRANGEPLAIN]})\\s*$`);
+    createToken2("HYPHENRANGELOOSE", `^\\s*(${src[t.XRANGEPLAINLOOSE]})\\s+-\\s+(${src[t.XRANGEPLAINLOOSE]})\\s*$`);
+    createToken2("STAR", "(<|>)?=?\\s*\\*");
+    createToken2("GTE0", "^\\s*>=\\s*0\\.0\\.0\\s*$");
+    createToken2("GTE0PRE", "^\\s*>=\\s*0\\.0\\.0-0\\s*$");
   }
 });
 
@@ -89254,7 +89254,7 @@ var require_le_unix = __commonJS({
 var require_mime_node = __commonJS({
   "node_modules/nodemailer/lib/mime-node/index.js"(exports, module) {
     "use strict";
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var fs5 = __require("fs");
     var punycode = require_punycode();
     var { PassThrough } = __require("stream");
@@ -89273,7 +89273,7 @@ var require_mime_node = __commonJS({
       constructor(contentType, options) {
         this.nodeCounter = 0;
         options = options || {};
-        this.baseBoundary = options.baseBoundary || crypto3.randomBytes(8).toString("hex");
+        this.baseBoundary = options.baseBoundary || crypto4.randomBytes(8).toString("hex");
         this.boundaryPrefix = options.boundaryPrefix || "--_NmP";
         this.disableFileAccess = !!options.disableFileAccess;
         this.disableUrlAccess = !!options.disableUrlAccess;
@@ -90232,8 +90232,8 @@ var require_mime_node = __commonJS({
       _generateMessageId() {
         return "<" + [2, 2, 2, 6].reduce(
           // crux to generate UUID-like random strings
-          (prev, len) => prev + "-" + crypto3.randomBytes(len).toString("hex"),
-          crypto3.randomBytes(4).toString("hex")
+          (prev, len) => prev + "-" + crypto4.randomBytes(len).toString("hex"),
+          crypto4.randomBytes(4).toString("hex")
         ) + "@" + // try to use the domain of the FROM address or fallback to server hostname
         (this.getEnvelope().from || this.hostname || "localhost").split("@").pop() + ">";
       }
@@ -90863,14 +90863,14 @@ var require_relaxed_body = __commonJS({
   "node_modules/nodemailer/lib/dkim/relaxed-body.js"(exports, module) {
     "use strict";
     var { Transform } = __require("stream");
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var RelaxedBody = class extends Transform {
       constructor(options) {
         super();
         options = options || {};
         this.chunkBuffer = [];
         this.chunkBufferLen = 0;
-        this.bodyHash = crypto3.createHash(options.hashAlgo || "sha256");
+        this.bodyHash = crypto4.createHash(options.hashAlgo || "sha256");
         this.remainder = "";
         this.byteLength = 0;
         this.debug = options.debug;
@@ -90973,7 +90973,7 @@ var require_sign3 = __commonJS({
     "use strict";
     var punycode = require_punycode();
     var mimeFuncs = require_mime_funcs();
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     module.exports = (headers, hashAlgo, bodyHash, options) => {
       options = options || {};
       const defaultFieldNames = "From:Sender:Reply-To:Subject:Date:Message-ID:To:Cc:MIME-Version:Content-Type:Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:In-Reply-To:References:List-Id:List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive";
@@ -90981,7 +90981,7 @@ var require_sign3 = __commonJS({
       const canonicalizedHeaderData = relaxedHeaders(headers, fieldNames, options.skipFields);
       const dkimHeader = generateDKIMHeader(options.domainName, options.keySelector, canonicalizedHeaderData.fieldNames, hashAlgo, bodyHash);
       canonicalizedHeaderData.headers += "dkim-signature:" + relaxedHeaderLine(dkimHeader);
-      const signer = crypto3.createSign(("rsa-" + hashAlgo).toUpperCase());
+      const signer = crypto4.createSign(("rsa-" + hashAlgo).toUpperCase());
       signer.update(canonicalizedHeaderData.headers);
       let signature;
       try {
@@ -91050,7 +91050,7 @@ var require_dkim = __commonJS({
     var { PassThrough } = __require("stream");
     var fs5 = __require("fs");
     var path5 = __require("path");
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var DKIM_ALGO = "sha256";
     var MAX_MESSAGE_SIZE = 2 * 1024 * 1024;
     var DKIMSigner = class {
@@ -91063,7 +91063,7 @@ var require_dkim = __commonJS({
         this.chunks = [];
         this.chunklen = 0;
         this.readPos = 0;
-        this.cachePath = this.cacheDir ? path5.join(this.cacheDir, "message." + Date.now() + "-" + crypto3.randomBytes(14).toString("hex")) : false;
+        this.cachePath = this.cacheDir ? path5.join(this.cacheDir, "message." + Date.now() + "-" + crypto4.randomBytes(14).toString("hex")) : false;
         this.cache = false;
         this.headers = false;
         this.bodyHash = false;
@@ -91632,7 +91632,7 @@ var require_mailer = __commonJS({
     var MailMessage = require_mail_message();
     var net = __require("net");
     var dns = __require("dns");
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var Mail = class extends EventEmitter {
       constructor(transporter2, options, defaults2) {
         super();
@@ -91975,7 +91975,7 @@ var require_mailer = __commonJS({
             html = (html || "").toString().replace(
               /(<img\b[^<>]{0,1024} src\s{0,20}=[\s"']{0,20})(data:([^;]+);[^"'>\s]+)/gi,
               (match, prefix, dataUri, mimeType) => {
-                const cid = crypto3.randomBytes(10).toString("hex") + "@localhost";
+                const cid = crypto4.randomBytes(10).toString("hex") + "@localhost";
                 if (!mail.data.attachments) {
                   mail.data.attachments = [];
                 }
@@ -92102,7 +92102,7 @@ var require_smtp_connection = __commonJS({
     var net = __require("net");
     var tls = __require("tls");
     var os2 = __require("os");
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var DataStream = require_data_stream2();
     var { PassThrough } = __require("stream");
     var shared = require_shared();
@@ -92122,7 +92122,7 @@ var require_smtp_connection = __commonJS({
     var SMTPConnection = class extends EventEmitter {
       constructor(options) {
         super(options);
-        this.id = crypto3.randomBytes(8).toString("base64").replace(/\W/g, "");
+        this.id = crypto4.randomBytes(8).toString("base64").replace(/\W/g, "");
         this.stage = "init";
         this.options = options || {};
         this.secureConnection = !!this.options.secure;
@@ -93307,7 +93307,7 @@ var require_smtp_connection = __commonJS({
           );
         }
         const base64decoded = Buffer.from(challengeMatch[1], "base64").toString("ascii");
-        const hmacMD5 = crypto3.createHmac("md5", this._auth.credentials.pass);
+        const hmacMD5 = crypto4.createHmac("md5", this._auth.credentials.pass);
         hmacMD5.update(base64decoded);
         const prepended = this._auth.credentials.user + " " + hmacMD5.digest("hex");
         this._responseActions.push((str3) => {
@@ -93600,7 +93600,7 @@ var require_xoauth2 = __commonJS({
     "use strict";
     var { Stream } = __require("stream");
     var nmfetch = require_fetch();
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var shared = require_shared();
     var errors = require_errors4();
     var XOAuth2 = class extends Stream {
@@ -93946,7 +93946,7 @@ var require_xoauth2 = __commonJS({
        */
       jwtSignRS256(payload) {
         payload = ['{"alg":"RS256","typ":"JWT"}', JSON.stringify(payload)].map((val2) => this.toBase64URL(val2)).join(".");
-        const signature = crypto3.createSign("RSA-SHA256").update(payload).sign(this.options.privateKey);
+        const signature = crypto4.createSign("RSA-SHA256").update(payload).sign(this.options.privateKey);
         return payload + "." + this.toBase64URL(signature);
       }
     };
@@ -97768,7 +97768,7 @@ var require_re2 = __commonJS({
       }
       return value;
     };
-    var createToken = (name, value, isGlobal) => {
+    var createToken2 = (name, value, isGlobal) => {
       const safe = makeSafeRegex(value);
       const index = R++;
       debug(name, index, value);
@@ -97778,52 +97778,52 @@ var require_re2 = __commonJS({
       re[index] = new RegExp(value, isGlobal ? "g" : void 0);
       safeRe[index] = new RegExp(safe, isGlobal ? "g" : void 0);
     };
-    createToken("NUMERICIDENTIFIER", "0|[1-9]\\d*");
-    createToken("NUMERICIDENTIFIERLOOSE", "\\d+");
-    createToken("NONNUMERICIDENTIFIER", `\\d*[a-zA-Z-]${LETTERDASHNUMBER}*`);
-    createToken("MAINVERSION", `(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})`);
-    createToken("MAINVERSIONLOOSE", `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})`);
-    createToken("PRERELEASEIDENTIFIER", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIER]})`);
-    createToken("PRERELEASEIDENTIFIERLOOSE", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIERLOOSE]})`);
-    createToken("PRERELEASE", `(?:-(${src[t.PRERELEASEIDENTIFIER]}(?:\\.${src[t.PRERELEASEIDENTIFIER]})*))`);
-    createToken("PRERELEASELOOSE", `(?:-?(${src[t.PRERELEASEIDENTIFIERLOOSE]}(?:\\.${src[t.PRERELEASEIDENTIFIERLOOSE]})*))`);
-    createToken("BUILDIDENTIFIER", `${LETTERDASHNUMBER}+`);
-    createToken("BUILD", `(?:\\+(${src[t.BUILDIDENTIFIER]}(?:\\.${src[t.BUILDIDENTIFIER]})*))`);
-    createToken("FULLPLAIN", `v?${src[t.MAINVERSION]}${src[t.PRERELEASE]}?${src[t.BUILD]}?`);
-    createToken("FULL", `^${src[t.FULLPLAIN]}$`);
-    createToken("LOOSEPLAIN", `[v=\\s]*${src[t.MAINVERSIONLOOSE]}${src[t.PRERELEASELOOSE]}?${src[t.BUILD]}?`);
-    createToken("LOOSE", `^${src[t.LOOSEPLAIN]}$`);
-    createToken("GTLT", "((?:<|>)?=?)");
-    createToken("XRANGEIDENTIFIERLOOSE", `${src[t.NUMERICIDENTIFIERLOOSE]}|x|X|\\*`);
-    createToken("XRANGEIDENTIFIER", `${src[t.NUMERICIDENTIFIER]}|x|X|\\*`);
-    createToken("XRANGEPLAIN", `[v=\\s]*(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:${src[t.PRERELEASE]})?${src[t.BUILD]}?)?)?`);
-    createToken("XRANGEPLAINLOOSE", `[v=\\s]*(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:${src[t.PRERELEASELOOSE]})?${src[t.BUILD]}?)?)?`);
-    createToken("XRANGE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAIN]}$`);
-    createToken("XRANGELOOSE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAINLOOSE]}$`);
-    createToken("COERCEPLAIN", `${"(^|[^\\d])(\\d{1,"}${MAX_SAFE_COMPONENT_LENGTH}})(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?`);
-    createToken("COERCE", `${src[t.COERCEPLAIN]}(?:$|[^\\d])`);
-    createToken("COERCEFULL", src[t.COERCEPLAIN] + `(?:${src[t.PRERELEASE]})?(?:${src[t.BUILD]})?(?:$|[^\\d])`);
-    createToken("COERCERTL", src[t.COERCE], true);
-    createToken("COERCERTLFULL", src[t.COERCEFULL], true);
-    createToken("LONETILDE", "(?:~>?)");
-    createToken("TILDETRIM", `(\\s*)${src[t.LONETILDE]}\\s+`, true);
+    createToken2("NUMERICIDENTIFIER", "0|[1-9]\\d*");
+    createToken2("NUMERICIDENTIFIERLOOSE", "\\d+");
+    createToken2("NONNUMERICIDENTIFIER", `\\d*[a-zA-Z-]${LETTERDASHNUMBER}*`);
+    createToken2("MAINVERSION", `(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})`);
+    createToken2("MAINVERSIONLOOSE", `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})`);
+    createToken2("PRERELEASEIDENTIFIER", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIER]})`);
+    createToken2("PRERELEASEIDENTIFIERLOOSE", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIERLOOSE]})`);
+    createToken2("PRERELEASE", `(?:-(${src[t.PRERELEASEIDENTIFIER]}(?:\\.${src[t.PRERELEASEIDENTIFIER]})*))`);
+    createToken2("PRERELEASELOOSE", `(?:-?(${src[t.PRERELEASEIDENTIFIERLOOSE]}(?:\\.${src[t.PRERELEASEIDENTIFIERLOOSE]})*))`);
+    createToken2("BUILDIDENTIFIER", `${LETTERDASHNUMBER}+`);
+    createToken2("BUILD", `(?:\\+(${src[t.BUILDIDENTIFIER]}(?:\\.${src[t.BUILDIDENTIFIER]})*))`);
+    createToken2("FULLPLAIN", `v?${src[t.MAINVERSION]}${src[t.PRERELEASE]}?${src[t.BUILD]}?`);
+    createToken2("FULL", `^${src[t.FULLPLAIN]}$`);
+    createToken2("LOOSEPLAIN", `[v=\\s]*${src[t.MAINVERSIONLOOSE]}${src[t.PRERELEASELOOSE]}?${src[t.BUILD]}?`);
+    createToken2("LOOSE", `^${src[t.LOOSEPLAIN]}$`);
+    createToken2("GTLT", "((?:<|>)?=?)");
+    createToken2("XRANGEIDENTIFIERLOOSE", `${src[t.NUMERICIDENTIFIERLOOSE]}|x|X|\\*`);
+    createToken2("XRANGEIDENTIFIER", `${src[t.NUMERICIDENTIFIER]}|x|X|\\*`);
+    createToken2("XRANGEPLAIN", `[v=\\s]*(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:${src[t.PRERELEASE]})?${src[t.BUILD]}?)?)?`);
+    createToken2("XRANGEPLAINLOOSE", `[v=\\s]*(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:${src[t.PRERELEASELOOSE]})?${src[t.BUILD]}?)?)?`);
+    createToken2("XRANGE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAIN]}$`);
+    createToken2("XRANGELOOSE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken2("COERCEPLAIN", `${"(^|[^\\d])(\\d{1,"}${MAX_SAFE_COMPONENT_LENGTH}})(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?`);
+    createToken2("COERCE", `${src[t.COERCEPLAIN]}(?:$|[^\\d])`);
+    createToken2("COERCEFULL", src[t.COERCEPLAIN] + `(?:${src[t.PRERELEASE]})?(?:${src[t.BUILD]})?(?:$|[^\\d])`);
+    createToken2("COERCERTL", src[t.COERCE], true);
+    createToken2("COERCERTLFULL", src[t.COERCEFULL], true);
+    createToken2("LONETILDE", "(?:~>?)");
+    createToken2("TILDETRIM", `(\\s*)${src[t.LONETILDE]}\\s+`, true);
     exports.tildeTrimReplace = "$1~";
-    createToken("TILDE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAIN]}$`);
-    createToken("TILDELOOSE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAINLOOSE]}$`);
-    createToken("LONECARET", "(?:\\^)");
-    createToken("CARETTRIM", `(\\s*)${src[t.LONECARET]}\\s+`, true);
+    createToken2("TILDE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAIN]}$`);
+    createToken2("TILDELOOSE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken2("LONECARET", "(?:\\^)");
+    createToken2("CARETTRIM", `(\\s*)${src[t.LONECARET]}\\s+`, true);
     exports.caretTrimReplace = "$1^";
-    createToken("CARET", `^${src[t.LONECARET]}${src[t.XRANGEPLAIN]}$`);
-    createToken("CARETLOOSE", `^${src[t.LONECARET]}${src[t.XRANGEPLAINLOOSE]}$`);
-    createToken("COMPARATORLOOSE", `^${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]})$|^$`);
-    createToken("COMPARATOR", `^${src[t.GTLT]}\\s*(${src[t.FULLPLAIN]})$|^$`);
-    createToken("COMPARATORTRIM", `(\\s*)${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]}|${src[t.XRANGEPLAIN]})`, true);
+    createToken2("CARET", `^${src[t.LONECARET]}${src[t.XRANGEPLAIN]}$`);
+    createToken2("CARETLOOSE", `^${src[t.LONECARET]}${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken2("COMPARATORLOOSE", `^${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]})$|^$`);
+    createToken2("COMPARATOR", `^${src[t.GTLT]}\\s*(${src[t.FULLPLAIN]})$|^$`);
+    createToken2("COMPARATORTRIM", `(\\s*)${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]}|${src[t.XRANGEPLAIN]})`, true);
     exports.comparatorTrimReplace = "$1$2$3";
-    createToken("HYPHENRANGE", `^\\s*(${src[t.XRANGEPLAIN]})\\s+-\\s+(${src[t.XRANGEPLAIN]})\\s*$`);
-    createToken("HYPHENRANGELOOSE", `^\\s*(${src[t.XRANGEPLAINLOOSE]})\\s+-\\s+(${src[t.XRANGEPLAINLOOSE]})\\s*$`);
-    createToken("STAR", "(<|>)?=?\\s*\\*");
-    createToken("GTE0", "^\\s*>=\\s*0\\.0\\.0\\s*$");
-    createToken("GTE0PRE", "^\\s*>=\\s*0\\.0\\.0-0\\s*$");
+    createToken2("HYPHENRANGE", `^\\s*(${src[t.XRANGEPLAIN]})\\s+-\\s+(${src[t.XRANGEPLAIN]})\\s*$`);
+    createToken2("HYPHENRANGELOOSE", `^\\s*(${src[t.XRANGEPLAINLOOSE]})\\s+-\\s+(${src[t.XRANGEPLAINLOOSE]})\\s*$`);
+    createToken2("STAR", "(<|>)?=?\\s*\\*");
+    createToken2("GTE0", "^\\s*>=\\s*0\\.0\\.0\\s*$");
+    createToken2("GTE0PRE", "^\\s*>=\\s*0\\.0\\.0-0\\s*$");
   }
 });
 
@@ -133569,7 +133569,7 @@ var require_slugify = __commonJS({
 });
 
 // server/src/app.ts
-var import_express24 = __toESM(require_express2(), 1);
+var import_express26 = __toESM(require_express2(), 1);
 var import_morgan = __toESM(require_morgan(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 import fs4 from "node:fs";
@@ -134974,7 +134974,7 @@ var env = {
   smtpPort: Number(process.env.SMTP_PORT) || 587,
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
-  mailFrom: process.env.MAIL_FROM || "Frezzer El Balad <noreply@frezzerelbalad.local>",
+  mailFrom: process.env.MAIL_FROM || "Freezer El Balad <noreply@frezzerelbalad.local>",
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   googleCallbackUrl: process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/v1/auth/google/callback",
@@ -135362,7 +135362,7 @@ var resourceKeys = (resource) => [
 var ttlFor = (resource) => TTL_SECONDS[resource];
 
 // server/src/routes/index.ts
-var import_express23 = __toESM(require_express2(), 1);
+var import_express25 = __toESM(require_express2(), 1);
 
 // server/src/routes/auth.routes.ts
 var import_express = __toESM(require_express2(), 1);
@@ -135601,7 +135601,7 @@ var getEmailQueue = () => {
 
 // server/src/services/email.service.ts
 var shellHtml = (body) => `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;background:#0d0d0d;color:#fff;border-radius:12px">
-    <h1 style="color:#38bdf8;text-align:center">\u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F | Frezzer El Balad</h1>
+    <h1 style="color:#38bdf8;text-align:center">\u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F | Freezer El Balad</h1>
     ${body}
   </div>`;
 var ENQUEUE_OPTS = {
@@ -135736,39 +135736,51 @@ var PERMISSION_PRESETS = {
 };
 var ORDER_STATUS = {
   PENDING: "pending",
+  CONFIRMED: "confirmed",
   PREPARING: "preparing",
+  READY_FOR_DELIVERY: "ready_for_delivery",
   ON_DELIVERY: "on_delivery",
   COMPLETED: "completed",
   CANCELLED: "cancelled",
+  DELIVERY_FAILED: "delivery_failed",
   REFUNDED: "refunded",
   COMPLIMENTARY: "complimentary"
 };
 var ORDER_STATUS_FLOW = [
   ORDER_STATUS.PENDING,
+  ORDER_STATUS.CONFIRMED,
   ORDER_STATUS.PREPARING,
+  ORDER_STATUS.READY_FOR_DELIVERY,
   ORDER_STATUS.ON_DELIVERY,
   ORDER_STATUS.COMPLETED
 ];
 var TERMINAL_ORDER_STATUSES = [
   ORDER_STATUS.CANCELLED,
+  ORDER_STATUS.DELIVERY_FAILED,
   ORDER_STATUS.REFUNDED,
   ORDER_STATUS.COMPLIMENTARY
 ];
 var ORDER_STATUS_TRANSITIONS = {
-  [ORDER_STATUS.PENDING]: [ORDER_STATUS.PREPARING, ORDER_STATUS.CANCELLED],
-  [ORDER_STATUS.PREPARING]: [ORDER_STATUS.ON_DELIVERY, ORDER_STATUS.CANCELLED],
-  [ORDER_STATUS.ON_DELIVERY]: [ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED],
+  [ORDER_STATUS.PENDING]: [ORDER_STATUS.CONFIRMED, ORDER_STATUS.CANCELLED],
+  [ORDER_STATUS.CONFIRMED]: [ORDER_STATUS.PREPARING, ORDER_STATUS.CANCELLED],
+  [ORDER_STATUS.PREPARING]: [ORDER_STATUS.READY_FOR_DELIVERY, ORDER_STATUS.CANCELLED],
+  [ORDER_STATUS.READY_FOR_DELIVERY]: [ORDER_STATUS.ON_DELIVERY, ORDER_STATUS.CANCELLED],
+  [ORDER_STATUS.ON_DELIVERY]: [ORDER_STATUS.COMPLETED, ORDER_STATUS.DELIVERY_FAILED, ORDER_STATUS.CANCELLED],
   [ORDER_STATUS.COMPLETED]: [ORDER_STATUS.REFUNDED],
   [ORDER_STATUS.REFUNDED]: [],
   [ORDER_STATUS.CANCELLED]: [],
+  [ORDER_STATUS.DELIVERY_FAILED]: [],
   [ORDER_STATUS.COMPLIMENTARY]: []
 };
 var ORDER_STATUS_LABELS = {
-  [ORDER_STATUS.PENDING]: ["\u0642\u064A\u062F \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631", "Pending"],
-  [ORDER_STATUS.PREPARING]: ["\u0642\u064A\u062F \u0627\u0644\u062A\u062D\u0636\u064A\u0631", "Preparing"],
-  [ORDER_STATUS.ON_DELIVERY]: ["\u0641\u064A \u0627\u0644\u0637\u0631\u064A\u0642 \u0625\u0644\u064A\u0643", "Out for delivery"],
+  [ORDER_STATUS.PENDING]: ["\u062C\u062F\u064A\u062F", "New"],
+  [ORDER_STATUS.CONFIRMED]: ["\u062A\u0645 \u0627\u0644\u062A\u0623\u0643\u064A\u062F", "Confirmed"],
+  [ORDER_STATUS.PREPARING]: ["\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062C\u0647\u064A\u0632", "Preparing"],
+  [ORDER_STATUS.READY_FOR_DELIVERY]: ["\u062C\u0627\u0647\u0632 \u0644\u0644\u062A\u0648\u0635\u064A\u0644", "Ready for Delivery"],
+  [ORDER_STATUS.ON_DELIVERY]: ["\u0641\u064A \u0627\u0644\u0637\u0631\u064A\u0642", "Out for Delivery"],
   [ORDER_STATUS.COMPLETED]: ["\u062A\u0645 \u0627\u0644\u062A\u0633\u0644\u064A\u0645", "Delivered"],
-  [ORDER_STATUS.CANCELLED]: ["\u062A\u0645 \u0627\u0644\u0625\u0644\u063A\u0627\u0621", "Cancelled"],
+  [ORDER_STATUS.CANCELLED]: ["\u0645\u0644\u063A\u064A", "Cancelled"],
+  [ORDER_STATUS.DELIVERY_FAILED]: ["\u0641\u0634\u0644 \u0627\u0644\u062A\u0633\u0644\u064A\u0645", "Delivery Failed"],
   [ORDER_STATUS.REFUNDED]: ["\u062A\u0645 \u0627\u0633\u062A\u0631\u062F\u0627\u062F \u0627\u0644\u0645\u0628\u0644\u063A", "Refunded"],
   [ORDER_STATUS.COMPLIMENTARY]: ["\u0645\u062C\u0627\u0646\u064A / \u0647\u062F\u064A\u0629", "Complimentary"]
 };
@@ -135782,14 +135794,14 @@ var COUPON_TYPES = {
   FIXED: "fixed"
 };
 var DEFAULT_SETTINGS = {
-  restaurantName: { ar: "\u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F", en: "Frezzer El Balad" },
+  restaurantName: { ar: "\u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F", en: "Freezer El Balad" },
   logo: "",
   tagline: { ar: "\u0644\u062D\u0648\u0645 \u0648\u0641\u0631\u0627\u062E \u0648\u0645\u062C\u0645\u062F\u0627\u062A \u0628\u062C\u0648\u062F\u0629 \u0639\u0627\u0644\u064A\u0629 \u0648\u0623\u0633\u0639\u0627\u0631 \u0645\u0646\u0627\u0633\u0628\u0629", en: "Premium meat, chicken & frozen products at affordable prices" },
   themeColors: { primary: "#1E3A5F", accent: "#38BDF8", background: "#0F172A" },
   workingHours: { ar: "\u064A\u0648\u0645\u064A\u0627\u064B \u0645\u0646 9 \u0635\u0628\u0627\u062D\u0627\u064B \u062D\u062A\u0649 11 \u0645\u0633\u0627\u0621\u064B", en: "Daily 9AM - 11PM" },
   phone: "",
   whatsapp: "",
-  facebook: "Frezzer El Balad",
+  facebook: "Freezer El Balad",
   instagram: "@frezzerelbalad",
   tiktok: "",
   googleMaps: "",
@@ -136045,6 +136057,45 @@ var socialAuthCallback = (provider) => asyncHandler(async (req, res) => {
   res.redirect(redirect);
 });
 
+// server/src/db/serviceTokens.ts
+import crypto3 from "node:crypto";
+var createToken = async (userId, name, scope = ["print"]) => {
+  const rawToken = `fps_${crypto3.randomBytes(32).toString("hex")}`;
+  const tokenHash = crypto3.createHash("sha256").update(rawToken).digest("hex");
+  const rows = await query(
+    `INSERT INTO service_tokens ("userId", name, "tokenHash", scope)
+     VALUES ($1::uuid, $2, $3, $4) RETURNING id`,
+    [userId, name, tokenHash, scope]
+  );
+  return { id: rows[0].id, rawToken };
+};
+var verifyToken = async (rawToken) => {
+  const tokenHash = crypto3.createHash("sha256").update(rawToken).digest("hex");
+  const rows = await query(
+    `SELECT id, "userId", name, "tokenHash", scope, "isActive", "lastUsedAt", "createdAt"
+     FROM service_tokens WHERE "tokenHash" = $1 AND "isActive" = true`,
+    [tokenHash]
+  );
+  if (!rows[0]) return null;
+  query(`UPDATE service_tokens SET "lastUsedAt" = now() WHERE id = $1::uuid`, [rows[0].id]).catch(() => {
+  });
+  return rows[0];
+};
+var listByUser = async (userId) => {
+  return query(
+    `SELECT id, "userId", name, scope, "isActive", "lastUsedAt", "createdAt"
+     FROM service_tokens WHERE "userId" = $1::uuid ORDER BY "createdAt" DESC`,
+    [userId]
+  );
+};
+var revoke = async (id, userId) => {
+  const r = await query(
+    `UPDATE service_tokens SET "isActive" = false WHERE id = $1::uuid AND "userId" = $2::uuid RETURNING id`,
+    [id, userId]
+  );
+  return r.length > 0;
+};
+
 // server/src/middlewares/auth.ts
 var requireAuth = async (req, _res, next) => {
   try {
@@ -136054,6 +136105,20 @@ var requireAuth = async (req, _res, next) => {
       throw new ApiError(401, "Authentication required");
     }
     const token = header.split(" ")[1];
+    if (token.startsWith("fps_")) {
+      const svcToken = await verifyToken(token);
+      if (!svcToken) {
+        throw new ApiError(401, "Invalid or revoked service token");
+      }
+      const user2 = await getById(svcToken.userId);
+      if (!user2 || !user2.isActive) {
+        throw new ApiError(401, "Account not found or deactivated");
+      }
+      const permissions2 = await rolePermissions(user2.role);
+      authReq.user = { id: user2.id, role: user2.role, permissions: permissions2 };
+      next();
+      return;
+    }
     let payload;
     try {
       payload = verifyAccessToken(token);
@@ -140260,19 +140325,30 @@ var item = external_exports.object({
   extras: external_exports.array(extra).max(30).optional(),
   qty: external_exports.coerce.number().int("Quantity must be a whole number").min(1, "Quantity must be at least 1").max(99, "Quantity must be at most 99")
 });
+var addressSchema = external_exports.object({
+  label: external_exports.string().trim().max(50).optional(),
+  city: external_exports.string().trim().min(1, "City is required").max(100),
+  area: external_exports.string().trim().max(100).optional(),
+  street: external_exports.string().trim().min(1, "Street is required").max(150),
+  building: external_exports.string().trim().min(1, "Building is required").max(100)
+});
+var phoneRegex = /^01[0125]\d{8}$/;
+var createAdminOrderSchema = external_exports.object({
+  items: external_exports.array(item).min(1, "At least one item is required").max(100),
+  couponCode: external_exports.string().trim().max(40).optional(),
+  phone: external_exports.string().trim().regex(phoneRegex).optional(),
+  customerName: external_exports.string().trim().max(80).optional(),
+  notes: external_exports.string().trim().max(1e3).optional(),
+  address: addressSchema.optional(),
+  paymentMethod: external_exports.enum(["cash", "card"]).default("cash")
+});
 var createOrderSchema = external_exports.object({
   items: external_exports.array(item).min(1, "At least one item is required").max(100),
   couponCode: external_exports.string().trim().max(40).optional(),
   phone: external_exports.string().trim().regex(/^01[0125]\d{8}$/, "Phone must be a valid 11-digit Egyptian mobile number (010/011/012/015)"),
   customerName: external_exports.string().trim().max(80).optional(),
   notes: external_exports.string().trim().max(1e3).optional(),
-  address: external_exports.object({
-    label: external_exports.string().trim().max(50).optional(),
-    city: external_exports.string().trim().min(1, "City is required").max(100),
-    area: external_exports.string().trim().max(100).optional(),
-    street: external_exports.string().trim().min(1, "Street is required").max(150),
-    building: external_exports.string().trim().min(1, "Building is required").max(100)
-  }),
+  address: addressSchema,
   paymentMethod: external_exports.enum(["cash", "card"]).default("cash")
 });
 var updateStatusSchema = external_exports.object({
@@ -140528,7 +140604,16 @@ var settingsUpdateSchema = external_exports.object({
   minimumOrder: external_exports.coerce.number().min(0).optional(),
   freeDeliveryOver: external_exports.coerce.number().min(0).optional(),
   reviewPromptCooldownDays: external_exports.coerce.number().int().min(0).max(365).optional(),
-  reviewPromptDelayHours: external_exports.coerce.number().int().min(0).max(24 * 30).optional()
+  reviewPromptDelayHours: external_exports.coerce.number().int().min(0).max(24 * 30).optional(),
+  printerConfig: external_exports.object({
+    name: external_exports.string().trim().max(100).optional(),
+    type: external_exports.string().trim().max(50).optional(),
+    paperWidth: external_exports.enum(["58", "80"]).optional(),
+    connection: external_exports.enum(["usb", "lan", "bluetooth", "wifi"]).optional(),
+    ipAddress: external_exports.string().trim().max(50).optional(),
+    port: external_exports.string().trim().max(10).optional(),
+    isActive: external_exports.boolean().optional()
+  }).optional()
 });
 
 // server/src/schemas/user.ts
@@ -142366,6 +142451,7 @@ var ORDER_CORE = `
   o."adjustmentReason" AS "adjustmentReason",
   o."adjustedAt" AS "adjustedAt",
   o.status::text AS "status", o."deliveryAddress", o.phone, o."customerName", o.notes,
+  o."printedAt", o."printCount",
   o."statusHistory", o."createdAt", o."updatedAt",
   jsonb_build_object(
     'method', o."paymentMethod",
@@ -142401,7 +142487,7 @@ var getByUserAndId = async (userId, orderId) => {
   );
   return rows[0] ?? null;
 };
-var listByUser = async (userId, page, limit) => {
+var listByUser2 = async (userId, page, limit) => {
   const rows = await query(
     `SELECT count(*) OVER()::int AS __total, ${ORDER_COLS}
      FROM orders o
@@ -142508,7 +142594,7 @@ var stats = async () => {
       (SELECT count(*) FROM orders WHERE status = 'cancelled')::int AS "cancelledOrders",
       (SELECT count(*) FROM orders WHERE status = 'refunded')::int AS "refundedOrders",
       (SELECT count(*) FROM orders WHERE status = 'complimentary')::int AS "complimentaryOrders",
-      (SELECT count(*)::int FROM orders WHERE status = 'pending') AS "pendingOrders",
+      (SELECT count(*)::int FROM orders WHERE status IN ('pending', 'confirmed')) AS "pendingOrders",
       (SELECT COALESCE(SUM(total), 0)::float8 FROM orders WHERE status = 'completed') AS "revenue",
       (SELECT COALESCE(SUM(total), 0)::float8 FROM orders WHERE status = 'completed') AS "netRevenue",
       (SELECT COALESCE(SUM(subtotal + "deliveryFee"), 0)::float8 FROM orders WHERE status = 'completed') AS "grossRevenue",
@@ -142569,6 +142655,7 @@ var placeOrder = async (input) => {
       couponId = coupon.id;
       finalTotal = Math.max(0, input.subtotal + input.deliveryFee - finalDiscount);
     }
+    const initialStatus = input.initialStatus || "pending";
     const inserted = await tx.query(
       `INSERT INTO orders ("orderNo", "userId", "status", subtotal, "deliveryFee", discount,
          "couponCode", total, "paymentMethod", "paymentStatus", "paymentReference",
@@ -142579,7 +142666,7 @@ var placeOrder = async (input) => {
       [
         input.orderNo,
         input.userId,
-        "pending",
+        initialStatus,
         input.subtotal,
         input.deliveryFee,
         finalDiscount,
@@ -143012,10 +143099,13 @@ var upsertSetting = async (key, value) => {
 var createOrder = asyncHandler(async (req, res) => {
   const { items: rawItems, couponCode, address, phone: phone2, notes, paymentMethod } = req.body;
   const userId = req.user.id;
+  const isAdmin = req.user.role === ROLES.ADMIN || req.user.role === ROLES.MANAGER || req.user.role === ROLES.EMPLOYEE;
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
     throw new ApiError(400, "Order must contain at least one item");
   }
-  if (!address || !phone2) throw new ApiError(400, "Delivery address and phone are required");
+  if (!isAdmin && (!address || !phone2)) {
+    throw new ApiError(400, "Delivery address and phone are required");
+  }
   const items = rawItems;
   const productIds = items.map((i) => i.product);
   const productRows = await query(
@@ -143070,8 +143160,9 @@ var createOrder = asyncHandler(async (req, res) => {
   }
   const total = Math.max(0, subtotal + deliveryFee - discount);
   const method = Object.values(PAYMENT_METHODS).includes(paymentMethod) ? paymentMethod : PAYMENT_METHODS.CASH;
+  const initialStatus = isAdmin ? ORDER_STATUS.CONFIRMED : ORDER_STATUS.PENDING;
   let order = null;
-  const statusHistory = [{ status: ORDER_STATUS.PENDING, changedBy: userId, at: /* @__PURE__ */ new Date() }];
+  const statusHistory = [{ status: initialStatus, changedBy: userId, at: /* @__PURE__ */ new Date() }];
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const orderNo = await generateOrderNo();
     try {
@@ -143087,11 +143178,12 @@ var createOrder = asyncHandler(async (req, res) => {
         paymentMethod: method,
         paymentReference: "",
         paymentAmount: total,
-        deliveryAddress: address,
-        phone: phone2,
+        deliveryAddress: address ?? {},
+        phone: phone2 ?? "",
         customerName: req.body.customerName || "\u0639\u0645\u064A\u0644",
         notes: notes ?? "",
-        statusHistory
+        statusHistory,
+        initialStatus
       });
       break;
     } catch (err) {
@@ -143195,7 +143287,7 @@ var adminComplimentary = asyncHandler(async (req, res) => {
 var history = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
-  const result = await listByUser(req.user.id, page, limit);
+  const result = await listByUser2(req.user.id, page, limit);
   res.json(new ApiResponse(200, { ...result, page, limit }));
 });
 var adminList6 = asyncHandler(async (req, res) => {
@@ -143217,7 +143309,7 @@ var stats2 = asyncHandler(async (_req, res) => {
 // server/src/routes/order.routes.ts
 var router8 = (0, import_express8.Router)();
 router8.use(requireAuth);
-router8.post("/", zodBody(createOrderSchema), invalidateCache("dashboard"), createOrder);
+router8.post("/", zodBody(createAdminOrderSchema), invalidateCache("dashboard"), createOrder);
 router8.post("/:id/cancel", invalidateCache("dashboard"), cancelOrder);
 router8.post("/:id/admin-cancel", requirePermission("orders", "update"), zodBody(adminCancelOrderSchema), logActivity("cancel", "orders"), invalidateCache("dashboard"), adminCancel2);
 router8.post("/:id/complimentary", requirePermission("orders", "update"), zodBody(markComplimentarySchema), logActivity("complimentary", "orders"), invalidateCache("dashboard"), adminComplimentary);
@@ -166440,12 +166532,10 @@ var systemReset = async () => {
     await tx.query("DELETE FROM coupon_redemptions");
     await tx.query('UPDATE coupons SET "usedCount" = 0');
     await tx.query("TRUNCATE TABLE analytics");
-    const productsResult = await tx.query('UPDATE products SET "basePrice" = 0, "isOffer" = false');
+    const productsResult = await tx.query('UPDATE products SET "isOffer" = false');
     const productsReset = productsResult.rowCount ?? 0;
-    const sizesResult = await tx.query("UPDATE product_sizes SET price = 0");
-    const sizesReset = sizesResult.rowCount ?? 0;
-    const extrasResult = await tx.query("UPDATE product_extras SET price = 0");
-    const extrasReset = extrasResult.rowCount ?? 0;
+    const sizesReset = 0;
+    const extrasReset = 0;
     await tx.query(
       `INSERT INTO settings (key, value) VALUES ('statsClearedAt', $1::jsonb)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -166491,34 +166581,218 @@ router22.post(
 );
 var systemReset_routes_default = router22;
 
-// server/src/routes/index.ts
+// server/src/routes/print.routes.ts
+var import_express23 = __toESM(require_express2(), 1);
+
+// server/src/db/printJobs.ts
+var createPrintJob = async (orderId, orderNo, receipt) => {
+  const rows = await query(
+    `INSERT INTO print_jobs ("orderId", "orderNo", receipt)
+     VALUES ($1::uuid, $2, $3::jsonb)
+     RETURNING *`,
+    [orderId, orderNo, JSON.stringify(receipt)]
+  );
+  return rows[0];
+};
+var claimNextJob = async () => {
+  const rows = await query(
+    `UPDATE print_jobs SET status = 'printing', "updatedAt" = now()
+     WHERE id = (
+       SELECT id FROM print_jobs WHERE status = 'pending'
+       ORDER BY "createdAt" ASC LIMIT 1 FOR UPDATE SKIP LOCKED
+     )
+     RETURNING *`
+  );
+  return rows[0] ?? null;
+};
+var markPrinted = async (jobId) => {
+  await query(
+    `UPDATE print_jobs SET status = 'printed', "updatedAt" = now() WHERE id = $1::uuid`,
+    [jobId]
+  );
+  await query(
+    `UPDATE orders SET "printedAt" = now(), "printCount" = "printCount" + 1
+     WHERE id = (SELECT "orderId" FROM print_jobs WHERE id = $1::uuid)`,
+    [jobId]
+  );
+};
+var markFailed = async (jobId, error) => {
+  await query(
+    `UPDATE print_jobs SET status = 'failed', error = $2, attempts = attempts + 1, "updatedAt" = now()
+     WHERE id = $1::uuid`,
+    [jobId, error]
+  );
+};
+var retryJob = async (jobId) => {
+  await query(
+    `UPDATE print_jobs SET status = 'pending', error = NULL, "updatedAt" = now()
+     WHERE id = $1::uuid AND status = 'failed'`,
+    [jobId]
+  );
+};
+var listByOrder = async (orderId) => {
+  return query(
+    `SELECT * FROM print_jobs WHERE "orderId" = $1::uuid ORDER BY "createdAt" DESC`,
+    [orderId]
+  );
+};
+var listRecent = async (limit = 20) => {
+  return query(
+    `SELECT * FROM print_jobs ORDER BY "createdAt" DESC LIMIT $1`,
+    [limit]
+  );
+};
+var createTestPrintJob = async (receipt) => {
+  const placeholderId = "00000000-0000-0000-0000-000000000000";
+  const rows = await query(
+    `INSERT INTO print_jobs ("orderId", "orderNo", receipt)
+     VALUES ($1::uuid, $2, $3::jsonb)
+     RETURNING *`,
+    [placeholderId, "TEST", JSON.stringify(receipt)]
+  );
+  return rows[0];
+};
+
+// server/src/controllers/print.controller.ts
+var createPrintJob2 = asyncHandler(async (req, res) => {
+  const { orderId, receipt } = req.body;
+  if (!orderId || !receipt) {
+    throw new ApiError(400, "orderId and receipt are required");
+  }
+  const order = await getById6(orderId);
+  if (!order) throw new ApiError(404, "Order not found");
+  const job = await createPrintJob(orderId, order.orderNo, receipt);
+  res.status(201).json(new ApiResponse(201, job, "Print job created"));
+});
+var getOrderPrintJobs = asyncHandler(async (req, res) => {
+  const jobs = await listByOrder(req.params.orderId);
+  res.json(new ApiResponse(200, jobs));
+});
+var listRecentJobs = asyncHandler(async (_req, res) => {
+  const jobs = await listRecent(50);
+  res.json(new ApiResponse(200, jobs));
+});
+var pollJob = asyncHandler(async (_req, res) => {
+  const job = await claimNextJob();
+  if (!job) {
+    res.json(new ApiResponse(200, null, "No pending jobs"));
+    return;
+  }
+  res.json(new ApiResponse(200, job));
+});
+var reportSuccess = asyncHandler(async (req, res) => {
+  const { jobId } = req.params;
+  await markPrinted(jobId);
+  res.json(new ApiResponse(200, null, "Print recorded"));
+});
+var reportFailure = asyncHandler(async (req, res) => {
+  const { jobId } = req.params;
+  const { error } = req.body;
+  if (!error) throw new ApiError(400, "Error message is required");
+  await markFailed(jobId, String(error));
+  res.json(new ApiResponse(200, null, "Failure recorded"));
+});
+var retryPrintJob = asyncHandler(async (req, res) => {
+  await retryJob(req.params.jobId);
+  res.json(new ApiResponse(200, null, "Job queued for retry"));
+});
+var createTestPrintJob2 = asyncHandler(async (req, res) => {
+  const { receipt } = req.body;
+  if (!receipt) throw new ApiError(400, "receipt is required");
+  const job = await createTestPrintJob(receipt);
+  res.status(201).json(new ApiResponse(201, job, "Test print job created"));
+});
+var markOrderPrinted = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const order = await getById6(orderId);
+  if (!order) throw new ApiError(404, "Order not found");
+  const job = await createPrintJob(orderId, order.orderNo, {
+    source: "browser",
+    note: "Marked as printed via browser"
+  });
+  await markPrinted(job.id);
+  res.json(new ApiResponse(200, { printedAt: (/* @__PURE__ */ new Date()).toISOString() }, "Order marked as printed"));
+});
+
+// server/src/routes/print.routes.ts
 var router23 = (0, import_express23.Router)();
-router23.use("/auth", auth_routes_default);
-router23.use("/users/me", user_routes_default);
-router23.use("/products", product_routes_default);
-router23.use("/categories", category_routes_default);
-router23.use("/reviews", review_routes_default);
-router23.use("/wishlist", wishlist_routes_default);
-router23.use("/cart", cart_routes_default);
-router23.use("/orders", order_routes_default);
-router23.use("/coupons", coupon_routes_default);
-router23.use("/offers", offer_routes_default);
-router23.use("/banners", banner_routes_default);
-router23.use("/gallery", gallery_routes_default);
-router23.use("/branches", branch_routes_default);
-router23.use("/contacts", contact_routes_default);
-router23.use("/newsletter", newsletter_routes_default);
-router23.use("/settings", setting_routes_default);
-router23.use("/notifications", notification_routes_default);
-router23.use("/analytics", analytics_routes_default);
-router23.use("/upload", upload_routes_default);
-router23.use("/posts", post_routes_default);
-router23.use("/admin/users", adminApiLimiter, adminUser_routes_default);
-router23.use("/system", systemReset_routes_default);
-var routes_default = router23;
+router23.use(requireAuth);
+router23.post("/", requirePermission("orders", "update"), createPrintJob2);
+router23.post("/test", requirePermission("orders", "update"), createTestPrintJob2);
+router23.get("/recent", requirePermission("orders", "read"), listRecentJobs);
+router23.get("/order/:orderId", requirePermission("orders", "read"), getOrderPrintJobs);
+router23.patch("/:jobId/success", requirePermission("orders", "update"), reportSuccess);
+router23.patch("/:jobId/failure", requirePermission("orders", "update"), reportFailure);
+router23.post("/:jobId/retry", requirePermission("orders", "update"), retryPrintJob);
+router23.post("/order/:orderId/mark", requirePermission("orders", "update"), markOrderPrinted);
+router23.get("/poll", pollJob);
+var print_routes_default = router23;
+
+// server/src/routes/serviceToken.routes.ts
+var import_express24 = __toESM(require_express2(), 1);
+
+// server/src/controllers/serviceToken.controller.ts
+var generateToken = asyncHandler(async (req, res) => {
+  const { name, scope } = req.body;
+  if (!name || typeof name !== "string" || name.trim().length === 0) {
+    throw new ApiError(400, "Token name is required");
+  }
+  const tokenScope = Array.isArray(scope) ? scope : ["print"];
+  const { id, rawToken } = await createToken(req.user.id, name.trim(), tokenScope);
+  res.status(201).json(new ApiResponse(
+    201,
+    { id, name: name.trim(), scope: tokenScope, rawToken },
+    "Token created \u2014 copy it now, it will not be shown again"
+  ));
+});
+var listTokens = asyncHandler(async (req, res) => {
+  const tokens = await listByUser(req.user.id);
+  res.json(new ApiResponse(200, tokens));
+});
+var revokeToken = asyncHandler(async (req, res) => {
+  const ok = await revoke(req.params.id, req.user.id);
+  if (!ok) throw new ApiError(404, "Token not found");
+  res.json(new ApiResponse(200, null, "Token revoked"));
+});
+
+// server/src/routes/serviceToken.routes.ts
+var router24 = (0, import_express24.Router)();
+router24.use(requireAuth);
+router24.post("/", requirePermission("settings", "update"), generateToken);
+router24.get("/", requirePermission("settings", "read"), listTokens);
+router24.delete("/:id", requirePermission("settings", "update"), revokeToken);
+var serviceToken_routes_default = router24;
+
+// server/src/routes/index.ts
+var router25 = (0, import_express25.Router)();
+router25.use("/auth", auth_routes_default);
+router25.use("/users/me", user_routes_default);
+router25.use("/products", product_routes_default);
+router25.use("/categories", category_routes_default);
+router25.use("/reviews", review_routes_default);
+router25.use("/wishlist", wishlist_routes_default);
+router25.use("/cart", cart_routes_default);
+router25.use("/orders", order_routes_default);
+router25.use("/coupons", coupon_routes_default);
+router25.use("/offers", offer_routes_default);
+router25.use("/banners", banner_routes_default);
+router25.use("/gallery", gallery_routes_default);
+router25.use("/branches", branch_routes_default);
+router25.use("/contacts", contact_routes_default);
+router25.use("/newsletter", newsletter_routes_default);
+router25.use("/settings", setting_routes_default);
+router25.use("/notifications", notification_routes_default);
+router25.use("/analytics", analytics_routes_default);
+router25.use("/upload", upload_routes_default);
+router25.use("/posts", post_routes_default);
+router25.use("/admin/users", adminApiLimiter, adminUser_routes_default);
+router25.use("/system", systemReset_routes_default);
+router25.use("/print", print_routes_default);
+router25.use("/service-tokens", serviceToken_routes_default);
+var routes_default = router25;
 
 // server/src/app.ts
-var app = (0, import_express24.default)();
+var app = (0, import_express26.default)();
 app.disable("x-powered-by");
 app.use(requestIdMiddleware);
 app.use(latencyMiddleware);
@@ -166540,10 +166814,10 @@ app.use((req, res, next) => {
 });
 app.options("*", corsHandler);
 app.use((0, import_compression.default)());
-app.use(import_express24.default.json({ limit: "10mb" }));
-app.use(import_express24.default.urlencoded({ extended: true, limit: "10mb" }));
+app.use(import_express26.default.json({ limit: "10mb" }));
+app.use(import_express26.default.urlencoded({ extended: true, limit: "10mb" }));
 app.use((0, import_cookie_parser.default)());
-app.use("/uploads", import_express24.default.static(uploadsDir));
+app.use("/uploads", import_express26.default.static(uploadsDir));
 app.use(sanitizeJson);
 if (process.env.NODE_ENV !== "test") {
   app.use((0, import_morgan.default)(env_default.isProd ? "combined" : "dev"));
@@ -166588,7 +166862,7 @@ app.use("/api/v1", routes_default);
 var clientDist = path4.resolve(path4.dirname(fileURLToPath3(import.meta.url)), "..", "..", "dist");
 var clientIndex = path4.join(clientDist, "index.html");
 if (process.env.NODE_ENV === "production" && fs4.existsSync(clientIndex)) {
-  app.use(import_express24.default.static(clientDist, { maxAge: "7d", immutable: true, setHeaders: (res, filePath) => {
+  app.use(import_express26.default.static(clientDist, { maxAge: "7d", immutable: true, setHeaders: (res, filePath) => {
     const normalized = filePath.replace(/\\/g, "/");
     if (normalized.endsWith("index.html")) res.setHeader("Cache-Control", "no-cache");
     else if (normalized.includes("/images/")) res.setHeader("Cache-Control", "public, max-age=3600");

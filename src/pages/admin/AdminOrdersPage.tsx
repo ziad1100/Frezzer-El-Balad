@@ -15,7 +15,6 @@ import { formatPrice } from '@/lib/utils';
 import { buildReceiptFromOrder, type ReceiptData } from '@/lib/receiptFormatter';
 import { renderReceiptToCanvas, canvasToDataURL, hasArabic } from '@/lib/receiptImage';
 import { printReceipt } from '@/lib/browserPrint';
-import { generateOrderPdf } from '@/lib/orderPdf';
 import { markOrderPrinted, createPrintJob, getOrderPrintJobs } from '@/api/print';
 import { PrintInvoiceDialog, type PrinterConfig } from '@/components/admin/PrintInvoiceDialog';
 import { PdfPreviewDialog } from '@/components/admin/PdfPreviewDialog';
@@ -167,7 +166,7 @@ export function AdminOrdersPage() {
     await fetchPrintJobs(order._id);
   };
 
-  const handlePrintFromDialog = async (printerId: string, paperWidth: '58' | '80', copies: number): Promise<void> => {
+  const handlePrintFromDialog = async (_printerId: string, paperWidth: '58' | '80', copies: number): Promise<void> => {
     if (!printDialogOrder) return;
     setPrintLoading(true);
     try {
@@ -605,7 +604,7 @@ export function AdminOrdersPage() {
         <PdfPreviewDialog
           open={Boolean(pdfPreviewOrder)}
           onClose={() => setPdfPreviewOrder(null)}
-          order={pdfPreviewOrder}
+          order={pdfPreviewOrder as unknown as Order}
         />
       ) : null}
 

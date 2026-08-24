@@ -1,4 +1,4 @@
-// server/src/app.ts
+// src/app.ts
 import express from "express";
 import fs4 from "node:fs";
 import path4 from "node:path";
@@ -10,7 +10,7 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import rateLimit2 from "express-rate-limit";
 
-// server/src/config/env.ts
+// src/config/env.ts
 import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
@@ -80,7 +80,7 @@ var env = {
 };
 var env_default = env;
 
-// server/src/config/cors.ts
+// src/config/cors.ts
 var allowedOrigins = env_default.isProd ? [env_default.clientUrl] : [env_default.clientUrl, "http://localhost:5173", "http://127.0.0.1:5173"];
 var privateNetworkPattern = /^https?:\/\/(?:localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3})(?::\d+)?$/;
 var corsOptions = {
@@ -101,7 +101,7 @@ var corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"]
 };
 
-// server/src/middlewares/sanitize.ts
+// src/middlewares/sanitize.ts
 var isPlainObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var sanitizeValue = (value) => {
   if (Array.isArray(value)) return value.map(sanitizeValue);
@@ -118,7 +118,7 @@ var sanitizeJson = (req, _res, next) => {
   next();
 };
 
-// server/src/utils/ApiError.ts
+// src/utils/ApiError.ts
 var ApiError = class extends Error {
   statusCode;
   isOperational;
@@ -134,12 +134,12 @@ var ApiError = class extends Error {
   }
 };
 
-// server/src/middlewares/notFound.ts
+// src/middlewares/notFound.ts
 var notFound = (req, _res, next) => {
   next(new ApiError(404, `Route not found: ${req.method} ${req.originalUrl}`));
 };
 
-// server/src/middlewares/errorHandler.ts
+// src/middlewares/errorHandler.ts
 var errorHandler = (err, _req, res, _next) => {
   void _next;
   let error = err;
@@ -157,14 +157,14 @@ var errorHandler = (err, _req, res, _next) => {
   });
 };
 
-// server/src/middlewares/upload.ts
+// src/middlewares/upload.ts
 import fs2 from "node:fs";
 import os from "node:os";
 import path2 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import multer from "multer";
 
-// server/src/config/cloudinary.ts
+// src/config/cloudinary.ts
 import { v2 as cloudinary } from "cloudinary";
 var cloudinaryConfigured = Boolean(
   env_default.cloudinaryCloudName && env_default.cloudinaryApiKey && env_default.cloudinaryApiSecret
@@ -178,7 +178,7 @@ if (cloudinaryConfigured) {
 }
 var cloudinary_default = cloudinary;
 
-// server/src/middlewares/upload.ts
+// src/middlewares/upload.ts
 var __dirname2 = path2.dirname(fileURLToPath2(import.meta.url));
 var uploadsDir = process.env.VERCEL === "1" ? path2.join(os.tmpdir(), "freezer-el-balad-uploads") : path2.resolve(__dirname2, "../uploads");
 fs2.mkdirSync(uploadsDir, { recursive: true });
@@ -264,12 +264,17 @@ var deleteLocalFile = (filePath) => {
   }
 };
 
-// server/src/middlewares/diagnostics.ts
+// src/middlewares/diagnostics.ts
 import crypto from "node:crypto";
 var slices = /* @__PURE__ */ new Map();
 var MAX_SAMPLES_PER_ROUTE = 2e3;
 var SLICE_WINDOW_MS = 6e4;
 var lastWindow = Date.now();
+var percentile = (sorted, p) => {
+  if (sorted.length === 0) return 0;
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(p / 100 * sorted.length) - 1));
+  return sorted[index];
+};
 var recordLatency = (route, ms) => {
   const now = Date.now();
   if (now - lastWindow > SLICE_WINDOW_MS) {
@@ -298,8 +303,27 @@ var latencyMiddleware = (req, res, next) => {
   });
   next();
 };
+var reportLatencies = () => {
+  if (slices.size === 0) return "[perf] no latency data recorded yet";
+  const lines = ["[perf] route latency (avg / p50 / p90 / p95 / p99 ms)"];
+  const entries = [...slices.entries()].sort((a, b) => b[1].totalMs - a[1].totalMs);
+  for (const [route, slice] of entries) {
+    const sorted = [...slice.samples].sort((a, b) => a - b);
+    const avg = slice.totalMs / slice.count;
+    const pad = route.length < 60 ? 60 - route.length : 1;
+    lines.push(
+      `  ${route}${" ".repeat(pad)}n=${String(slice.count).padStart(5)} avg=${avg.toFixed(1)} p50=${percentile(sorted, 50).toFixed(1)} p90=${percentile(sorted, 90).toFixed(1)} p95=${percentile(sorted, 95).toFixed(1)} p99=${percentile(sorted, 99).toFixed(1)} max=${slice.maxMs.toFixed(1)}`
+    );
+  }
+  return lines.join("\n");
+};
+var perfSummaryTimer = (intervalMs = 6e4, logger) => {
+  const timer = setInterval(() => logger(reportLatencies()), intervalMs);
+  timer.unref();
+  return void 0;
+};
 
-// server/src/db/index.ts
+// src/db/index.ts
 import { Pool } from "pg";
 var pool = new Pool({
   connectionString: env_default.databaseUrl,
@@ -346,7 +370,7 @@ var apiErrorFromPg = (err) => {
   return new ApiError(500, "Database error");
 };
 
-// server/src/services/cache.ts
+// src/services/cache.ts
 import Redis from "ioredis";
 var TTL_SECONDS = {
   products: 60,
@@ -440,14 +464,21 @@ var resourceKeys = (resource) => [
   `${resourceKey(resource)}:*`
 ];
 var ttlFor = (resource) => TTL_SECONDS[resource];
+var disconnectCache = async () => {
+  if (client) {
+    await Promise.resolve(client.disconnect()).catch(() => void 0);
+    client = null;
+    available = false;
+  }
+};
 
-// server/src/routes/index.ts
+// src/routes/index.ts
 import { Router as Router25 } from "express";
 
-// server/src/routes/auth.routes.ts
+// src/routes/auth.routes.ts
 import { Router } from "express";
 
-// server/src/config/passport.ts
+// src/config/passport.ts
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as FacebookStrategy } from "passport-facebook";
@@ -480,10 +511,10 @@ if (env_default.facebookClientId && env_default.facebookClientSecret) {
 }
 var passport_default = passport;
 
-// server/src/controllers/auth.controller.ts
+// src/controllers/auth.controller.ts
 import bcrypt from "bcryptjs";
 
-// server/src/utils/token.ts
+// src/utils/token.ts
 import jwt from "jsonwebtoken";
 import crypto2 from "node:crypto";
 var signAccessToken = (userId) => {
@@ -508,7 +539,7 @@ var generateEmailToken = () => {
 var generateEmailCode = () => crypto2.randomInt(1e5, 1e6).toString();
 var hashToken = (token) => crypto2.createHash("sha256").update(token).digest("hex");
 
-// server/src/db/users.ts
+// src/db/users.ts
 var TOKEN_COLUMNS = ["refreshToken", "emailVerifyToken", "resetToken", "emailChangeToken"];
 var normalize = (sets) => {
   const out = {};
@@ -588,7 +619,7 @@ var rolePermissions = async (slug) => {
   return rows[0]?.permissions ?? {};
 };
 
-// server/src/config/mailer.ts
+// src/config/mailer.ts
 import nodemailer from "nodemailer";
 var smtpConfigured = Boolean(env_default.smtpHost && env_default.smtpUser && env_default.smtpPass);
 var transporter = smtpConfigured ? nodemailer.createTransport({
@@ -609,7 +640,7 @@ var sendMail = async (to, subject, html) => {
   }
 };
 
-// server/src/utils/ApiResponse.ts
+// src/utils/ApiResponse.ts
 var ApiResponse = class {
   success;
   statusCode;
@@ -623,7 +654,7 @@ var ApiResponse = class {
   }
 };
 
-// server/src/utils/asyncHandler.ts
+// src/utils/asyncHandler.ts
 var asyncHandler = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (fn) => (req, res, next) => {
@@ -631,7 +662,7 @@ var asyncHandler = (
   }
 );
 
-// server/src/utils/cookies.ts
+// src/utils/cookies.ts
 var REFRESH_COOKIE = "refreshToken";
 var ACCESS_COOKIE = "accessToken";
 var cookieOptions = {
@@ -659,7 +690,7 @@ var clearAuthCookies = (res) => {
 };
 var REFRESH_COOKIE_NAME = REFRESH_COOKIE;
 
-// server/src/jobs/queue.ts
+// src/jobs/queue.ts
 import { Queue } from "bullmq";
 import { Redis as Redis2 } from "ioredis";
 var EMAIL_QUEUE = "freezer-email";
@@ -679,7 +710,7 @@ var getEmailQueue = () => {
   return emailQueue;
 };
 
-// server/src/services/email.service.ts
+// src/services/email.service.ts
 var shellHtml = (body) => `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;background:#0d0d0d;color:#fff;border-radius:12px">
     <h1 style="color:#38bdf8;text-align:center">\u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F | Freezer El Balad</h1>
     ${body}
@@ -760,7 +791,7 @@ var enqueuePasswordResetOtp = (to, code) => enqueueEmail(emailJobs.resetOtp(to, 
 var enqueueEmailChangeVerification = (to, token) => enqueueEmail(emailJobs.emailChangeVerification(to, token));
 var enqueueOrderConfirmation = (to, orderNo, total) => enqueueEmail(emailJobs.orderConfirmation(to, orderNo, total));
 
-// server/src/constants/index.ts
+// src/constants/index.ts
 var ROLES = {
   ADMIN: "admin",
   MANAGER: "manager",
@@ -891,7 +922,7 @@ var DEFAULT_SETTINGS = {
   reviewPromptDelayHours: 24
 };
 
-// server/src/controllers/auth.controller.ts
+// src/controllers/auth.controller.ts
 var getUserWithRole = async (id) => {
   const user = await getById(id);
   if (!user) throw new ApiError(404, "User not found");
@@ -1137,7 +1168,7 @@ var socialAuthCallback = (provider) => asyncHandler(async (req, res) => {
   res.redirect(redirect);
 });
 
-// server/src/db/serviceTokens.ts
+// src/db/serviceTokens.ts
 import crypto3 from "node:crypto";
 var createToken = async (userId, name, scope = ["print"]) => {
   const rawToken = `fps_${crypto3.randomBytes(32).toString("hex")}`;
@@ -1176,7 +1207,7 @@ var revoke = async (id, userId) => {
   return r.length > 0;
 };
 
-// server/src/middlewares/auth.ts
+// src/middlewares/auth.ts
 var requireAuth = async (req, _res, next) => {
   try {
     const authReq = req;
@@ -1238,7 +1269,7 @@ var requireRole = (...roles) => (req, _res, next) => {
   next();
 };
 
-// server/src/middlewares/rateLimiter.ts
+// src/middlewares/rateLimiter.ts
 import rateLimit from "express-rate-limit";
 var num = (v, fallback) => {
   const n = Number(v);
@@ -1286,7 +1317,7 @@ var reviewsLimiter = rateLimit({
   skip: skipDisabled
 });
 
-// server/src/middlewares/zod.ts
+// src/middlewares/zod.ts
 import { z, ZodError } from "zod";
 var zodBody = (schema) => (req, _res, next) => {
   const result = schema.safeParse(req.body);
@@ -1303,7 +1334,7 @@ var zodBody = (schema) => (req, _res, next) => {
   next(new ApiError(422, "Invalid request body"));
 };
 
-// server/src/schemas/auth.ts
+// src/schemas/auth.ts
 import { z as z2 } from "zod";
 var password = z2.string().min(8, "Password must be at least 8 characters").regex(/[A-Za-z]/, "Password must contain letters").regex(/[0-9]/, "Password must contain numbers");
 var registerSchema = z2.object({
@@ -1351,10 +1382,10 @@ var verifyEmailChangeSchema = z2.object({
   token: z2.string().min(1, "Token is required")
 });
 
-// server/src/schemas/order.ts
+// src/schemas/order.ts
 import { z as z4 } from "zod";
 
-// server/src/schemas/common.ts
+// src/schemas/common.ts
 import { z as z3 } from "zod";
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 var objectId = (message = "Invalid id format") => z3.string().regex(UUID_RE, message);
@@ -1362,7 +1393,7 @@ var nonNegative = (message = "Must be a positive number") => z3.coerce.number().
 var dateString = (message = "Must be a valid date") => z3.string().refine((v) => !Number.isNaN(Date.parse(v)), message);
 var localizedText = z3.object({ ar: z3.string().max(1e3).optional(), en: z3.string().max(1e3).optional() }).optional();
 
-// server/src/schemas/order.ts
+// src/schemas/order.ts
 var extra = z4.object({ name: z4.string().trim().min(1).max(100), price: nonNegative() });
 var item = z4.object({
   product: objectId("Product id is required"),
@@ -1407,7 +1438,7 @@ var markComplimentarySchema = z4.object({
   reason: z4.string().trim().min(1, "Reason is required").max(500)
 });
 
-// server/src/schemas/cart.ts
+// src/schemas/cart.ts
 import { z as z5 } from "zod";
 var extra2 = z5.object({ name: z5.string().trim().min(1).max(100), price: nonNegative().optional() });
 var addItemSchema = z5.object({
@@ -1425,7 +1456,7 @@ var applyCouponSchema = z5.object({
   code: z5.string().trim().max(50).optional()
 });
 
-// server/src/schemas/product.ts
+// src/schemas/product.ts
 import { z as z6 } from "zod";
 var size = z6.object({
   name: z6.string().trim().min(1, "Size name is required").max(50),
@@ -1461,7 +1492,7 @@ var productCreateSchema = z6.object({
 });
 var productUpdateSchema = productCreateSchema.partial();
 
-// server/src/schemas/category.ts
+// src/schemas/category.ts
 import { z as z7 } from "zod";
 var categoryCreateSchema = z7.object({
   name: z7.string().trim().min(1, "Category name is required").max(100),
@@ -1477,7 +1508,7 @@ var categoryCreateSchema = z7.object({
 });
 var categoryUpdateSchema = categoryCreateSchema.partial();
 
-// server/src/schemas/offer.ts
+// src/schemas/offer.ts
 import { z as z8 } from "zod";
 var offerCreateSchema = z8.object({
   title: z8.string().trim().min(1, "Offer title is required").max(150),
@@ -1495,7 +1526,7 @@ var offerCreateSchema = z8.object({
 });
 var offerUpdateSchema = offerCreateSchema.partial();
 
-// server/src/schemas/coupon.ts
+// src/schemas/coupon.ts
 import { z as z9 } from "zod";
 var couponCreateSchema = z9.object({
   code: z9.string().trim().min(1, "Coupon code is required").max(40),
@@ -1518,7 +1549,7 @@ var couponValidateSchema = z9.object({
   subtotal: z9.coerce.number().min(0).default(0)
 });
 
-// server/src/schemas/banner.ts
+// src/schemas/banner.ts
 import { z as z10 } from "zod";
 var bannerCreateSchema = z10.object({
   title: z10.string().trim().min(1, "Banner title is required").max(150),
@@ -1532,7 +1563,7 @@ var bannerCreateSchema = z10.object({
 });
 var bannerUpdateSchema = bannerCreateSchema.partial();
 
-// server/src/schemas/gallery.ts
+// src/schemas/gallery.ts
 import { z as z11 } from "zod";
 var galleryCreateSchema = z11.object({
   title: z11.string().trim().min(1, "Gallery title is required").max(150),
@@ -1543,7 +1574,7 @@ var galleryCreateSchema = z11.object({
 });
 var galleryUpdateSchema = galleryCreateSchema.partial();
 
-// server/src/schemas/branch.ts
+// src/schemas/branch.ts
 import { z as z12 } from "zod";
 var branchCreateSchema = z12.object({
   name: z12.string().trim().min(1, "Branch name is required").max(150),
@@ -1562,7 +1593,7 @@ var branchCreateSchema = z12.object({
 });
 var branchUpdateSchema = branchCreateSchema.partial();
 
-// server/src/schemas/review.ts
+// src/schemas/review.ts
 import { z as z13 } from "zod";
 var rating = z13.coerce.number().int("Rating must be a whole number").min(1, "Rating must be 1-5").max(5, "Rating must be 1-5");
 var comment = z13.string().trim().max(600, "Review must be at most 600 characters").optional();
@@ -1604,7 +1635,7 @@ var restaurantReviewCreateSchema = z13.object({
   overall: z13.coerce.number().int().min(1).max(5).optional()
 });
 
-// server/src/schemas/contact.ts
+// src/schemas/contact.ts
 import { z as z14 } from "zod";
 var contactSchema = z14.object({
   name: z14.string().trim().min(1, "Name is required").max(80),
@@ -1620,7 +1651,7 @@ var newsletterUnsubscribeSchema = z14.object({
   email: z14.string().trim().toLowerCase().email("Valid email is required")
 });
 
-// server/src/schemas/post.ts
+// src/schemas/post.ts
 import { z as z15 } from "zod";
 var postFields = {
   titleEn: z15.string().trim().max(200).optional(),
@@ -1640,7 +1671,7 @@ var postCreateSchema = z15.object({
 });
 var postUpdateSchema = z15.object({ title: z15.string().trim().max(200).optional(), ...postFields });
 
-// server/src/schemas/settings.ts
+// src/schemas/settings.ts
 import { z as z16 } from "zod";
 var settingsUpdateSchema = z16.object({
   restaurantName: localizedText,
@@ -1674,7 +1705,7 @@ var settingsUpdateSchema = z16.object({
   }).optional()
 });
 
-// server/src/schemas/user.ts
+// src/schemas/user.ts
 import { z as z17 } from "zod";
 var updateProfileSchema = z17.object({
   fullName: z17.string().trim().min(1, "Full name is required").max(80).optional(),
@@ -1690,7 +1721,7 @@ var adminUpdateUserSchema = z17.object({
   avatar: z17.string().trim().max(500).optional()
 });
 
-// server/src/schemas/notification.ts
+// src/schemas/notification.ts
 import { z as z18 } from "zod";
 var sendNotificationSchema = z18.object({
   userIds: z18.array(objectId("Invalid user id")).min(1, "userIds are required").max(200),
@@ -1702,7 +1733,7 @@ var sendNotificationSchema = z18.object({
   link: z18.string().trim().max(500).optional()
 });
 
-// server/src/routes/auth.routes.ts
+// src/routes/auth.routes.ts
 var router = Router();
 router.post("/register", authLimiter, zodBody(registerSchema), register);
 router.post("/login", authLimiter, zodBody(loginSchema), login);
@@ -1742,10 +1773,10 @@ router.get("/providers", (_req, res) => {
 });
 var auth_routes_default = router;
 
-// server/src/routes/user.routes.ts
+// src/routes/user.routes.ts
 import { Router as Router2 } from "express";
 
-// server/src/db/adminUsers.ts
+// src/db/adminUsers.ts
 var ADMIN_COLS = `
   u.id::text AS "_id",
   u."fullName", u.email, u.phone, u.role::text, u.avatar,
@@ -1812,7 +1843,7 @@ var updateProfile = async (id, sets) => {
   return getProfile(id);
 };
 
-// server/src/controllers/user.controller.ts
+// src/controllers/user.controller.ts
 var listUsers2 = asyncHandler(async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 20;
@@ -1860,17 +1891,17 @@ var updateProfile2 = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, user));
 });
 
-// server/src/routes/user.routes.ts
+// src/routes/user.routes.ts
 var router2 = Router2();
 router2.use(requireAuth);
 router2.get("/profile", getProfile2);
 router2.patch("/profile", zodBody(updateProfileSchema), updateProfile2);
 var user_routes_default = router2;
 
-// server/src/routes/product.routes.ts
+// src/routes/product.routes.ts
 import { Router as Router3 } from "express";
 
-// server/src/db/products.ts
+// src/db/products.ts
 var SIZES_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', ps.id::text, 'name', ps.name, 'nameEn', ps."nameEn", 'price', ps.price::float8, 'isAvailable', ps."isAvailable") ORDER BY ps."sortOrder"), '[]'::jsonb) FROM product_sizes ps WHERE ps."productId" = p.id)`;
 var EXTRAS_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', pe.id::text, 'name', pe.name, 'nameEn', pe."nameEn", 'price', pe.price::float8) ORDER BY pe."sortOrder"), '[]'::jsonb) FROM product_extras pe WHERE pe."productId" = p.id)`;
 var PUBLIC_COLS2 = `
@@ -2113,7 +2144,7 @@ var toggleAvailable = async (id) => {
   return getByIdAdmin2(id);
 };
 
-// server/src/utils/slugify.ts
+// src/utils/slugify.ts
 import slugify from "slugify";
 var slugifyText = (text, lang = "en") => {
   const base = slugify(text, { lower: true, strict: true, locale: "en" });
@@ -2131,7 +2162,7 @@ var uniqueSlug = async (text, exists3) => {
   return slug;
 };
 
-// server/src/controllers/product.controller.ts
+// src/controllers/product.controller.ts
 var listProducts2 = asyncHandler(async (req, res) => {
   const q = req.query;
   const page = Math.max(1, Number(q.page) || 1);
@@ -2265,7 +2296,7 @@ var deleteProduct = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/db/activityLogs.ts
+// src/db/activityLogs.ts
 var create3 = async (data) => {
   await query(
     `INSERT INTO activity_logs ("actorId", role, action, resource, "targetId", method, path, ip, changes)
@@ -2306,7 +2337,7 @@ var list = async (page, limit) => {
   return toPage2(rows, limit);
 };
 
-// server/src/middlewares/activityLogger.ts
+// src/middlewares/activityLogger.ts
 var SENSITIVE_KEYS = /password|token|authorization|cookie|secret/i;
 var redactBody = (body) => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -2345,7 +2376,7 @@ var logActivity = (action, resource) => async (req, res, next) => {
   next();
 };
 
-// server/src/middlewares/cache.ts
+// src/middlewares/cache.ts
 var cached = ({ resource, ttl, suffix, vary, skip }) => {
   return async (req, res, next) => {
     if (!cache.isEnabled() || skip?.(req)) {
@@ -2401,7 +2432,7 @@ var invalidateCache = (...resources) => {
   };
 };
 
-// server/src/routes/product.routes.ts
+// src/routes/product.routes.ts
 var router3 = Router3();
 var querySuffix = (req) => req.url.split("?")[1] ?? "";
 router3.get("/", cached({ resource: "products", ttl: 60, suffix: querySuffix, skip: (req) => Boolean(new URL(req.url, "http://x").searchParams.get("search")) }), listProducts2);
@@ -2442,10 +2473,10 @@ router3.delete(
 );
 var product_routes_default = router3;
 
-// server/src/routes/category.routes.ts
+// src/routes/category.routes.ts
 import { Router as Router4 } from "express";
 
-// server/src/db/categories.ts
+// src/db/categories.ts
 var CATEGORY_COLS = `
   c.id::text AS "_id",
   c.name, c."nameEn", c.slug, c.type::text AS "type",
@@ -2536,7 +2567,7 @@ var remove2 = async (id) => {
   return r.length > 0;
 };
 
-// server/src/controllers/category.controller.ts
+// src/controllers/category.controller.ts
 var tree2 = asyncHandler(async (_req, res) => {
   res.json(new ApiResponse(200, await tree()));
 });
@@ -2599,7 +2630,7 @@ var remove3 = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/routes/category.routes.ts
+// src/routes/category.routes.ts
 var router4 = Router4();
 router4.get("/tree", cached({ resource: "categories", ttl: 300, suffix: "tree" }), tree2);
 router4.get("/", cached({ resource: "categories", ttl: 300, suffix: (req) => new URL(req.url, "http://x").searchParams.get("all") === "true" ? "all" : "active" }), list3);
@@ -2611,10 +2642,10 @@ router4.patch("/:id/toggle", requirePermission("categories", "hide"), invalidate
 router4.delete("/:id", requirePermission("categories", "delete"), logActivity("delete", "categories"), invalidateCache("categories", "products"), remove3);
 var category_routes_default = router4;
 
-// server/src/routes/review.routes.ts
+// src/routes/review.routes.ts
 import { Router as Router5 } from "express";
 
-// server/src/db/reviews.ts
+// src/db/reviews.ts
 var REVIEW_COLS = `
   r.id::text AS "_id",
   r."userId"::text AS "user",
@@ -3056,7 +3087,7 @@ var adminStats = async () => {
   return rows[0];
 };
 
-// server/src/controllers/review.controller.ts
+// src/controllers/review.controller.ts
 var parsePage = (raw) => Math.max(1, Number(raw) || 1);
 var parseLimit = (raw) => Math.min(50, Math.max(1, Number(raw) || 10));
 var str = (raw) => typeof raw === "string" ? raw.trim() : "";
@@ -3190,7 +3221,7 @@ var moderate2 = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, review));
 });
 
-// server/src/routes/review.routes.ts
+// src/routes/review.routes.ts
 var router5 = Router5();
 var pageSuffix = (suffix) => (req) => `${suffix}:${new URL(req.url, "http://x").searchParams.get("page") ?? "1"}`;
 router5.get(
@@ -3234,10 +3265,10 @@ router5.patch("/:id", requireAuth, reviewsLimiter, zodBody(reviewUpdateSchema), 
 router5.delete("/:id", requireAuth, reviewsLimiter, invalidateCache("products", "reviews"), remove5);
 var review_routes_default = router5;
 
-// server/src/routes/wishlist.routes.ts
+// src/routes/wishlist.routes.ts
 import { Router as Router6 } from "express";
 
-// server/src/db/wishlists.ts
+// src/db/wishlists.ts
 var ensureWishlist = async (userId) => {
   await query(`INSERT INTO wishlists ("userId") VALUES ($1::uuid) ON CONFLICT ("userId") DO NOTHING`, [userId]);
   const rows = await query(`SELECT id FROM wishlists WHERE "userId" = $1::uuid`, [userId]);
@@ -3296,7 +3327,7 @@ var clear = async (userId) => {
   await query(`DELETE FROM wishlist_items WHERE "wishlistId" = $1::uuid`, [wishlistId]);
 };
 
-// server/src/controllers/wishlist.controller.ts
+// src/controllers/wishlist.controller.ts
 var getWishlist2 = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, await getWishlist(req.user.id)));
 });
@@ -3309,7 +3340,7 @@ var clear2 = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, []));
 });
 
-// server/src/routes/wishlist.routes.ts
+// src/routes/wishlist.routes.ts
 var router6 = Router6();
 router6.use(requireAuth);
 router6.get("/", getWishlist2);
@@ -3317,10 +3348,10 @@ router6.post("/toggle/:productId", toggle4);
 router6.delete("/", clear2);
 var wishlist_routes_default = router6;
 
-// server/src/routes/cart.routes.ts
+// src/routes/cart.routes.ts
 import { Router as Router7 } from "express";
 
-// server/src/db/carts.ts
+// src/db/carts.ts
 var CART_PRODUCT_JSON = `
   CASE WHEN p.id IS NULL THEN NULL
   ELSE jsonb_build_object(
@@ -3429,7 +3460,7 @@ var clearCart = async (userId) => {
   });
 };
 
-// server/src/controllers/cart.controller.ts
+// src/controllers/cart.controller.ts
 var getCart2 = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, await getCart(req.user.id)));
 });
@@ -3472,7 +3503,7 @@ var clearCart2 = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, { items: [] }));
 });
 
-// server/src/routes/cart.routes.ts
+// src/routes/cart.routes.ts
 var router7 = Router7();
 router7.use(requireAuth);
 router7.get("/", getCart2);
@@ -3483,10 +3514,10 @@ router7.post("/coupon", zodBody(applyCouponSchema), applyCoupon2);
 router7.delete("/", clearCart2);
 var cart_routes_default = router7;
 
-// server/src/routes/order.routes.ts
+// src/routes/order.routes.ts
 import { Router as Router8 } from "express";
 
-// server/src/db/orders.ts
+// src/db/orders.ts
 var ITEMS_JSON = `
   (SELECT COALESCE(jsonb_agg(jsonb_build_object(
       '_id', oi.id::text,
@@ -3766,7 +3797,7 @@ var placeOrder = async (input) => {
   return order;
 };
 
-// server/src/db/analytics.ts
+// src/db/analytics.ts
 var STATS_CUTOFF_KEY = "statsClearedAt";
 var getStatsCutoff = async () => {
   const rows = await query("SELECT value FROM settings WHERE key = $1", [STATS_CUTOFF_KEY]);
@@ -3885,9 +3916,9 @@ var trend = async (since) => {
     params
   );
 };
-var periodStats = async (start) => {
+var periodStats = async (start2) => {
   const cutoff = await getStatsCutoff();
-  const params = cutoff ? [start, cutoff] : [start];
+  const params = cutoff ? [start2, cutoff] : [start2];
   const orderFilter = cutoff ? ` AND o2."createdAt" >= $2::timestamptz` : "";
   const [totalsRow, top] = await Promise.all([
     query(
@@ -3957,7 +3988,7 @@ var customersBreakdown = async () => {
   );
 };
 
-// server/src/db/notifications.ts
+// src/db/notifications.ts
 var NOTIFICATION_COLS = `
   n.id::text AS "_id",
   n."userId"::text AS "user",
@@ -4017,14 +4048,14 @@ var sendToUsers = async (data) => {
   }
 };
 
-// server/src/utils/index.ts
+// src/utils/index.ts
 var generateOrderNo = async () => {
   const timestamp = Date.now().toString().slice(-6);
   const rand = Math.floor(1e3 + Math.random() * 9e3);
   return `PH-${timestamp}-${rand}`;
 };
 
-// server/src/db/coupons.ts
+// src/db/coupons.ts
 var COUPON_COLS = `
   c.id::text AS "_id",
   c.code, c.name, c."nameEn", c.type::text AS "type",
@@ -4102,7 +4133,7 @@ var countRedemptionsForUser = async (couponId, userId) => {
   return Number(rows[0]?.n ?? 0);
 };
 
-// server/src/services/coupon.service.ts
+// src/services/coupon.service.ts
 var validateCoupon = async (code, userId, subtotal) => {
   const coupon = await getByCode(code.toUpperCase());
   if (!coupon || coupon.isActive !== true) throw new ApiError(404, "Invalid coupon code");
@@ -4135,7 +4166,7 @@ var validateCoupon = async (code, userId, subtotal) => {
   return { code: coupon.code, amount: Math.round(amount * 100) / 100, type: coupon.type };
 };
 
-// server/src/db/settings.ts
+// src/db/settings.ts
 var INTERNAL_SETTINGS_KEYS = /* @__PURE__ */ new Set(["statsClearedAt"]);
 var getSettingsMap = async () => {
   const docs = await query("SELECT key, value FROM settings");
@@ -4155,7 +4186,7 @@ var upsertSetting = async (key, value) => {
   );
 };
 
-// server/src/controllers/order.controller.ts
+// src/controllers/order.controller.ts
 var createOrder = asyncHandler(async (req, res) => {
   const { items: rawItems, couponCode, address, phone, notes, paymentMethod } = req.body;
   const userId = req.user.id;
@@ -4366,7 +4397,7 @@ var stats2 = asyncHandler(async (_req, res) => {
   res.json(new ApiResponse(200, await stats()));
 });
 
-// server/src/routes/order.routes.ts
+// src/routes/order.routes.ts
 var router8 = Router8();
 router8.use(requireAuth);
 router8.post("/", zodBody(createAdminOrderSchema), invalidateCache("dashboard"), createOrder);
@@ -4379,10 +4410,10 @@ router8.get("/admin", requirePermission("orders", "read"), adminList6);
 router8.patch("/:id/status", requirePermission("orders", "update"), zodBody(updateStatusSchema), logActivity("status", "orders"), invalidateCache("dashboard"), updateStatus2);
 var order_routes_default = router8;
 
-// server/src/routes/coupon.routes.ts
+// src/routes/coupon.routes.ts
 import { Router as Router9 } from "express";
 
-// server/src/controllers/coupon.controller.ts
+// src/controllers/coupon.controller.ts
 var validate = asyncHandler(async (req, res) => {
   const { code, subtotal } = req.body;
   const result = await validateCoupon(code, req.user.id, Number(subtotal) || 0);
@@ -4418,7 +4449,7 @@ var remove7 = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/routes/coupon.routes.ts
+// src/routes/coupon.routes.ts
 var router9 = Router9();
 router9.post("/validate", requireAuth, zodBody(couponValidateSchema), validate);
 router9.use(requireAuth);
@@ -4429,10 +4460,10 @@ router9.patch("/:id", requirePermission("coupons", "update"), zodBody(couponUpda
 router9.delete("/:id", requirePermission("coupons", "delete"), logActivity("delete", "coupons"), remove7);
 var coupon_routes_default = router9;
 
-// server/src/routes/offer.routes.ts
+// src/routes/offer.routes.ts
 import { Router as Router10 } from "express";
 
-// server/src/db/offers.ts
+// src/db/offers.ts
 var MONGODB_ID_RE = /^[0-9a-fA-F]{24}$/;
 var UUID_RE3 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 var toUuidOrNull = (id) => {
@@ -4555,7 +4586,7 @@ var remove8 = async (id) => {
   return r.length > 0;
 };
 
-// server/src/controllers/offer.controller.ts
+// src/controllers/offer.controller.ts
 var activeOffers2 = asyncHandler(async (_req, res) => {
   res.json(new ApiResponse(200, await activeOffers()));
 });
@@ -4594,7 +4625,7 @@ var remove9 = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/routes/offer.routes.ts
+// src/routes/offer.routes.ts
 var router10 = Router10();
 router10.get("/active", cached({ resource: "offers", ttl: 60, suffix: "active" }), activeOffers2);
 router10.get("/:id", cached({ resource: "offers", ttl: 60, suffix: (req) => req.params.id }), getOne2);
@@ -4606,10 +4637,10 @@ router10.patch("/:id", requirePermission("offers", "update"), zodBody(offerUpdat
 router10.delete("/:id", requirePermission("offers", "delete"), logActivity("delete", "offers"), invalidateCache("offers", "products", "dashboard"), remove9);
 var offer_routes_default = router10;
 
-// server/src/routes/banner.routes.ts
+// src/routes/banner.routes.ts
 import { Router as Router11 } from "express";
 
-// server/src/db/banners.ts
+// src/db/banners.ts
 var BANNER_COLS = `
   b.id::text AS "_id",
   b.title, b.subtitle, b.image, b."buttonText", b."buttonLink",
@@ -4676,7 +4707,7 @@ var remove10 = async (id) => {
   return r.length > 0;
 };
 
-// server/src/controllers/banner.controller.ts
+// src/controllers/banner.controller.ts
 var active2 = asyncHandler(async (_req, res) => {
   res.json(new ApiResponse(200, await active()));
 });
@@ -4715,7 +4746,7 @@ var remove11 = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/routes/banner.routes.ts
+// src/routes/banner.routes.ts
 var router11 = Router11();
 router11.get("/active", cached({ resource: "banners", ttl: 60, suffix: "active" }), active2);
 router11.use(requireAuth);
@@ -4727,10 +4758,10 @@ router11.patch("/:id/toggle", invalidateCache("banners"), toggle6);
 router11.delete("/:id", requirePermission("banners", "delete"), logActivity("delete", "banners"), invalidateCache("banners"), remove11);
 var banner_routes_default = router11;
 
-// server/src/routes/gallery.routes.ts
+// src/routes/gallery.routes.ts
 import { Router as Router12 } from "express";
 
-// server/src/db/gallery.ts
+// src/db/gallery.ts
 var GALLERY_COLS = `
   g.id::text AS "_id",
   g.title, g."titleEn", g.image,
@@ -4789,7 +4820,7 @@ var remove12 = async (id) => {
   return r.length > 0;
 };
 
-// server/src/controllers/gallery.controller.ts
+// src/controllers/gallery.controller.ts
 var publicList = asyncHandler(async (_req, res) => {
   res.json(new ApiResponse(200, await visible()));
 });
@@ -4828,7 +4859,7 @@ var remove13 = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/routes/gallery.routes.ts
+// src/routes/gallery.routes.ts
 var router12 = Router12();
 router12.get("/public", cached({ resource: "gallery", ttl: 300, suffix: "public" }), publicList);
 router12.use(requireAuth);
@@ -4840,10 +4871,10 @@ router12.patch("/:id/toggle", requirePermission("gallery", "update"), invalidate
 router12.delete("/:id", requirePermission("gallery", "delete"), logActivity("delete", "gallery"), invalidateCache("gallery"), remove13);
 var gallery_routes_default = router12;
 
-// server/src/routes/branch.routes.ts
+// src/routes/branch.routes.ts
 import { Router as Router13 } from "express";
 
-// server/src/db/branches.ts
+// src/db/branches.ts
 var BRANCH_COLS = `
   b.id::text AS "_id",
   b.name, b."nameEn", b.address, b."addressEn", b.phone, b.whatsapp,
@@ -4907,7 +4938,7 @@ var remove14 = async (id) => {
   return r.length > 0;
 };
 
-// server/src/controllers/branch.controller.ts
+// src/controllers/branch.controller.ts
 var list13 = asyncHandler(async (_req, res) => {
   res.json(new ApiResponse(200, await list12(true)));
 });
@@ -4941,7 +4972,7 @@ var remove15 = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/routes/branch.routes.ts
+// src/routes/branch.routes.ts
 var router13 = Router13();
 router13.get("/", cached({ resource: "branches", ttl: 300, suffix: "active" }), list13);
 router13.use(requireAuth);
@@ -4952,10 +4983,10 @@ router13.patch("/:id", requirePermission("branches", "update"), zodBody(branchUp
 router13.delete("/:id", requirePermission("branches", "delete"), logActivity("delete", "branches"), invalidateCache("branches"), remove15);
 var branch_routes_default = router13;
 
-// server/src/routes/contact.routes.ts
+// src/routes/contact.routes.ts
 import { Router as Router14 } from "express";
 
-// server/src/db/contacts.ts
+// src/db/contacts.ts
 var CONTACT_COLS = `
   c.id::text AS "_id",
   c.name, c.phone, c.email, c.message, c."isRead", c."createdAt", c."updatedAt"`;
@@ -4999,7 +5030,7 @@ var remove16 = async (id) => {
   return r.length > 0;
 };
 
-// server/src/controllers/contact.controller.ts
+// src/controllers/contact.controller.ts
 var submit = asyncHandler(async (req, res) => {
   const body = req.body;
   if (!body.name || !body.phone || !body.message) {
@@ -5038,7 +5069,7 @@ var remove17 = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/routes/contact.routes.ts
+// src/routes/contact.routes.ts
 var router14 = Router14();
 router14.post("/", contactLimiter, zodBody(contactSchema), submit);
 router14.use(requireAuth);
@@ -5048,10 +5079,10 @@ router14.patch("/:id/read", markRead3);
 router14.delete("/:id", requirePermission("contacts", "delete"), remove17);
 var contact_routes_default = router14;
 
-// server/src/routes/newsletter.routes.ts
+// src/routes/newsletter.routes.ts
 import { Router as Router15 } from "express";
 
-// server/src/db/newsletters.ts
+// src/db/newsletters.ts
 var NEWSLETTER_COLS = `
   n.id::text AS "_id",
   n.email, n.name, n.source, n."isSubscribed", n."unsubscribedAt",
@@ -5086,7 +5117,7 @@ var list16 = async () => await query(
      WHERE n."isSubscribed" = true ORDER BY n."createdAt" DESC, n.id`
 );
 
-// server/src/controllers/newsletter.controller.ts
+// src/controllers/newsletter.controller.ts
 var subscribe = asyncHandler(async (req, res) => {
   const body = req.body;
   if (!body.email) throw new ApiError(400, "Email is required");
@@ -5119,7 +5150,7 @@ var list17 = asyncHandler(async (_req, res) => {
   res.json(new ApiResponse(200, await list16()));
 });
 
-// server/src/routes/newsletter.routes.ts
+// src/routes/newsletter.routes.ts
 var router15 = Router15();
 router15.post("/subscribe", subscribeLimiter, zodBody(newsletterSubscribeSchema), subscribe);
 router15.post("/unsubscribe", subscribeLimiter, zodBody(newsletterUnsubscribeSchema), unsubscribe2);
@@ -5128,10 +5159,10 @@ router15.use(requirePermission("newsletter", "read"));
 router15.get("/", list17);
 var newsletter_routes_default = router15;
 
-// server/src/routes/setting.routes.ts
+// src/routes/setting.routes.ts
 import { Router as Router16 } from "express";
 
-// server/src/controllers/setting.controller.ts
+// src/controllers/setting.controller.ts
 var getPublic = asyncHandler(async (_req, res) => {
   res.json(new ApiResponse(200, await getSettingsMap()));
 });
@@ -5149,7 +5180,7 @@ var update17 = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/routes/setting.routes.ts
+// src/routes/setting.routes.ts
 var router16 = Router16();
 router16.get("/public", cached({ resource: "settings", ttl: 300, suffix: "public" }), getPublic);
 router16.use(requireAuth);
@@ -5158,10 +5189,10 @@ router16.get("/", getAdmin);
 router16.patch("/", requirePermission("settings", "update"), zodBody(settingsUpdateSchema), logActivity("update", "settings"), invalidateCache("settings"), update17);
 var setting_routes_default = router16;
 
-// server/src/routes/notification.routes.ts
+// src/routes/notification.routes.ts
 import { Router as Router17 } from "express";
 
-// server/src/controllers/notification.controller.ts
+// src/controllers/notification.controller.ts
 var getForUser = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
@@ -5199,7 +5230,7 @@ var sendToUsers2 = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/routes/notification.routes.ts
+// src/routes/notification.routes.ts
 var router17 = Router17();
 router17.use(requireAuth);
 router17.get("/", getForUser);
@@ -5208,10 +5239,10 @@ router17.patch("/read-all", markAllRead2);
 router17.post("/send", requirePermission("notifications", "create"), zodBody(sendNotificationSchema), sendToUsers2);
 var notification_routes_default = router17;
 
-// server/src/routes/analytics.routes.ts
+// src/routes/analytics.routes.ts
 import { Router as Router18 } from "express";
 
-// server/src/controllers/analytics.controller.ts
+// src/controllers/analytics.controller.ts
 import * as XLSX from "xlsx";
 var periodWindows = (now = /* @__PURE__ */ new Date()) => {
   const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -5552,7 +5583,7 @@ var exportStats = asyncHandler(async (req, res) => {
   res.send(buffer);
 });
 
-// server/src/routes/analytics.routes.ts
+// src/routes/analytics.routes.ts
 var router18 = Router18();
 router18.use(requireAuth);
 router18.use(requirePermission("analytics", "read"));
@@ -5563,10 +5594,10 @@ router18.post("/refresh", requireRole(ROLES.ADMIN), invalidateCache("dashboard")
 router18.get("/export", requireRole(ROLES.ADMIN), exportStats);
 var analytics_routes_default = router18;
 
-// server/src/routes/upload.routes.ts
+// src/routes/upload.routes.ts
 import { Router as Router19 } from "express";
 
-// server/src/controllers/upload.controller.ts
+// src/controllers/upload.controller.ts
 import fs3 from "node:fs";
 import path3 from "node:path";
 var uploadSingle2 = asyncHandler(async (req, res) => {
@@ -5626,7 +5657,7 @@ var removeFile = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, null, "File deleted"));
 });
 
-// server/src/routes/upload.routes.ts
+// src/routes/upload.routes.ts
 var router19 = Router19();
 router19.use(requireAuth);
 var verifySingle = validateUploadedImage("single");
@@ -5637,10 +5668,10 @@ router19.get("/", listFiles);
 router19.delete("/:filename", removeFile);
 var upload_routes_default = router19;
 
-// server/src/routes/post.routes.ts
+// src/routes/post.routes.ts
 import { Router as Router20 } from "express";
 
-// server/src/db/posts.ts
+// src/db/posts.ts
 var POST_COLS = `
   p.id::text AS "_id",
   p.title, p."titleEn", p.slug, p.excerpt, p."excerptEn",
@@ -5743,7 +5774,7 @@ var remove18 = async (id) => {
   return r.length > 0;
 };
 
-// server/src/controllers/post.controller.ts
+// src/controllers/post.controller.ts
 var resolveSlug = async (raw, excludeId) => uniqueSlug(slugifyText(String(raw || ""), "ar"), (slug) => exists2(slug, excludeId));
 var listPublished2 = asyncHandler(async (req, res) => {
   const page = Number(req.query.page) || 1;
@@ -5796,7 +5827,7 @@ var remove19 = asyncHandler(async (req, res) => {
   }
 });
 
-// server/src/routes/post.routes.ts
+// src/routes/post.routes.ts
 var router20 = Router20();
 router20.get("/", cached({ resource: "posts", ttl: 60, suffix: (req) => new URL(req.url, "http://x").searchParams.get("page") ?? "1" }), listPublished2);
 router20.get("/:slug", cached({ resource: "posts", ttl: 60, suffix: (req) => `slug:${req.params.slug}` }), getBySlug3);
@@ -5808,7 +5839,7 @@ router20.patch("/:id", requirePermission("posts", "update"), zodBody(postUpdateS
 router20.delete("/:id", requirePermission("posts", "delete"), logActivity("delete", "posts"), invalidateCache("posts"), remove19);
 var post_routes_default = router20;
 
-// server/src/routes/adminUser.routes.ts
+// src/routes/adminUser.routes.ts
 import { Router as Router21 } from "express";
 var router21 = Router21();
 router21.use(requireAuth);
@@ -5827,10 +5858,10 @@ router21.get(
 );
 var adminUser_routes_default = router21;
 
-// server/src/routes/systemReset.routes.ts
+// src/routes/systemReset.routes.ts
 import { Router as Router22 } from "express";
 
-// server/src/db/systemReset.ts
+// src/db/systemReset.ts
 var systemReset = async () => {
   return await withTransaction(async (tx) => {
     const orderItemsResult = await tx.query("DELETE FROM order_items");
@@ -5865,7 +5896,7 @@ var systemReset = async () => {
   });
 };
 
-// server/src/controllers/systemReset.controller.ts
+// src/controllers/systemReset.controller.ts
 var systemResetHandler = asyncHandler(async (_req, res) => {
   const result = await systemReset();
   res.json(
@@ -5883,7 +5914,7 @@ var systemResetHandler = asyncHandler(async (_req, res) => {
   );
 });
 
-// server/src/routes/systemReset.routes.ts
+// src/routes/systemReset.routes.ts
 var router22 = Router22();
 router22.post(
   "/reset",
@@ -5894,10 +5925,10 @@ router22.post(
 );
 var systemReset_routes_default = router22;
 
-// server/src/routes/print.routes.ts
+// src/routes/print.routes.ts
 import { Router as Router23 } from "express";
 
-// server/src/db/printJobs.ts
+// src/db/printJobs.ts
 var createPrintJob = async (orderId, orderNo, receipt) => {
   const rows = await query(
     `INSERT INTO print_jobs ("orderId", "orderNo", receipt)
@@ -5966,7 +5997,7 @@ var createTestPrintJob = async (receipt) => {
   return rows[0];
 };
 
-// server/src/controllers/print.controller.ts
+// src/controllers/print.controller.ts
 var createPrintJob2 = asyncHandler(async (req, res) => {
   const { orderId, receipt } = req.body;
   if (!orderId || !receipt) {
@@ -6027,7 +6058,7 @@ var markOrderPrinted = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, { printedAt: (/* @__PURE__ */ new Date()).toISOString() }, "Order marked as printed"));
 });
 
-// server/src/routes/print.routes.ts
+// src/routes/print.routes.ts
 var router23 = Router23();
 router23.use(requireAuth);
 router23.post("/", requirePermission("orders", "update"), createPrintJob2);
@@ -6041,10 +6072,10 @@ router23.post("/order/:orderId/mark", requirePermission("orders", "update"), mar
 router23.get("/poll", pollJob);
 var print_routes_default = router23;
 
-// server/src/routes/serviceToken.routes.ts
+// src/routes/serviceToken.routes.ts
 import { Router as Router24 } from "express";
 
-// server/src/controllers/serviceToken.controller.ts
+// src/controllers/serviceToken.controller.ts
 var generateToken = asyncHandler(async (req, res) => {
   const { name, scope } = req.body;
   if (!name || typeof name !== "string" || name.trim().length === 0) {
@@ -6068,7 +6099,7 @@ var revokeToken = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, null, "Token revoked"));
 });
 
-// server/src/routes/serviceToken.routes.ts
+// src/routes/serviceToken.routes.ts
 var router24 = Router24();
 router24.use(requireAuth);
 router24.post("/", requirePermission("settings", "update"), generateToken);
@@ -6076,7 +6107,7 @@ router24.get("/", requirePermission("settings", "read"), listTokens);
 router24.delete("/:id", requirePermission("settings", "update"), revokeToken);
 var serviceToken_routes_default = router24;
 
-// server/src/routes/index.ts
+// src/routes/index.ts
 var router25 = Router25();
 router25.use("/auth", auth_routes_default);
 router25.use("/users/me", user_routes_default);
@@ -6104,7 +6135,7 @@ router25.use("/print", print_routes_default);
 router25.use("/service-tokens", serviceToken_routes_default);
 var routes_default = router25;
 
-// server/src/app.ts
+// src/app.ts
 var app = express();
 app.disable("x-powered-by");
 app.use(requestIdMiddleware);
@@ -6189,8 +6220,104 @@ app.use(notFound);
 app.use(errorHandler);
 var app_default = app;
 
-// scripts/api-handler-entry.ts
-var api_handler_entry_default = app_default;
-export {
-  api_handler_entry_default as default
+// src/database/connection.ts
+var connectDB = async () => {
+  try {
+    const r = await pool.query("SELECT 1 AS ok");
+    if (!r.rows[0]) throw new Error("no response");
+  } catch (err) {
+    throw new Error(`[pg] could not connect to Postgres: ${err.message}`, { cause: err });
+  }
 };
+var disconnectDB = async () => {
+  await pool.end();
+};
+
+// src/database/migrate.ts
+import fs5 from "node:fs";
+import path5 from "node:path";
+import { fileURLToPath as fileURLToPath4 } from "node:url";
+var migrationsDir = () => {
+  const candidates = [
+    path5.resolve(path5.dirname(fileURLToPath4(import.meta.url)), "..", "database", "migrations"),
+    path5.resolve(process.cwd(), "server", "src", "database", "migrations"),
+    path5.resolve(process.cwd(), "src", "database", "migrations")
+  ];
+  for (const c of candidates) {
+    try {
+      if (fs5.statSync(c).isDirectory()) return c;
+    } catch {
+    }
+  }
+  throw new Error("[migrate] unable to locate database migrations directory");
+};
+var migrationFiles = () => {
+  const dir = migrationsDir();
+  return fs5.readdirSync(dir).filter((f) => f.endsWith(".sql")).sort();
+};
+var applyMigrations = async () => {
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS schema_migrations (
+       name text PRIMARY KEY,
+       "appliedAt" timestamptz NOT NULL DEFAULT now()
+     )`
+  );
+  for (const file of migrationFiles()) {
+    const applied = await pool.query("SELECT 1 FROM schema_migrations WHERE name = $1", [file]);
+    if (applied.rows.length) continue;
+    const sql = fs5.readFileSync(path5.join(migrationsDir(), file), "utf8");
+    await pool.query(sql);
+    await pool.query("INSERT INTO schema_migrations (name) VALUES ($1)", [file]);
+    console.log(`[migrate] applied ${file}`);
+  }
+};
+
+// src/database/roleSync.ts
+var ROLE_DEFS = [
+  { name: "Admin", slug: "admin", description: "Full access" },
+  { name: "Manager", slug: "manager", description: "Manage content & orders" },
+  { name: "Employee", slug: "employee", description: "Orders & reviews" },
+  { name: "Customer", slug: "customer", description: "Customer account" }
+];
+var ensureRolePermissions = async () => {
+  for (const r of ROLE_DEFS) {
+    await query(
+      `INSERT INTO roles (name, slug, description, permissions)
+       VALUES ($1, $2::user_role, $3, $4)
+       ON CONFLICT (slug) DO UPDATE SET
+         name = EXCLUDED.name,
+         description = EXCLUDED.description,
+         permissions = EXCLUDED.permissions`,
+      [r.name, r.slug, r.description, PERMISSION_PRESETS[r.slug]]
+    );
+  }
+  console.log("[roles] permissions synced from presets");
+};
+
+// src/server.ts
+var start = async () => {
+  try {
+    await connectDB();
+    await applyMigrations();
+    await ensureRolePermissions();
+    const server = app_default.listen(env_default.port, () => {
+      console.log(`[server] API running at http://localhost:${env_default.port} (${env_default.nodeEnv})`);
+    });
+    perfSummaryTimer(6e4, console.log);
+    const shutdown = async (signal) => {
+      console.log(`[server] ${signal} received, shutting down...`);
+      console.log(reportLatencies());
+      server.close(async () => {
+        await disconnectCache();
+        await disconnectDB();
+        process.exit(0);
+      });
+    };
+    process.on("SIGINT", () => void shutdown("SIGINT"));
+    process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  } catch (err) {
+    console.error("[server] Failed to start", err);
+    process.exit(1);
+  }
+};
+void start();

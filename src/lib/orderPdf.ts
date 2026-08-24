@@ -52,11 +52,6 @@ function renderArabicToImage(text: string, fontSize = 14, maxWidth = 500): strin
   return canvas.toDataURL('image/png');
 }
 
-/** Check if text contains Arabic characters. */
-function hasArabic(text: string): boolean {
-  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
-}
-
 /** Format date for PDF. */
 function fmtDate(iso: string, lang: string): string {
   return new Date(iso).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', {
@@ -197,7 +192,6 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
 
   const nameLabel = isAr ? 'الاسم' : 'Name';
   const phoneLabel = isAr ? 'الهاتف' : 'Phone';
-  const addressLabel = isAr ? 'العنوان' : 'Address';
   const cityLabel = isAr ? 'المدينة' : 'City';
   const streetLabel = isAr ? 'الشارع' : 'Street';
   const buildingLabel = isAr ? 'المبنى' : 'Building';

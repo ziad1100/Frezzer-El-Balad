@@ -1,12 +1,11 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Printer, X, Eye, Send, RefreshCw, Image } from 'lucide-react';
-import { toast } from 'sonner';
+import { Printer, Eye, Send, Image } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Select, Label } from '@/components/ui/Input';
 import { Input } from '@/components/ui/Input';
-import { cn, formatPrice } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { ReceiptData } from '@/lib/receiptFormatter';
 import { generateReceiptText } from '@/lib/receiptFormatter';
 import { renderReceiptToCanvas, canvasToDataURL, hasArabic } from '@/lib/receiptImage';
@@ -54,7 +53,6 @@ export function PrintInvoiceDialog({
   const [copies, setCopies] = useState(1);
   const [showPreview, setShowPreview] = useState(false);
   const [previewMode, setPreviewMode] = useState<'text' | 'image'>('text');
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
 
   // Detect if receipt contains Arabic text

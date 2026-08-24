@@ -7,7 +7,7 @@ import { getAdminSettings, updateSettings } from '@/api/admin';
 import { listRecentPrintJobs, retryPrintJob, generateServiceToken, listServiceTokens, revokeServiceToken, createTestPrintJob } from '@/api/print';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, Skeleton } from '@/components/ui/Card';
-import { Input, Label, Select } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { PageHeader } from '@/components/admin/primitives';
 import { cn } from '@/lib/utils';
 
@@ -84,7 +84,6 @@ export function AdminPrinterPage() {
     isActive: true,
   });
 
-  const editingPrinter = editingId ? printers.find((p) => p.id === editingId) : null;
 
   const saveMutation = useMutation({
     mutationFn: () => updateSettings({ printerConfig: printers }),
