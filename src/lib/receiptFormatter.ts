@@ -331,7 +331,7 @@ export const buildReceiptFromOrder = (
 
   return {
     storeNameAr: 'ولاد حلال',
-    storeNameEn: 'Wlad Halal',
+    storeNameEn: 'Welad Halal',
     orderNo: order.orderNo,
     date: dateStr,
     time: timeStr,
@@ -346,7 +346,7 @@ export const buildReceiptFromOrder = (
     total: order.total,
     paymentMethod: order.payment?.method ?? 'cash',
     footerAr: 'شكرًا لتسوقك من ولاد حلال',
-    footerEn: 'Thank you for shopping with Wlad Halal!',
+    footerEn: 'Thank you for shopping with Welad Halal!',
     paperWidth,
     language,
   };

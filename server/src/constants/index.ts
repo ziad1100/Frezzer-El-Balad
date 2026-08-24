@@ -144,14 +144,14 @@ export const OFFER_TYPES = {
 } as const;
 
 export const DEFAULT_SETTINGS = {
-  restaurantName: { ar: 'ولاد حلال', en: 'Wlad Halal' },
+  restaurantName: { ar: 'ولاد حلال', en: 'Welad Halal' },
   logo: '',
   tagline: { ar: 'لحوم وفراخ ومجمدات بجودة عالية وأسعار مناسبة', en: 'Premium meat, chicken & frozen products at affordable prices' },
   themeColors: { primary: '#1E3A5F', accent: '#38BDF8', background: '#0F172A' },
   workingHours: { ar: 'يومياً من 9 صباحاً حتى 11 مساءً', en: 'Daily 9AM - 11PM' },
   phone: '',
   whatsapp: '',
-  facebook: 'Wlad Halal',
+  facebook: 'Welad Halal',
   instagram: '@frezzerelbalad',
   tiktok: '',
   googleMaps: '',

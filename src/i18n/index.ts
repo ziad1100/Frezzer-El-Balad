@@ -14,13 +14,13 @@ export type LanguageCode = keyof typeof LANGUAGES;
 /** Language-aware document title */
 const TITLES: Record<LanguageCode, string> = {
   ar: 'ولاد حلال | لحوم وفراخ ومجمدات',
-  en: 'Wlad Halal | Meat, Chicken & Frozen Foods',
+  en: 'Welad Halal | Meat, Chicken & Frozen Foods',
 };
 
 /** Language-aware meta description */
 const META_DESCRIPTIONS: Record<LanguageCode, string> = {
   ar: 'ولاد حلال — متجر إلكتروني للحوم والفراخ والمصنعات والمجمدات.',
-  en: 'Wlad Halal — Your online store for meat, chicken, processed foods and frozen products.',
+  en: 'Welad Halal — Your online store for meat, chicken, processed foods and frozen products.',
 };
 
 const applyDocumentDirection = (lng: string): void => {

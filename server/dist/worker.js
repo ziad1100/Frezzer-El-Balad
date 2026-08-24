@@ -58,7 +58,7 @@ var env = {
   smtpPort: Number(process.env.SMTP_PORT) || 587,
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
-  mailFrom: process.env.MAIL_FROM || "Wlad Halal <noreply@wladhalal.local>",
+  mailFrom: process.env.MAIL_FROM || "Welad Halal <noreply@weladhalal.local>",
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   googleCallbackUrl: process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/v1/auth/google/callback",

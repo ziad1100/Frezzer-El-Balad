@@ -1,7 +1,7 @@
 /**
  * Curated gallery — real dish photos from public/images/products.
  *
- * The set covers Wlad Halal's frozen food / meat / chicken catalog.
+ * The set covers Welad Halal's frozen food / meat / chicken catalog.
  */
 export interface GalleryItem {
   src: string;

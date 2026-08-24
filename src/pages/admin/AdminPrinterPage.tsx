@@ -142,7 +142,7 @@ export function AdminPrinterPage() {
 
     const testReceiptPayload = {
       storeNameAr: '\u0648\u0644\u0627\u062f \u062d\u0644\u0627\u0644',
-      storeNameEn: 'Wlad Halal',
+      storeNameEn: 'Welad Halal',
       orderNo: 'TEST-001',
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
@@ -157,7 +157,7 @@ export function AdminPrinterPage() {
       total: 0,
       paymentMethod: 'cash',
       footerAr: '\u0634\u0643\u0631\u064b\u0627 \u0644\u062a\u0633\u0648\u0642\u0643 \u0645\u0646 \u0648\u0644\u0627\u062f \u062d\u0644\u0627\u0644',
-      footerEn: 'Thank you for shopping with Wlad Halal!',
+      footerEn: 'Thank you for shopping with Welad Halal!',
       paperWidth: printer.paperWidth,
       language: lang === 'ar' ? 'ar' : 'en',
     };

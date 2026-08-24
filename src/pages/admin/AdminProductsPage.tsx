@@ -175,6 +175,10 @@ export function AdminProductsPage() {
   const invalidate = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
     void queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    // Also invalidate customer-facing product caches so the Menu shows fresh data
+    void queryClient.invalidateQueries({ queryKey: ['products'] });
+    void queryClient.invalidateQueries({ queryKey: ['categories'] });
+    void queryClient.invalidateQueries({ queryKey: ['offers'] });
   };
 
   // ── Inline category creation ──

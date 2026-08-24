@@ -129,7 +129,7 @@ export function PdfPreviewDialog({ open, onClose, order }: PdfPreviewDialogProps
     }
   };
 
-  const fileName = `Freezer-Elbalad-Order-${order.orderNo}.pdf`;
+  const fileName = `Welad-Halal-Order-${order.orderNo}.pdf`;
   const stageLabel = STAGES[stage]?.[pdfLang === 'ar' ? 'ar' : 'en'] ?? '';
 
   return (

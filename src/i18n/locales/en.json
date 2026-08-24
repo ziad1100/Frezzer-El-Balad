@@ -39,7 +39,7 @@
     "account": "My account",
     "logout": "Sign out",
     "admin": "Dashboard",
-    "brand": "Wlad Halal",
+    "brand": "Welad Halal",
     "language": "ع",
     "meat": "Meat",
     "chicken": "Chicken",
@@ -53,7 +53,7 @@
   },
   "hero": {
     "badge": "Fresh frozen products",
-    "title": "Wlad Halal",
+    "title": "Welad Halal",
     "subtitle": "Everything you need from meat, chicken & frozen products in one place — premium quality at affordable prices",
     "ctaMenu": "Shop Now",
     "ctaOffers": "Browse Products",
@@ -210,7 +210,7 @@
     "verifyFailed": "This verification link is invalid or expired."
   },
   "footer": {
-    "tagline": "Wlad Halal — Your online store for premium meat, chicken, processed & frozen products at affordable prices, delivered wherever you are.",
+    "tagline": "Welad Halal — Your online store for premium meat, chicken, processed & frozen products at affordable prices, delivered wherever you are.",
     "quickLinks": "Quick links",
     "contact": "Contact us",
     "hours": "Opening hours",
@@ -228,7 +228,7 @@
     "offer": "Deal of the week",
     "deals": "Deals waiting for you",
     "bestSellers": "Best sellers",
-    "whyTitle": "Why choose Wlad Halal?",
+    "whyTitle": "Why choose Welad Halal?",
     "whyDough": "Fresh products",
     "whyDoughDesc": "Meat and frozen products delivered fresh from the finest sources.",
     "whyIngredients": "Premium quality",
