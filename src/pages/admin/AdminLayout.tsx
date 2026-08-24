@@ -169,7 +169,7 @@ export function AdminLayout() {
         <Link to="/" className="mb-6 flex items-center gap-2 px-2">
           <Logo className="h-9 w-9 rounded-lg" />
           <span className="text-lg font-extrabold text-night-50">
-            فريزر<span className="text-brand-500"> البلد</span>
+            ولاد<span className="text-brand-500"> حلال</span>
           </span>
         </Link>
         {sidebarContent()}
@@ -187,7 +187,7 @@ export function AdminLayout() {
               <Link to="/" className="flex items-center gap-2">
                 <Logo className="h-9 w-9 rounded-lg" />
                 <span className="text-lg font-extrabold text-night-50">
-                  فريزر<span className="text-brand-500"> البلد</span>
+                  ولاد<span className="text-brand-500"> حلال</span>
                 </span>
               </Link>
               <button
