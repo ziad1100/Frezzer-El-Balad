@@ -50,6 +50,7 @@ const navGroups: { label: string; items: { to: string; icon: typeof LayoutDashbo
     items: [
       { to: '/admin/products', icon: Package, label: 'admin.nav.products' },
       { to: '/admin/categories', icon: Boxes, label: 'admin.nav.categories' },
+      { to: '/admin/labels', icon: Tag, label: 'admin.nav.labels' },
       { to: '/admin/offers', icon: Tag, label: 'admin.nav.offers' },
       { to: '/admin/coupons', icon: Percent, label: 'admin.nav.coupons' },
       { to: '/admin/banners', icon: ImageIcon, label: 'admin.nav.banners' },
