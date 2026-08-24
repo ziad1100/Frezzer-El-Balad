@@ -101,7 +101,7 @@ export function PdfPreviewDialog({ open, onClose, order }: PdfPreviewDialogProps
         await tick(isLargeOrder ? 200 : 50);
         if (abortRef.current) return;
 
-        const dataUrl = generateOrderPdfDataUrl(order, pdfLang);
+        const dataUrl = await generateOrderPdfDataUrl(order, pdfLang);
         if (abortRef.current) return;
 
         setPdfDataUrl(dataUrl);
@@ -121,9 +121,9 @@ export function PdfPreviewDialog({ open, onClose, order }: PdfPreviewDialogProps
     return () => { abortRef.current = true; };
   }, [open, order, pdfLang, isAr, itemCount, isLargeOrder]);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     try {
-      generateOrderPdf(order, pdfLang);
+      await generateOrderPdf(order, pdfLang);
     } catch {
       // Error already handled by the utility
     }

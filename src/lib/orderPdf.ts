@@ -2,15 +2,52 @@
  * Order PDF Export
  *
  * Generates a professional A4 PDF document from order data.
- * Supports Arabic and English text.
- * Uses historical order data (prices from when the order was placed).
+ * Supports Arabic and English text with proper Unicode rendering.
+ * Uses the Amiri font for Arabic text and Helvetica for English.
  */
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Order } from '@/types';
 
-// Status labels
+// ── Arabic Font ──────────────────────────────────────────────────────────────
+// Amiri is an open-source Arabic Naskh typeface that supports full
+// Arabic Unicode range including shaping and ligatures.
+
+const AMIRI_FONT_URL = '/fonts/Amiri-Regular.ttf';
+const FONT_NAME = 'Amiri';
+let fontLoaded = false;
+let fontPromise: Promise<void> | null = null;
+
+/** Load and register the Amiri Arabic font with jsPDF. */
+async function ensureArabicFont(doc: jsPDF): Promise<void> {
+  if (fontLoaded) return;
+  if (!fontPromise) {
+    fontPromise = (async () => {
+      try {
+        const res = await fetch(AMIRI_FONT_URL);
+        if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`);
+        const buffer = await res.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+        doc.addFileToVFS(AMIRI_FONT_URL, base64);
+        doc.addFont(AMIRI_FONT_URL, FONT_NAME, 'normal');
+        fontLoaded = true;
+      } catch (err) {
+        console.error('[orderPdf] Failed to load Amiri font:', err);
+        // Fallback: font not loaded, Arabic will use canvas rendering
+      }
+    })();
+  }
+  await fontPromise;
+}
+
+// ── Status & payment labels ──────────────────────────────────────────────────
+
 const STATUS_LABELS: Record<string, { ar: string; en: string }> = {
   pending: { ar: 'جديد', en: 'New' },
   confirmed: { ar: 'تم التأكيد', en: 'Confirmed' },
@@ -30,29 +67,10 @@ const PAYMENT_METHODS: Record<string, { ar: string; en: string }> = {
   vodafone_cash: { ar: 'فودافون كاش', en: 'Vodafone Cash' },
 };
 
-/** Render Arabic text to a canvas and return as data URL. */
-function renderArabicToImage(text: string, fontSize = 14, maxWidth = 500): string {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d')!;
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-  ctx.font = `${fontSize}px "Cairo", "Noto Sans Arabic", "Arial", sans-serif`;
-  const metrics = ctx.measureText(text);
-  const textWidth = Math.min(metrics.width + 10, maxWidth);
+const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
-  canvas.width = Math.ceil(textWidth);
-  canvas.height = Math.ceil(fontSize * 1.6);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.font = `${fontSize}px "Cairo", "Noto Sans Arabic", "Arial", sans-serif`;
-  ctx.fillStyle = '#000000';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, 5, canvas.height / 2);
-
-  return canvas.toDataURL('image/png');
-}
-
-/** Format date for PDF. */
 function fmtDate(iso: string, lang: string): string {
   return new Date(iso).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', {
     dateStyle: 'medium',
@@ -60,71 +78,97 @@ function fmtDate(iso: string, lang: string): string {
   });
 }
 
-/** Format price. */
 function fmtPrice(n: number): string {
   return `${Math.round(n).toLocaleString()} EGP`;
 }
 
-/** Get the label for a status. */
 function statusLabel(status: string, lang: string): string {
   const labels = STATUS_LABELS[status];
   if (!labels) return status;
   return lang === 'ar' ? labels.ar : labels.en;
 }
 
-/** Get the label for a payment method. */
 function paymentLabel(method: string, lang: string): string {
   const labels = PAYMENT_METHODS[method];
   if (!labels) return method;
   return lang === 'ar' ? labels.ar : labels.en;
 }
 
-/**
- * Generate and download a PDF for an order.
- */
-export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
+/** Reverse Arabic text for display. Arabic in PDF standard fonts
+ *  needs visual reordering since jsPDF doesn't do bidi. */
+function reverseArabic(text: string): string {
+  // Split into segments: arabic runs and non-arabic runs
+  const segments: { text: string; isAr: boolean }[] = [];
+  let current = '';
+  let currentIsAr = false;
+
+  for (const ch of text) {
+    const chIsAr: boolean = ARABIC_RE.test(ch) || (ch === ' ' && currentIsAr);
+    if (chIsAr === currentIsAr) {
+      current += ch;
+    } else {
+      if (current) segments.push({ text: current, isAr: currentIsAr });
+      current = ch;
+      currentIsAr = chIsAr;
+    }
+  }
+  if (current) segments.push({ text: current, isAr: currentIsAr });
+
+  // Reverse Arabic segments, keep others
+  return segments
+    .map((s) => (s.isAr ? [...s.text].reverse().join('') : s.text))
+    .join('');
+}
+
+// ── PDF Builder ──────────────────────────────────────────────────────────────
+
+function buildPdf(doc: jsPDF, order: Order, lang: string, hasArabicFont: boolean): void {
   const isAr = lang === 'ar';
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 15;
-  const contentWidth = pageWidth - margin * 2;
   let y = margin;
 
-  // Helper: add text line
-  const addText = (text: string, fontSize: number, isBold = false, align: 'left' | 'center' | 'right' = 'left') => {
+  /** Write text using the correct font for the language. */
+  const writeText = (
+    text: string,
+    fontSize: number,
+    opts: { bold?: boolean; align?: 'left' | 'center' | 'right' } = {},
+  ) => {
+    const { bold = false, align = 'left' } = opts;
     doc.setFontSize(fontSize);
-    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-    if (align === 'center') {
-      doc.text(text, pageWidth / 2, y, { align: 'center' });
-    } else if (align === 'right') {
-      doc.text(text, pageWidth - margin, y, { align: 'right' });
+
+    if (hasArabicFont && isAr) {
+      // Use Amiri for Arabic mode
+      doc.setFont(FONT_NAME, 'normal');
+      // jsPDF doesn't support bidi natively — reverse Arabic runs
+      const shaped = reverseArabic(text);
+      if (align === 'center') {
+        doc.text(shaped, pageWidth / 2, y, { align: 'center' });
+      } else if (align === 'right') {
+        doc.text(shaped, pageWidth - margin, y, { align: 'right' });
+      } else {
+        doc.text(shaped, margin, y);
+      }
     } else {
-      doc.text(text, margin, y);
+      // Use Helvetica for English or when Arabic font isn't available
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      if (align === 'center') {
+        doc.text(text, pageWidth / 2, y, { align: 'center' });
+      } else if (align === 'right') {
+        doc.text(text, pageWidth - margin, y, { align: 'right' });
+      } else {
+        doc.text(text, margin, y);
+      }
     }
     y += fontSize * 0.5;
   };
 
-  // Helper: add Arabic text as image
-  const addArabicText = (text: string, fontSize: number, align: 'left' | 'center' | 'right' = 'left') => {
-    if (!text) return;
-    const dataUrl = renderArabicToImage(text, fontSize * 2, contentWidth);
-    const imgWidth = Math.min(contentWidth, 120);
-    const imgHeight = imgWidth * 0.15;
-    let x = margin;
-    if (align === 'center') x = (pageWidth - imgWidth) / 2;
-    else if (align === 'right') x = pageWidth - margin - imgWidth;
-    doc.addImage(dataUrl, 'PNG', x, y - imgHeight + 2, imgWidth, imgHeight);
-    y += fontSize * 0.5 + 2;
-  };
-
-  // Helper: draw a line
   const drawLine = () => {
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, y, pageWidth - margin, y);
     y += 3;
   };
 
-  // Helper: check page break
   const checkPageBreak = (needed: number) => {
     if (y + needed > doc.internal.pageSize.getHeight() - margin) {
       doc.addPage();
@@ -134,48 +178,29 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
 
   // ── Header: Store branding ──
   const storeName = isAr ? 'فريزر البلد' : 'Freezer Elbalad';
-  if (isAr) {
-    addArabicText(storeName, 22, 'center');
-  } else {
-    addText(storeName, 22, true, 'center');
-  }
+  writeText(storeName, 22, { bold: true, align: 'center' });
 
   const subtitle = isAr ? 'لحوم وفراخ ومجمدات' : 'Meat, Chicken & Frozen Products';
-  if (isAr) {
-    addArabicText(subtitle, 12, 'center');
-  } else {
-    addText(subtitle, 12, false, 'center');
-  }
+  writeText(subtitle, 12, { align: 'center' });
 
   y += 2;
   drawLine();
 
   // ── Order title ──
   const orderTitle = isAr ? `طلب رقم #${order.orderNo}` : `Order #${order.orderNo}`;
-  if (isAr) {
-    addArabicText(orderTitle, 16, 'center');
-  } else {
-    addText(orderTitle, 16, true, 'center');
-  }
+  writeText(orderTitle, 16, { bold: true, align: 'center' });
   y += 2;
 
   // ── Order info ──
   const dateLabel = isAr ? 'التاريخ' : 'Date';
-  const statusLbl = isAr ? 'الحالة' : 'Status';
-  const paymentLbl = isAr ? 'طريقة الدفع' : 'Payment';
+  writeText(`${dateLabel}: ${fmtDate(order.createdAt, lang)}`, 10);
 
-  addText(`${dateLabel}: ${fmtDate(order.createdAt, lang)}`, 10);
-  if (isAr) {
-    addArabicText(`${statusLbl}: ${statusLabel(order.status, lang)}`, 10);
-  } else {
-    addText(`${statusLbl}: ${statusLabel(order.status, lang)}`, 10);
-  }
+  const statusLbl = isAr ? 'الحالة' : 'Status';
+  writeText(`${statusLbl}: ${statusLabel(order.status, lang)}`, 10);
+
   if (order.payment) {
-    if (isAr) {
-      addArabicText(`${paymentLbl}: ${paymentLabel(order.payment.method, lang)} (${fmtPrice(order.payment.amount)})`, 10);
-    } else {
-      addText(`${paymentLbl}: ${paymentLabel(order.payment.method, lang)} (${fmtPrice(order.payment.amount)})`, 10);
-    }
+    const paymentLbl = isAr ? 'طريقة الدفع' : 'Payment';
+    writeText(`${paymentLbl}: ${paymentLabel(order.payment.method, lang)} (${fmtPrice(order.payment.amount)})`, 10);
   }
 
   y += 3;
@@ -183,11 +208,7 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
 
   // ── Customer information ──
   const customerTitle = isAr ? 'معلومات العميل' : 'Customer Information';
-  if (isAr) {
-    addArabicText(customerTitle, 13, 'center');
-  } else {
-    addText(customerTitle, 13, true, 'center');
-  }
+  writeText(customerTitle, 13, { bold: true, align: 'center' });
   y += 2;
 
   const nameLabel = isAr ? 'الاسم' : 'Name';
@@ -197,38 +218,16 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
   const buildingLabel = isAr ? 'المبنى' : 'Building';
 
   if (order.customerName) {
-    if (isAr) {
-      addArabicText(`${nameLabel}: ${order.customerName}`, 10);
-    } else {
-      addText(`${nameLabel}: ${order.customerName}`, 10);
-    }
+    writeText(`${nameLabel}: ${order.customerName}`, 10);
   }
   if (order.phone) {
-    addText(`${phoneLabel}: ${order.phone}`, 10);
+    writeText(`${phoneLabel}: ${order.phone}`, 10);
   }
   if (order.deliveryAddress) {
     const addr = order.deliveryAddress;
-    if (addr.city) {
-      if (isAr) {
-        addArabicText(`${cityLabel}: ${addr.city}`, 10);
-      } else {
-        addText(`${cityLabel}: ${addr.city}`, 10);
-      }
-    }
-    if (addr.street) {
-      if (isAr) {
-        addArabicText(`${streetLabel}: ${addr.street}`, 10);
-      } else {
-        addText(`${streetLabel}: ${addr.street}`, 10);
-      }
-    }
-    if (addr.building) {
-      if (isAr) {
-        addArabicText(`${buildingLabel}: ${addr.building}`, 10);
-      } else {
-        addText(`${buildingLabel}: ${addr.building}`, 10);
-      }
-    }
+    if (addr.city) writeText(`${cityLabel}: ${addr.city}`, 10);
+    if (addr.street) writeText(`${streetLabel}: ${addr.street}`, 10);
+    if (addr.building) writeText(`${buildingLabel}: ${addr.building}`, 10);
   }
 
   y += 3;
@@ -236,11 +235,7 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
 
   // ── Order items table ──
   const itemsTitle = isAr ? 'المنتجات' : 'Order Items';
-  if (isAr) {
-    addArabicText(itemsTitle, 13, 'center');
-  } else {
-    addText(itemsTitle, 13, true, 'center');
-  }
+  writeText(itemsTitle, 13, { bold: true, align: 'center' });
   y += 2;
 
   const productHeader = isAr ? 'المنتج' : 'Product';
@@ -255,8 +250,17 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
     const qty = String(item.qty);
     const unitPrice = fmtPrice(item.unitPrice);
     const lineTotal = fmtPrice(item.lineTotal);
-    return [name, variant, qty, unitPrice, lineTotal];
+    // Reverse Arabic text in table cells for proper display
+    return [
+      hasArabicFont && isAr ? reverseArabic(name) : name,
+      variant,
+      qty,
+      unitPrice,
+      lineTotal,
+    ];
   });
+
+  const tableFont = hasArabicFont && isAr ? FONT_NAME : 'helvetica';
 
   autoTable(doc, {
     startY: y,
@@ -267,7 +271,7 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
       fontSize: 9,
       cellPadding: 3,
       halign: 'center',
-      font: 'helvetica',
+      font: tableFont,
     },
     headStyles: {
       fillColor: [30, 58, 95],
@@ -301,12 +305,16 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
   const addTotalLine = (label: string, value: string, isBold = false, color?: [number, number, number]) => {
     checkPageBreak(8);
     doc.setFontSize(10);
-    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+    if (hasArabicFont && isAr) {
+      doc.setFont(FONT_NAME, 'normal');
+    } else {
+      doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+    }
     if (color) doc.setTextColor(...color);
     if (isAr) {
       // Right-aligned for Arabic
-      doc.text(label, pageWidth - margin, y, { align: 'right' });
-      doc.text(value, margin, y);
+      doc.text(reverseArabic(label), pageWidth - margin, y, { align: 'right' });
+      doc.text(reverseArabic(value), margin, y);
     } else {
       doc.text(label, margin, y);
       doc.text(value, pageWidth - margin, y, { align: 'right' });
@@ -336,13 +344,8 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
   if (order.notes) {
     checkPageBreak(15);
     const notesLabel = isAr ? 'ملاحظات' : 'Notes';
-    if (isAr) {
-      addArabicText(`${notesLabel}:`, 11);
-      addArabicText(order.notes, 10);
-    } else {
-      addText(`${notesLabel}:`, 11, true);
-      addText(order.notes, 10);
-    }
+    writeText(`${notesLabel}:`, 11, { bold: true });
+    writeText(order.notes, 10);
     y += 3;
   }
 
@@ -350,15 +353,21 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
   checkPageBreak(15);
   drawLine();
   const footerText = isAr ? 'شكراً لتسوقكم من فريزر البلد' : 'Thank you for shopping with Freezer Elbalad!';
-  if (isAr) {
-    addArabicText(footerText, 10, 'center');
-  } else {
-    addText(footerText, 10, false, 'center');
-  }
+  writeText(footerText, 10, { align: 'center' });
   const generatedLabel = isAr ? 'تم الإنشاء' : 'Generated';
-  addText(`${generatedLabel}: ${fmtDate(new Date().toISOString(), lang)}`, 8, false, 'center');
+  writeText(`${generatedLabel}: ${fmtDate(new Date().toISOString(), lang)}`, 8, { align: 'center' });
+}
 
-  // ── Save PDF ──
+/**
+ * Generate and download a PDF for an order.
+ */
+export async function generateOrderPdf(order: Order, lang: string = 'ar'): Promise<void> {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  await ensureArabicFont(doc);
+
+  buildPdf(doc, order, lang, fontLoaded);
+
   const fileName = `Freezer-Elbalad-Order-${order.orderNo}.pdf`;
   doc.save(fileName);
 }
@@ -366,182 +375,12 @@ export function generateOrderPdf(order: Order, lang: string = 'ar'): void {
 /**
  * Generate a PDF and return as data URL (for preview).
  */
-export function generateOrderPdfDataUrl(order: Order, lang: string = 'ar'): string {
-  const isAr = lang === 'ar';
+export async function generateOrderPdfDataUrl(order: Order, lang: string = 'ar'): Promise<string> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 15;
-  const contentWidth = pageWidth - margin * 2;
-  let y = margin;
 
-  const addText = (text: string, fontSize: number, isBold = false, align: 'left' | 'center' | 'right' = 'left') => {
-    doc.setFontSize(fontSize);
-    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-    if (align === 'center') doc.text(text, pageWidth / 2, y, { align: 'center' });
-    else if (align === 'right') doc.text(text, pageWidth - margin, y, { align: 'right' });
-    else doc.text(text, margin, y);
-    y += fontSize * 0.5;
-  };
+  await ensureArabicFont(doc);
 
-  const addArabicText = (text: string, fontSize: number, align: 'left' | 'center' | 'right' = 'left') => {
-    if (!text) return;
-    const dataUrl = renderArabicToImage(text, fontSize * 2, contentWidth);
-    const imgWidth = Math.min(contentWidth, 120);
-    const imgHeight = imgWidth * 0.15;
-    let x = margin;
-    if (align === 'center') x = (pageWidth - imgWidth) / 2;
-    else if (align === 'right') x = pageWidth - margin - imgWidth;
-    doc.addImage(dataUrl, 'PNG', x, y - imgHeight + 2, imgWidth, imgHeight);
-    y += fontSize * 0.5 + 2;
-  };
-
-  const drawLine = () => {
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 3;
-  };
-
-  const checkPageBreak = (needed: number) => {
-    if (y + needed > doc.internal.pageSize.getHeight() - margin) {
-      doc.addPage();
-      y = margin;
-    }
-  };
-
-  // ── Header ──
-  const storeName = isAr ? 'فريزر البلد' : 'Freezer Elbalad';
-  if (isAr) addArabicText(storeName, 22, 'center');
-  else addText(storeName, 22, true, 'center');
-
-  const subtitle = isAr ? 'لحوم وفراخ ومجمدات' : 'Meat, Chicken & Frozen Products';
-  if (isAr) addArabicText(subtitle, 12, 'center');
-  else addText(subtitle, 12, false, 'center');
-
-  y += 2;
-  drawLine();
-
-  // ── Order title ──
-  const orderTitle = isAr ? `طلب رقم #${order.orderNo}` : `Order #${order.orderNo}`;
-  if (isAr) addArabicText(orderTitle, 16, 'center');
-  else addText(orderTitle, 16, true, 'center');
-  y += 2;
-
-  // ── Order info ──
-  addText(`${isAr ? 'التاريخ' : 'Date'}: ${fmtDate(order.createdAt, lang)}`, 10);
-  if (isAr) addArabicText(`${isAr ? 'الحالة' : 'Status'}: ${statusLabel(order.status, lang)}`, 10);
-  else addText(`${isAr ? 'الحالة' : 'Status'}: ${statusLabel(order.status, lang)}`, 10);
-  if (order.payment) {
-    if (isAr) addArabicText(`${isAr ? 'طريقة الدفع' : 'Payment'}: ${paymentLabel(order.payment.method, lang)} (${fmtPrice(order.payment.amount)})`, 10);
-    else addText(`${isAr ? 'طريقة الدفع' : 'Payment'}: ${paymentLabel(order.payment.method, lang)} (${fmtPrice(order.payment.amount)})`, 10);
-  }
-
-  y += 3;
-  drawLine();
-
-  // ── Customer info ──
-  const customerTitle = isAr ? 'معلومات العميل' : 'Customer Information';
-  if (isAr) addArabicText(customerTitle, 13, 'center');
-  else addText(customerTitle, 13, true, 'center');
-  y += 2;
-
-  if (order.customerName) {
-    if (isAr) addArabicText(`${isAr ? 'الاسم' : 'Name'}: ${order.customerName}`, 10);
-    else addText(`${isAr ? 'الاسم' : 'Name'}: ${order.customerName}`, 10);
-  }
-  if (order.phone) addText(`${isAr ? 'الهاتف' : 'Phone'}: ${order.phone}`, 10);
-  if (order.deliveryAddress) {
-    const addr = order.deliveryAddress;
-    if (addr.city) {
-      if (isAr) addArabicText(`${isAr ? 'المدينة' : 'City'}: ${addr.city}`, 10);
-      else addText(`${isAr ? 'المدينة' : 'City'}: ${addr.city}`, 10);
-    }
-    if (addr.street) {
-      if (isAr) addArabicText(`${isAr ? 'الشارع' : 'Street'}: ${addr.street}`, 10);
-      else addText(`${isAr ? 'الشارع' : 'Street'}: ${addr.street}`, 10);
-    }
-    if (addr.building) {
-      if (isAr) addArabicText(`${isAr ? 'المبنى' : 'Building'}: ${addr.building}`, 10);
-      else addText(`${isAr ? 'المبنى' : 'Building'}: ${addr.building}`, 10);
-    }
-  }
-
-  y += 3;
-  drawLine();
-
-  // ── Items ──
-  const itemsTitle = isAr ? 'المنتجات' : 'Order Items';
-  if (isAr) addArabicText(itemsTitle, 13, 'center');
-  else addText(itemsTitle, 13, true, 'center');
-  y += 2;
-
-  const tableBody = order.items.map((item) => {
-    const name = isAr ? item.name : (item.nameEn ?? item.name);
-    return [name, item.size || '—', String(item.qty), fmtPrice(item.unitPrice), fmtPrice(item.lineTotal)];
-  });
-
-  autoTable(doc, {
-    startY: y,
-    head: [[isAr ? 'المنتج' : 'Product', isAr ? 'النوع' : 'Variant', isAr ? 'الكمية' : 'Qty', isAr ? 'سعر الوحدة' : 'Unit Price', isAr ? 'الإجمالي' : 'Total']],
-    body: tableBody,
-    margin: { left: margin, right: margin },
-    styles: { fontSize: 9, cellPadding: 3, halign: 'center', font: 'helvetica' },
-    headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-    alternateRowStyles: { fillColor: [245, 245, 250] },
-    columnStyles: {
-      0: { halign: isAr ? 'right' : 'left', cellWidth: 'auto' },
-      1: { halign: 'center', cellWidth: 25 },
-      2: { halign: 'center', cellWidth: 15 },
-      3: { halign: 'center', cellWidth: 30 },
-      4: { halign: 'center', cellWidth: 30 },
-    },
-  });
-
-  y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 5;
-
-  // ── Totals ──
-  drawLine();
-  const addTotalLine = (label: string, value: string, bold = false, color?: [number, number, number]) => {
-    checkPageBreak(8);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', bold ? 'bold' : 'normal');
-    if (color) doc.setTextColor(...color);
-    if (isAr) {
-      doc.text(label, pageWidth - margin, y, { align: 'right' });
-      doc.text(value, margin, y);
-    } else {
-      doc.text(label, margin, y);
-      doc.text(value, pageWidth - margin, y, { align: 'right' });
-    }
-    doc.setTextColor(0, 0, 0);
-    y += 5;
-  };
-
-  addTotalLine(isAr ? 'المجموع الفرعي' : 'Subtotal', fmtPrice(order.subtotal));
-  addTotalLine(isAr ? 'التوصيل' : 'Delivery', order.deliveryFee > 0 ? fmtPrice(order.deliveryFee) : (isAr ? 'مجاني' : 'FREE'));
-  if (order.discount > 0) addTotalLine(isAr ? 'الخصم' : 'Discount', `-${fmtPrice(order.discount)}`, false, [220, 50, 50]);
-
-  y += 1;
-  doc.setDrawColor(30, 58, 95);
-  doc.setLineWidth(0.5);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 5;
-  addTotalLine(isAr ? 'الإجمالي' : 'Total', fmtPrice(order.total), true);
-
-  y += 5;
-  drawLine();
-
-  if (order.notes) {
-    checkPageBreak(15);
-    if (isAr) { addArabicText(`${isAr ? 'ملاحظات' : 'Notes'}:`, 11); addArabicText(order.notes, 10); }
-    else { addText(`${isAr ? 'ملاحظات' : 'Notes'}:`, 11, true); addText(order.notes, 10); }
-    y += 3;
-  }
-
-  checkPageBreak(15);
-  drawLine();
-  if (isAr) addArabicText('شكراً لتسوقكم من فريزر البلد!', 10, 'center');
-  else addText('Thank you for shopping with Freezer Elbalad!', 10, false, 'center');
-  addText(`${isAr ? 'تم الإنشاء' : 'Generated'}: ${fmtDate(new Date().toISOString(), lang)}`, 8, false, 'center');
+  buildPdf(doc, order, lang, fontLoaded);
 
   return doc.output('datauristring');
 }
