@@ -35,8 +35,8 @@ export function Footer() {
         <div>
           <Link to="/" className="flex items-center gap-2">
             <Logo className="h-10 w-10 rounded-xl" />
-            <span className="text-xl font-extrabold text-night-50">
-              ولاد<span className="text-brand-500"> حلال</span>
+            <span className="text-xl font-extrabold text-brand-500">
+              {t('nav.brand')}
             </span>
           </Link>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-night-400">{t('footer.tagline')}</p>

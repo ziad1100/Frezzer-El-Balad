@@ -101,8 +101,8 @@ export function HomePage() {
                 <span className="flex h-32 w-32 items-center justify-center rounded-full bg-brand-600 text-white shadow-2xl shadow-brand-600/40">
                   <Snowflake className="h-16 w-16" />
                 </span>
-                <p className="text-lg font-extrabold text-night-50">
-                  ولاد<span className="text-brand-500"> حلال</span>
+                <p className="text-lg font-extrabold text-brand-500">
+                  {t('hero.title')}
                 </p>
                 <p className="text-sm text-night-300">{t('hero.badge')}</p>
               </div>

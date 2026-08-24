@@ -168,8 +168,8 @@ export function AdminLayout() {
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 border-e border-night-800 bg-night-900 p-4 lg:block">
         <Link to="/" className="mb-6 flex items-center gap-2 px-2">
           <Logo className="h-9 w-9 rounded-lg" />
-          <span className="text-lg font-extrabold text-night-50">
-            ولاد<span className="text-brand-500"> حلال</span>
+          <span className="text-lg font-extrabold text-brand-500">
+            {t('nav.brand')}
           </span>
         </Link>
         {sidebarContent()}
@@ -186,8 +186,8 @@ export function AdminLayout() {
             <div className="mb-6 flex items-center justify-between gap-2 px-2">
               <Link to="/" className="flex items-center gap-2">
                 <Logo className="h-9 w-9 rounded-lg" />
-                <span className="text-lg font-extrabold text-night-50">
-                  ولاد<span className="text-brand-500"> حلال</span>
+                <span className="text-lg font-extrabold text-brand-500">
+                  {t('nav.brand')}
                 </span>
               </Link>
               <button
