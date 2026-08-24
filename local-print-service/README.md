@@ -1,4 +1,4 @@
-# Freezer El Balad — Local Thermal Print Service
+# Welad Halal — Local Thermal Print Service
 
 A lightweight printing agent that runs on the shop computer and sends print jobs to a thermal receipt printer.
 
@@ -61,7 +61,7 @@ Any ESC/POS-compatible thermal receipt printer works:
 
 ### Step 3: Get an API Token
 
-1. Open the admin dashboard at https://frezzer-el-balad.vercel.app
+1. Open the admin dashboard at https://welad-halal.vercel.app
 2. Log in with the admin account
 3. Open browser Developer Tools (F12)
 4. Go to the **Console** tab
@@ -79,7 +79,7 @@ Any ESC/POS-compatible thermal receipt printer works:
 
 ```env
 # Backend API URL (don't change)
-API_URL=https://frezzer-el-balad.onrender.com
+API_URL=https://welad-halal.onrender.com
 
 # Your admin token (from Step 3)
 API_TOKEN=paste_your_token_here
@@ -152,9 +152,9 @@ npm start
 You should see:
 ```
 ═══════════════════════════════════════════════════
-  Freezer El Balad — Thermal Print Service
+  Welad Halal — Thermal Print Service
 ═══════════════════════════════════════════════════
-API:         https://frezzer-el-balad.onrender.com
+API:         https://welad-halal.onrender.com
 Connection:  lan
 Printer IP:  192.168.1.100:9100
 Paper:       80mm

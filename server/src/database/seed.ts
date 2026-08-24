@@ -251,15 +251,15 @@ const seedCommerce = async (): Promise<void> => {
   }
 
   for (const banner of [
-    { title: 'فريزر البلد — لحوم ومجمدات طازجة', subtitle: 'اكتشف تشكيلتنا من اللحوم والفراخ والمصنعات', buttonText: 'تسوق الآن', buttonLink: '/menu', position: 'hero', order: 1, isActive: true },
+    { title: 'ولاد حلال — لحوم ومجمدات طازجة', subtitle: 'اكتشف تشكيلتنا من اللحوم والفراخ والمصنعات', buttonText: 'تسوق الآن', buttonLink: '/menu', position: 'hero', order: 1, isActive: true },
     { title: 'عروض يومية على المجمدات', subtitle: 'خصومات حصرية على منتجاتك المفضلة', buttonText: 'تصفح المنتجات', buttonLink: '/menu', position: 'home', order: 2, isActive: true },
   ]) {
     await bannersRepo.create(banner);
   }
 
   await branchesRepo.create({
-    name: 'فريزر البلد',
-    nameEn: 'Frezzer El Balad',
+    name: 'ولاد حلال',
+    nameEn: 'Welad Halal',
     address: 'شبين القناطر، أمام كوبري المركز، بجوار المستشفى المركزي',
     addressEn: 'Shubin Al Qanater, in front of Kobri Al Markaz, near Al Mustashfa Al Markazy',
     phone: '01278767679',
@@ -279,8 +279,8 @@ const seedCommerce = async (): Promise<void> => {
       slug: 'choosing-fresh-meat',
       excerpt: 'نصائح مهمة لاختيار أجود أنواع اللحوم المجمدة',
       excerptEn: 'Important tips for choosing the best frozen meat',
-      content: 'اختيار اللحوم الطازجة والمجمدة بشكل صحيح خطوة أساسية لتحضير وجبات لذيذة وصحية. في فريزر البلد، نحرص على تقديم أجود أنواع اللحوم من مصادر موثوقة، مع ضمان الحفاظ على الجودة من المزرعة حتى باب بيتك.',
-      contentEn: 'Choosing fresh and properly frozen meat is a key step in preparing delicious and healthy meals. At Frezzer El Balad, we ensure we offer the finest meats from trusted sources, maintaining quality from farm to your doorstep.',
+      content: 'اختيار اللحوم الطازجة والمجمدة بشكل صحيح خطوة أساسية لتحضير وجبات لذيذة وصحية. في ولاد حلال، نحرص على تقديم أجود أنواع اللحوم من مصادر موثوقة، مع ضمان الحفاظ على الجودة من المزرعة حتى باب بيتك.',
+      contentEn: 'Choosing fresh and properly frozen meat is a key step in preparing delicious and healthy meals. At Welad Halal, we ensure we offer the finest meats from trusted sources, maintaining quality from farm to your doorstep.',
       image: '/images/blog/dough.jpg',
       tags: ['لحوم', 'نصائح'],
       isPublished: true,
@@ -291,8 +291,8 @@ const seedCommerce = async (): Promise<void> => {
       slug: 'home-hawawshi-guide',
       excerpt: 'وصفة سهلة وسريعة للحواوشي المنزلي',
       excerptEn: 'Easy and quick recipe for homemade hawawshi',
-      content: 'الحواوشي من أشهى الأطباق المصرية/MPLyQB100% مكونات طازجة في فريزر البلد، نوفر لك حواوشي جاهز للتحضير بجودة عالية — فقط أخرجيه من المجمد وحضره على النار أو الفرن وتمتع بوجبة لذيذة.',
-      contentEn: 'Hawawshi is one of the most delicious Egyptian dishes. At Frezzer El Balad, we provide ready-to-cook hawawshi of premium quality — just take it out of the freezer and cook it on the stove or in the oven for a delicious meal.',
+      content: 'الحواوشي من أشهى الأطباق المصرية. 100% مكونات طازجة في ولاد حلال، نوفر لك حواوشي جاهز للتحضير بجودة عالية — فقط أخرجيه من المجمد وحضره على النار أو الفرن وتمتع بوجبة لذيذة.',
+      contentEn: 'Hawawshi is one of the most delicious Egyptian dishes. At Welad Halal, we provide ready-to-cook hawawshi of premium quality — just take it out of the freezer and cook it on the stove or in the oven for a delicious meal.',
       image: '/images/blog/feteer.jpg',
       tags: ['حواوشي', 'وصفات'],
       isPublished: true,

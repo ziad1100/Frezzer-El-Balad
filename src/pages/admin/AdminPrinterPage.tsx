@@ -127,7 +127,7 @@ export function AdminPrinterPage() {
     const divider = '-'.repeat(w);
     const center = (s: string) => ' '.repeat(Math.max(0, Math.floor((w - s.length) / 2))) + s;
     const testReceiptText = [
-      center('WLAD HALAL'),
+      center('WELAD HALAL'),
       center('ولاد حلال'),
       divider,
       center(lang === 'ar' ? 'اختبار الطباعة' : 'PRINTER TEST'),

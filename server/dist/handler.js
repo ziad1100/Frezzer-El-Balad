@@ -67,7 +67,7 @@ var env = {
   smtpPort: Number(process.env.SMTP_PORT) || 587,
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
-  mailFrom: process.env.MAIL_FROM || "Freezer El Balad <noreply@frezzerelbalad.local>",
+  mailFrom: process.env.MAIL_FROM || "Welad Halal <noreply@weladhalal.local>",
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   googleCallbackUrl: process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/v1/auth/google/callback",
@@ -681,7 +681,7 @@ var getEmailQueue = () => {
 
 // server/src/services/email.service.ts
 var shellHtml = (body) => `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;background:#0d0d0d;color:#fff;border-radius:12px">
-    <h1 style="color:#38bdf8;text-align:center">\u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F | Freezer El Balad</h1>
+    <h1 style="color:#38bdf8;text-align:center">\u0648\u0644\u0627\u062F \u062D\u0644\u0627\u0644 | Welad Halal</h1>
     ${body}
   </div>`;
 var ENQUEUE_OPTS = {
@@ -712,7 +712,7 @@ var emailJobs = {
     name: "notification.verification",
     data: {
       to,
-      subject: "\u062A\u0641\u0639\u064A\u0644 \u062D\u0633\u0627\u0628\u0643 - \u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F",
+      subject: "\u062A\u0641\u0639\u064A\u0644 \u062D\u0633\u0627\u0628\u0643 - \u0648\u0644\u0627\u062F \u062D\u0644\u0627\u0644",
       html: shellHtml(`
         <p>\u0623\u0647\u0644\u0627 \u0628\u0643! \u0627\u0636\u063A\u0637 \u0627\u0644\u0632\u0631 \u0627\u0644\u062A\u0627\u0644\u064A \u0644\u062A\u0641\u0639\u064A\u0644 \u062D\u0633\u0627\u0628\u0643:</p>
         <a href="${env_default.clientUrl}/verify-email?token=${token}" style="display:inline-block;padding:12px 24px;background:#1E3A5F;color:#fff;text-decoration:none;border-radius:8px;margin:12px 0">\u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u062D\u0633\u0627\u0628</a>
@@ -723,7 +723,7 @@ var emailJobs = {
     name: "notification.email-change",
     data: {
       to,
-      subject: "\u062A\u0623\u0643\u064A\u062F \u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A - \u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F",
+      subject: "\u062A\u0623\u0643\u064A\u062F \u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A - \u0648\u0644\u0627\u062F \u062D\u0644\u0627\u0644",
       html: shellHtml(`
         <p>\u0644\u0642\u062F \u0637\u0644\u0628\u062A \u062A\u063A\u064A\u064A\u0631 \u0628\u0631\u064A\u062F\u0643 \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0625\u0644\u0649 <strong>${to}</strong>. \u0627\u0636\u063A\u0637 \u0627\u0644\u0632\u0631 \u0627\u0644\u062A\u0627\u0644\u064A \u0644\u062A\u0623\u0643\u064A\u062F \u0627\u0644\u062A\u063A\u064A\u064A\u0631:</p>
         <a href="${env_default.clientUrl}/admin/account?verify-email=${token}" style="display:inline-block;padding:12px 24px;background:#1E3A5F;color:#fff;text-decoration:none;border-radius:8px;margin:12px 0">\u062A\u0623\u0643\u064A\u062F \u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u0628\u0631\u064A\u062F</a>
@@ -734,7 +734,7 @@ var emailJobs = {
     name: "notification.reset-otp",
     data: {
       to,
-      subject: "\u0643\u0648\u062F \u0625\u0639\u0627\u062F\u0629 \u062A\u0639\u064A\u064A\u0646 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 - \u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F",
+      subject: "\u0643\u0648\u062F \u0625\u0639\u0627\u062F\u0629 \u062A\u0639\u064A\u064A\u0646 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 - \u0648\u0644\u0627\u062F \u062D\u0644\u0627\u0644",
       html: shellHtml(`
         <p style="font-size:15px;line-height:1.6">\u0627\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0643\u0648\u062F \u0627\u0644\u062A\u0627\u0644\u064A \u0644\u0625\u0639\u0627\u062F\u0629 \u062A\u0639\u064A\u064A\u0646 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631. \u0627\u0644\u0643\u0648\u062F \u0635\u0627\u0644\u062D \u0644\u0645\u062F\u0629 15 \u062F\u0642\u064A\u0642\u0629:</p>
         <div style="text-align:center;margin:16px 0">
@@ -747,7 +747,7 @@ var emailJobs = {
     name: "notification.order-confirmation",
     data: {
       to,
-      subject: `\u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0637\u0644\u0628 ${orderNo} - \u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F`,
+      subject: `\u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0637\u0644\u0628 ${orderNo} - \u0648\u0644\u0627\u062F \u062D\u0644\u0627\u0644`,
       html: shellHtml(`
         <p>\u062A\u0645 \u0627\u0633\u062A\u0644\u0627\u0645 \u0637\u0644\u0628\u0643 <strong>${orderNo}</strong> \u2705</p>
         <p>\u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A: <strong style="color:#f6b100">${total} \u062C.\u0645</strong></p>
@@ -874,15 +874,15 @@ var COUPON_TYPES = {
   FIXED: "fixed"
 };
 var DEFAULT_SETTINGS = {
-  restaurantName: { ar: "\u0641\u0631\u064A\u0632\u0631 \u0627\u0644\u0628\u0644\u062F", en: "Freezer El Balad" },
+  restaurantName: { ar: "\u0648\u0644\u0627\u062F \u062D\u0644\u0627\u0644", en: "Welad Halal" },
   logo: "",
   tagline: { ar: "\u0644\u062D\u0648\u0645 \u0648\u0641\u0631\u0627\u062E \u0648\u0645\u062C\u0645\u062F\u0627\u062A \u0628\u062C\u0648\u062F\u0629 \u0639\u0627\u0644\u064A\u0629 \u0648\u0623\u0633\u0639\u0627\u0631 \u0645\u0646\u0627\u0633\u0628\u0629", en: "Premium meat, chicken & frozen products at affordable prices" },
   themeColors: { primary: "#1E3A5F", accent: "#38BDF8", background: "#0F172A" },
   workingHours: { ar: "\u064A\u0648\u0645\u064A\u0627\u064B \u0645\u0646 9 \u0635\u0628\u0627\u062D\u0627\u064B \u062D\u062A\u0649 11 \u0645\u0633\u0627\u0621\u064B", en: "Daily 9AM - 11PM" },
   phone: "",
   whatsapp: "",
-  facebook: "Freezer El Balad",
-  instagram: "@frezzerelbalad",
+  facebook: "Welad Halal",
+  instagram: "@weladhalal",
   tiktok: "",
   googleMaps: "",
   deliveryFee: 25,

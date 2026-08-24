@@ -1,8 +1,8 @@
 @echo off
-title Freezer El Balad - Test Print
+title Welad Halal - Test Print
 echo.
 echo ========================================
-echo   Freezer El Balad - Test Print
+echo   Welad Halal - Test Print
 echo ========================================
 echo.
 

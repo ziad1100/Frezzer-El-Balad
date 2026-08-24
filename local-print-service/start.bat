@@ -1,8 +1,8 @@
 @echo off
-title Freezer El Balad - Print Service
+title Welad Halal - Print Service
 echo.
 echo ========================================
-echo   Freezer El Balad - Thermal Print Service
+echo   Welad Halal - Thermal Print Service
 echo ========================================
 echo.
 

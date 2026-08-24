@@ -40,7 +40,7 @@ export function Logo({ className }: { className?: string }) {
         fontFamily="Arial, sans-serif"
         fontWeight="bold"
       >
-        FREEZER
+        WELAD HALAL
       </text>
     </svg>
   );

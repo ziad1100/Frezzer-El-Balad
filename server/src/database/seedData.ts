@@ -1,4 +1,4 @@
-// Frezzer El Balad — frozen food / meat / chicken product catalog seed data.
+// Welad Halal — frozen food / meat / chicken product catalog seed data.
 // Products are organized into logical categories with 500g and 1kg variants.
 // Prices are DEMO prices, editable from the admin dashboard.
 

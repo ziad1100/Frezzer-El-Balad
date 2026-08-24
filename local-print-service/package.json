@@ -1,7 +1,7 @@
 {
   "name": "freezer-elbalad-print-service",
   "version": "1.0.0",
-  "description": "Local thermal receipt printer service for Freezer El Balad",
+  "description": "Local thermal receipt printer service for Welad Halal",
   "type": "module",
   "main": "index.js",
   "scripts": {

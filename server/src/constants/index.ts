@@ -152,7 +152,7 @@ export const DEFAULT_SETTINGS = {
   phone: '',
   whatsapp: '',
   facebook: 'Welad Halal',
-  instagram: '@frezzerelbalad',
+  instagram: '@weladhalal',
   tiktok: '',
   googleMaps: '',
   deliveryFee: 25,

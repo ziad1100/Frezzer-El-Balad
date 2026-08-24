@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Freezer El Balad — Local Thermal Print Service
+ * Welad Halal — Local Thermal Print Service
  *
  * A lightweight polling agent that:
  * 1. Connects to the thermal printer (USB / LAN / Bluetooth / WiFi)
@@ -17,7 +17,7 @@
  *   3. Start: npm start
  *
  * Environment:
- *   API_URL        — Backend URL (default: https://frezzer-el-balad.onrender.com)
+ *   API_URL        — Backend URL (default: https://welad-halal.onrender.com)
  *   API_TOKEN      — Bearer token for authentication
  *   PRINTER_CONNECTION — 'lan' | 'usb' | 'bluetooth' | 'wifi'
  *   PRINTER_IP     — IP address for LAN/WiFi printers
@@ -51,7 +51,7 @@ if (existsSync(envPath)) {
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 const CONFIG = {
-  apiUrl: process.env.API_URL || 'https://frezzer-el-balad.onrender.com',
+  apiUrl: process.env.API_URL || 'https://welad-halal.onrender.com',
   apiToken: process.env.API_TOKEN || '',
   printerConnection: process.env.PRINTER_CONNECTION || 'lan',
   printerIp: process.env.PRINTER_IP || '192.168.1.100',
@@ -385,7 +385,7 @@ async function poll() {
 
 // ─── Startup ─────────────────────────────────────────────────────────────────
 console.log('═══════════════════════════════════════════════════');
-console.log('  Freezer El Balad — Thermal Print Service');
+console.log('  Welad Halal — Thermal Print Service');
 console.log('═══════════════════════════════════════════════════');
 console.log(`API:         ${CONFIG.apiUrl}`);
 console.log(`Connection:  ${CONFIG.printerConnection}`);
@@ -402,8 +402,8 @@ await connectPrinter();
 if (process.argv.includes('--test')) {
   console.log('[service] Test mode — printing test receipt...');
   const testReceipt = {
-    storeNameAr: '\u0641\u0631\u064a\u0632\u0631 \u0627\u0644\u0628\u0644\u062f',
-    storeNameEn: 'Freezer Elbalad',
+    storeNameAr: '\u0648\u0644\u0627\u062f \u062d\u0644\u0627\u0644',
+    storeNameEn: 'Welad Halal',
     orderNo: 'TEST-001',
     date: new Date().toLocaleDateString(),
     time: new Date().toLocaleTimeString(),
@@ -420,8 +420,8 @@ if (process.argv.includes('--test')) {
     discount: 0,
     total: 940,
     paymentMethod: 'cash',
-    footerAr: '\u0634\u0643\u0631\u064b\u0627 \u0644\u062a\u0633\u0648\u0642\u0643 \u0645\u0646 \u0641\u0631\u064a\u0632\u0631 \u0627\u0644\u0628\u0644\u062f',
-    footerEn: 'Thank you for shopping with Freezer Elbalad!',
+    footerAr: '\u0634\u0643\u0631\u064b\u0627 \u0644\u062a\u0633\u0648\u0642\u0643 \u0645\u0646 \u0648\u0644\u0627\u062f \u062d\u0644\u0627\u0644',
+    footerEn: 'Thank you for shopping with Welad Halal!',
     paperWidth: CONFIG.paperWidth,
     language: 'ar',
   };
