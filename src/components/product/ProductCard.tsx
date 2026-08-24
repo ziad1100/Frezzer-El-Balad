@@ -104,6 +104,28 @@ export function ProductCard({ product }: { product: Product }) {
           <h3 className="line-clamp-1 font-bold text-night-50 transition-colors group-hover:text-brand-500">
             {i18n.language === 'ar' ? product.name : product.nameEn || product.name}
           </h3>
+          {product.labels && product.labels.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {product.labels.slice(0, 3).map((lbl) => (
+                <span
+                  key={lbl._id}
+                  className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-tight"
+                  style={{
+                    backgroundColor: `${lbl.color}20`,
+                    color: lbl.color,
+                    border: `1px solid ${lbl.color}40`,
+                  }}
+                >
+                  {lbl.icon ? `${lbl.icon} ` : ''}{i18n.language === 'ar' ? lbl.name : (lbl.nameEn || lbl.name)}
+                </span>
+              ))}
+              {product.labels.length > 3 ? (
+                <span className="inline-flex items-center rounded-full bg-night-800 px-1.5 py-0.5 text-[10px] font-semibold text-night-400">
+                  +{product.labels.length - 3}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           {product.reviewsCount > 0 ? (
             <div className="flex items-center gap-1.5">
               <StarRating value={Math.round(product.rating)} readOnly size="sm" ariaLabel={commonT('review.averageRating')} />

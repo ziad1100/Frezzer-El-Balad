@@ -123,6 +123,23 @@ export function ProductPage() {
             {t('menu.bestSeller')}
           </Badge>
         ) : null}
+        {product.labels && product.labels.length > 0 ? (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {product.labels.map((lbl) => (
+              <span
+                key={lbl._id}
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+                style={{
+                  backgroundColor: `${lbl.color}20`,
+                  color: lbl.color,
+                  border: `1px solid ${lbl.color}40`,
+                }}
+              >
+                {lbl.icon ? `${lbl.icon} ` : ''}{lang === 'ar' ? lbl.name : (lbl.nameEn || lbl.name)}
+              </span>
+            ))}
+          </div>
+        ) : null}
         <h1 className="text-3xl font-extrabold text-night-50 md:text-4xl">
           {lang === 'ar' ? product.name : product.nameEn || product.name}
         </h1>
