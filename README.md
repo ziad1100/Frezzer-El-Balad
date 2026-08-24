@@ -1,4 +1,4 @@
-# Frezzer El Balad (فريزر البلد)
+# Welad Halal (ولاد حلال)
 
 Full-stack Egyptian frozen-food / meat / chicken e-commerce platform — an RTL-first bilingual (Arabic/English)
 storefront, a customer dashboard, and an admin panel, backed by an Express REST API on
