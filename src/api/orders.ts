@@ -15,7 +15,7 @@ export interface CreateOrderPayload {
   phone?: string;
   customerName?: string;
   notes?: string;
-  paymentMethod: 'cash' | 'card';
+  paymentMethod: 'cash' | 'card' | 'vodafone_cash';
 }
 
 export const createOrder = (payload: CreateOrderPayload): Promise<Order> =>

@@ -1417,7 +1417,7 @@ var createAdminOrderSchema = z4.object({
   customerName: z4.string().trim().max(80).optional(),
   notes: z4.string().trim().max(1e3).optional(),
   address: addressSchema.optional(),
-  paymentMethod: z4.enum(["cash", "card"]).default("cash")
+  paymentMethod: z4.enum(["cash", "card", "vodafone_cash"]).default("cash")
 });
 var createOrderSchema = z4.object({
   items: z4.array(item).min(1, "At least one item is required").max(100),
@@ -1426,7 +1426,7 @@ var createOrderSchema = z4.object({
   customerName: z4.string().trim().max(80).optional(),
   notes: z4.string().trim().max(1e3).optional(),
   address: addressSchema,
-  paymentMethod: z4.enum(["cash", "card"]).default("cash")
+  paymentMethod: z4.enum(["cash", "card", "vodafone_cash"]).default("cash")
 });
 var updateStatusSchema = z4.object({
   status: z4.string().min(1, "Status is required")

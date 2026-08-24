@@ -28,6 +28,7 @@ export function CheckoutPage() {
   const couponCode = useAppSelector((state) => state.cart.couponCode);
   const couponDiscount = useAppSelector((state) => state.cart.couponDiscount);
   const note = useAppSelector((state) => state.cart.note);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | 'vodafone_cash'>('cash');
 
   const settings = useQuery({ queryKey: ['settings'], queryFn: getSettings });
   const deliveryFee = useMemo(
@@ -108,7 +109,7 @@ export function CheckoutPage() {
       ...(values.phone ? { phone: values.phone } : {}),
       ...(values.customerName ? { customerName: values.customerName } : {}),
       notes: note,
-      paymentMethod: 'cash' as const,
+      paymentMethod: selectedPaymentMethod,
     };
   };
 
@@ -205,6 +206,10 @@ export function CheckoutPage() {
                   <Textarea rows={3} value={note} onChange={(e) => dispatch({ type: 'cart/setNote', payload: e.target.value })} />
                 </Section>
 
+                <Section title={t('checkout.paymentMethod')}>
+                  <PaymentMethodSelector lang={i18n.language} value={selectedPaymentMethod} onChange={setSelectedPaymentMethod} />
+                </Section>
+
                 <Button type="submit" size="lg" className="w-full" loading={adminOrderMutation.isPending}>
                   <Lock className="h-5 w-5" />
                   {i18n.language === 'ar' ? 'إنشاء الطلب' : t('checkout.placeOrder')}
@@ -250,6 +255,10 @@ export function CheckoutPage() {
 
                 <Section title={t('checkout.notes')}>
                   <Textarea rows={3} value={note} onChange={(e) => dispatch({ type: 'cart/setNote', payload: e.target.value })} />
+                </Section>
+
+                <Section title={t('checkout.paymentMethod')}>
+                  <PaymentMethodSelector lang={i18n.language} value={selectedPaymentMethod} onChange={setSelectedPaymentMethod} />
                 </Section>
 
                 <Button type="submit" size="lg" className="w-full" loading={orderMutation.isPending}>
@@ -341,6 +350,46 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
     <div className="flex items-center justify-between">
       <span className="text-night-400">{label}</span>
       <span className={cn('font-bold', accent ? 'text-gold-400' : 'text-night-100')}>{value}</span>
+    </div>
+  );
+}
+
+const PAYMENT_METHODS = [
+  { value: 'cash' as const, icon: '💵', labelAr: 'الدفع عند الاستلام', labelEn: 'Cash on Delivery' },
+  { value: 'card' as const, icon: '💳', labelAr: 'بطاقة ائتمان', labelEn: 'Credit Card' },
+  { value: 'vodafone_cash' as const, icon: '📱', labelAr: 'فودافون كاش', labelEn: 'Vodafone Cash' },
+];
+
+function PaymentMethodSelector({ lang, value, onChange }: { lang: string; value: 'cash' | 'card' | 'vodafone_cash'; onChange: (v: 'cash' | 'card' | 'vodafone_cash') => void }) {
+  return (
+    <div className="space-y-2">
+      {PAYMENT_METHODS.map((method) => (
+        <label
+          key={method.value}
+          className={cn(
+            'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors',
+            value === method.value
+              ? 'border-brand-500 bg-brand-500/10 text-night-50'
+              : 'border-night-700 text-night-400 hover:border-night-600',
+          )}
+        >
+          <input
+            type="radio"
+            name="paymentMethod"
+            value={method.value}
+            checked={value === method.value}
+            onChange={() => onChange(method.value)}
+            className="sr-only"
+          />
+          <span className="text-lg">{method.icon}</span>
+          <span className="text-sm font-semibold">
+            {lang === 'ar' ? method.labelAr : method.labelEn}
+          </span>
+          {value === method.value && (
+            <span className="ms-auto h-2 w-2 rounded-full bg-brand-500" />
+          )}
+        </label>
+      ))}
     </div>
   );
 }

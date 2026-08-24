@@ -128,8 +128,11 @@ export const PAYMENT_METHODS = {
 
 export const PAYMENT_STATUS = {
   PENDING: 'pending',
+  PROCESSING: 'processing',
   PAID: 'paid',
   FAILED: 'failed',
+  CANCELLED: 'cancelled',
+  EXPIRED: 'expired',
   REFUNDED: 'refunded',
 } as const;
 

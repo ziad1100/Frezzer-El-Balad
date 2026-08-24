@@ -33,7 +33,7 @@ export const createAdminOrderSchema = z.object({
   customerName: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(1000).optional(),
   address: addressSchema.optional(),
-  paymentMethod: z.enum(['cash', 'card']).default('cash'),
+  paymentMethod: z.enum(['cash', 'card', 'vodafone_cash']).default('cash'),
 });
 
 /** Customer orders: phone & address are required. */
@@ -47,7 +47,7 @@ export const createOrderSchema = z.object({
   customerName: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(1000).optional(),
   address: addressSchema,
-  paymentMethod: z.enum(['cash', 'card']).default('cash'),
+  paymentMethod: z.enum(['cash', 'card', 'vodafone_cash']).default('cash'),
 });
 
 export const updateStatusSchema = z.object({
