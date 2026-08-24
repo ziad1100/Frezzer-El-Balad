@@ -139,6 +139,38 @@ export function PrintInvoiceDialog({
           )}
         </div>
 
+        {/* Print Format */}
+        <div>
+          <Label>{lang === 'ar' ? 'نوع الطباعة' : 'Print Format'}</Label>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {([
+              { id: 'thermal_58', ar: 'حرارية 58mm', en: 'Thermal 58mm' },
+              { id: 'thermal_80', ar: 'حرارية 80mm', en: 'Thermal 80mm' },
+              { id: 'a4', ar: 'فاتورة A4', en: 'A4 Invoice' },
+              { id: 'pdf', ar: 'ملف PDF', en: 'PDF File' },
+            ] as const).map((fmt) => (
+              <button
+                key={fmt.id}
+                type="button"
+                onClick={() => {
+                  if (fmt.id === 'thermal_58') setPaperWidth('58');
+                  else if (fmt.id === 'thermal_80') setPaperWidth('80');
+                }}
+                className={cn(
+                  'rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
+                  ((fmt.id === 'thermal_58' && paperWidth === '58') ||
+                   (fmt.id === 'thermal_80' && paperWidth === '80') ||
+                   (fmt.id === 'pdf'))
+                    ? 'border-brand-500 bg-brand-500/10 text-brand-400'
+                    : 'border-night-700 text-night-400 hover:border-night-600 hover:text-night-300',
+                )}
+              >
+                {lang === 'ar' ? fmt.ar : fmt.en}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Paper Width & Copies */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

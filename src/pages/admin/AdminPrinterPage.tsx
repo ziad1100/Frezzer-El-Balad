@@ -14,10 +14,12 @@ import { cn } from '@/lib/utils';
 interface PrinterConfig {
   id: string;
   name: string;
+  type: string;
   paperWidth: '58' | '80';
-  connection: 'usb' | 'lan' | 'bluetooth' | 'wifi';
+  connection: 'usb' | 'lan' | 'bluetooth' | 'wifi' | 'windows';
   ipAddress: string;
   port: string;
+  deviceModel: string;
   isDefault: boolean;
   isActive: boolean;
 }
@@ -30,10 +32,12 @@ function migratePrinters(raw: unknown): PrinterConfig[] {
     return [{
       id: crypto.randomUUID(),
       name: String(legacy.name || ''),
+      type: String(legacy.type || 'thermal'),
       paperWidth: (legacy.paperWidth === '58' ? '58' : '80') as '58' | '80',
       connection: (legacy.connection || 'lan') as PrinterConfig['connection'],
       ipAddress: String(legacy.ipAddress || ''),
       port: String(legacy.port || '9100'),
+      deviceModel: String(legacy.deviceModel || ''),
       isDefault: true,
       isActive: legacy.isActive !== false,
     }];
@@ -76,10 +80,12 @@ export function AdminPrinterPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newPrinter, setNewPrinter] = useState<Partial<PrinterConfig>>({
     name: '',
+    type: 'thermal',
     paperWidth: '80',
     connection: 'lan',
     ipAddress: '',
     port: '9100',
+    deviceModel: '',
     isDefault: false,
     isActive: true,
   });
@@ -189,15 +195,17 @@ export function AdminPrinterPage() {
     const p: PrinterConfig = {
       id,
       name: newPrinter.name || (lang === 'ar' ? 'طابعة جديدة' : 'New Printer'),
+      type: newPrinter.type ?? 'thermal',
       paperWidth: newPrinter.paperWidth ?? '80',
       connection: newPrinter.connection ?? 'lan',
       ipAddress: newPrinter.ipAddress ?? '',
       port: newPrinter.port ?? '9100',
+      deviceModel: newPrinter.deviceModel ?? '',
       isDefault: printers.length === 0,
       isActive: true,
     };
     setPrinters([...printers, p]);
-    setNewPrinter({ name: '', paperWidth: '80', connection: 'lan', ipAddress: '', port: '9100', isDefault: false, isActive: true });
+    setNewPrinter({ name: '', type: 'thermal', paperWidth: '80', connection: 'lan', ipAddress: '', port: '9100', deviceModel: '', isDefault: false, isActive: true });
     setShowAddForm(false);
   };
 
@@ -261,16 +269,44 @@ export function AdminPrinterPage() {
                   placeholder={lang === 'ar' ? 'اسم الطابعة' : 'Printer name'}
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Select value={newPrinter.paperWidth ?? '80'} onChange={(e) => setNewPrinter({ ...newPrinter, paperWidth: e.target.value as '58' | '80' })}>
-                    <option value="80">80mm</option>
-                    <option value="58">58mm</option>
-                  </Select>
-                  <Select value={newPrinter.connection ?? 'lan'} onChange={(e) => setNewPrinter({ ...newPrinter, connection: e.target.value as PrinterConfig['connection'] })}>
-                    <option value="lan">{connLabel('lan')}</option>
-                    <option value="usb">USB</option>
-                    <option value="bluetooth">{connLabel('bluetooth')}</option>
-                    <option value="wifi">{connLabel('wifi')}</option>
-                  </Select>
+                  <div>
+                    <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'نوع الطابعة' : 'Printer Type'}</label>
+                    <Select value={newPrinter.type ?? 'thermal'} onChange={(e) => setNewPrinter({ ...newPrinter, type: e.target.value })}>
+                      <option value="thermal">{lang === 'ar' ? 'طابعة حرارية' : 'Thermal'}</option>
+                      <option value="thermal_58mm">{lang === 'ar' ? 'حرارية 58mm' : 'Thermal 58mm'}</option>
+                      <option value="thermal_80mm">{lang === 'ar' ? 'حرارية 80mm' : 'Thermal 80mm'}</option>
+                      <option value="a4">A4</option>
+                      <option value="windows_default">{lang === 'ar' ? 'طابعة Windows' : 'Windows Default'}</option>
+                      <option value="network">{lang === 'ar' ? 'طابعة شبكة' : 'Network'}</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'عرض الورق' : 'Paper Width'}</label>
+                    <Select value={newPrinter.paperWidth ?? '80'} onChange={(e) => setNewPrinter({ ...newPrinter, paperWidth: e.target.value as '58' | '80' })}>
+                      <option value="80">80mm</option>
+                      <option value="58">58mm</option>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'نوع الاتصال' : 'Connection'}</label>
+                    <Select value={newPrinter.connection ?? 'lan'} onChange={(e) => setNewPrinter({ ...newPrinter, connection: e.target.value as PrinterConfig['connection'] })}>
+                      <option value="lan">{connLabel('lan')}</option>
+                      <option value="usb">USB</option>
+                      <option value="bluetooth">{connLabel('bluetooth')}</option>
+                      <option value="wifi">{connLabel('wifi')}</option>
+                      <option value="windows">{lang === 'ar' ? 'طابعة Windows' : 'Windows Printer'}</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'طراز الجهاز' : 'Device Model'}</label>
+                    <Input
+                      value={newPrinter.deviceModel ?? ''}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, deviceModel: e.target.value })}
+                      placeholder={lang === 'ar' ? 'مثال: Xprinter XP-80C' : 'e.g. Xprinter XP-80C'}
+                    />
+                  </div>
                 </div>
                 {(newPrinter.connection === 'lan' || newPrinter.connection === 'wifi') && (
                   <div className="grid gap-3 sm:grid-cols-2">

@@ -7,13 +7,16 @@ import { asyncHandler } from '../utils/asyncHandler';
 
 /** Create a print job for an order. */
 export const createPrintJob = asyncHandler(async (req: Request, res: Response) => {
-  const { orderId, receipt } = req.body;
+  const { orderId, receipt, printerId, printerName, format, paperWidth, language, copies } = req.body;
   if (!orderId || !receipt) {
     throw new ApiError(400, 'orderId and receipt are required');
   }
   const order = await ordersRepo.getById(orderId);
   if (!order) throw new ApiError(404, 'Order not found');
-  const job = await printJobsRepo.createPrintJob(orderId, order.orderNo as string, receipt);
+  const job = await printJobsRepo.createPrintJob({
+    orderId, orderNo: order.orderNo as string, receipt,
+    printerId, printerName, format, paperWidth, language, copies,
+  });
   res.status(201).json(new ApiResponse(201, job, 'Print job created'));
 });
 
@@ -63,10 +66,9 @@ export const retryPrintJob = asyncHandler(async (req: Request, res: Response) =>
 
 /** Create a test print job (no order required). */
 export const createTestPrintJob = asyncHandler(async (req: Request, res: Response) => {
-  const { receipt } = req.body;
+  const { receipt, printerId, printerName } = req.body;
   if (!receipt) throw new ApiError(400, 'receipt is required');
-  // Use a placeholder order ID for test prints — the local service just needs the receipt payload
-  const job = await printJobsRepo.createTestPrintJob(receipt);
+  const job = await printJobsRepo.createTestPrintJob(receipt, printerId, printerName);
   res.status(201).json(new ApiResponse(201, job, 'Test print job created'));
 });
 
@@ -75,10 +77,10 @@ export const markOrderPrinted = asyncHandler(async (req: Request, res: Response)
   const { orderId } = req.params;
   const order = await ordersRepo.getById(orderId);
   if (!order) throw new ApiError(404, 'Order not found');
-  // Create a print job entry for tracking
-  const job = await printJobsRepo.createPrintJob(orderId, order.orderNo as string, {
-    source: 'browser',
-    note: 'Marked as printed via browser',
+  const job = await printJobsRepo.createPrintJob({
+    orderId, orderNo: order.orderNo as string,
+    receipt: { source: 'browser', note: 'Marked as printed via browser' },
+    format: 'browser',
   });
   await printJobsRepo.markPrinted(job.id);
   res.json(new ApiResponse(200, { printedAt: new Date().toISOString() }, 'Order marked as printed'));

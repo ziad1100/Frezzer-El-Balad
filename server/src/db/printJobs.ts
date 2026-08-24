@@ -8,21 +8,40 @@ export interface PrintJob {
   receipt: Record<string, unknown>;
   error: string | null;
   attempts: number;
+  printerId: string | null;
+  printerName: string | null;
+  format: string;
+  paperWidth: string;
+  language: string;
+  copies: number;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface CreatePrintJobOpts {
+  orderId: string;
+  orderNo: string;
+  receipt: Record<string, unknown>;
+  printerId?: string;
+  printerName?: string;
+  format?: string;
+  paperWidth?: string;
+  language?: string;
+  copies?: number;
+}
+
 /** Create a print job for an order. Returns the created job. */
-export const createPrintJob = async (
-  orderId: string,
-  orderNo: string,
-  receipt: Record<string, unknown>,
-): Promise<PrintJob> => {
+export const createPrintJob = async (opts: CreatePrintJobOpts): Promise<PrintJob> => {
   const rows = await query<PrintJob>(
-    `INSERT INTO print_jobs ("orderId", "orderNo", receipt)
-     VALUES ($1::uuid, $2, $3::jsonb)
+    `INSERT INTO print_jobs ("orderId", "orderNo", receipt, "printerId", "printerName", format, "paperWidth", language, copies)
+     VALUES ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
-    [orderId, orderNo, JSON.stringify(receipt)],
+    [
+      opts.orderId, opts.orderNo, JSON.stringify(opts.receipt),
+      opts.printerId ?? null, opts.printerName ?? null,
+      opts.format ?? 'thermal_80', opts.paperWidth ?? '80',
+      opts.language ?? 'ar', opts.copies ?? 1,
+    ],
   );
   return rows[0];
 };
@@ -91,13 +110,19 @@ export const listRecent = async (limit = 20): Promise<PrintJob[]> => {
 /** Create a test print job (no real order). Uses a placeholder orderId. */
 export const createTestPrintJob = async (
   receipt: Record<string, unknown>,
+  printerId?: string,
+  printerName?: string,
 ): Promise<PrintJob> => {
   const placeholderId = '00000000-0000-0000-0000-000000000000';
   const rows = await query<PrintJob>(
-    `INSERT INTO print_jobs ("orderId", "orderNo", receipt)
-     VALUES ($1::uuid, $2, $3::jsonb)
+    `INSERT INTO print_jobs ("orderId", "orderNo", receipt, "printerId", "printerName", format, "paperWidth")
+     VALUES ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7)
      RETURNING *`,
-    [placeholderId, 'TEST', JSON.stringify(receipt)],
+    [
+      placeholderId, 'TEST', JSON.stringify(receipt),
+      printerId ?? null, printerName ?? null,
+      receipt.format ?? 'thermal_80', receipt.paperWidth ?? '80',
+    ],
   );
   return rows[0];
 };

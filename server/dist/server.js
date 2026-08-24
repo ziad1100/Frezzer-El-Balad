@@ -5942,12 +5942,22 @@ var systemReset_routes_default = router22;
 import { Router as Router23 } from "express";
 
 // src/db/printJobs.ts
-var createPrintJob = async (orderId, orderNo, receipt) => {
+var createPrintJob = async (opts) => {
   const rows = await query(
-    `INSERT INTO print_jobs ("orderId", "orderNo", receipt)
-     VALUES ($1::uuid, $2, $3::jsonb)
+    `INSERT INTO print_jobs ("orderId", "orderNo", receipt, "printerId", "printerName", format, "paperWidth", language, copies)
+     VALUES ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
-    [orderId, orderNo, JSON.stringify(receipt)]
+    [
+      opts.orderId,
+      opts.orderNo,
+      JSON.stringify(opts.receipt),
+      opts.printerId ?? null,
+      opts.printerName ?? null,
+      opts.format ?? "thermal_80",
+      opts.paperWidth ?? "80",
+      opts.language ?? "ar",
+      opts.copies ?? 1
+    ]
   );
   return rows[0];
 };
@@ -5999,26 +6009,44 @@ var listRecent = async (limit = 20) => {
     [limit]
   );
 };
-var createTestPrintJob = async (receipt) => {
+var createTestPrintJob = async (receipt, printerId, printerName) => {
   const placeholderId = "00000000-0000-0000-0000-000000000000";
   const rows = await query(
-    `INSERT INTO print_jobs ("orderId", "orderNo", receipt)
-     VALUES ($1::uuid, $2, $3::jsonb)
+    `INSERT INTO print_jobs ("orderId", "orderNo", receipt, "printerId", "printerName", format, "paperWidth")
+     VALUES ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7)
      RETURNING *`,
-    [placeholderId, "TEST", JSON.stringify(receipt)]
+    [
+      placeholderId,
+      "TEST",
+      JSON.stringify(receipt),
+      printerId ?? null,
+      printerName ?? null,
+      receipt.format ?? "thermal_80",
+      receipt.paperWidth ?? "80"
+    ]
   );
   return rows[0];
 };
 
 // src/controllers/print.controller.ts
 var createPrintJob2 = asyncHandler(async (req, res) => {
-  const { orderId, receipt } = req.body;
+  const { orderId, receipt, printerId, printerName, format, paperWidth, language, copies } = req.body;
   if (!orderId || !receipt) {
     throw new ApiError(400, "orderId and receipt are required");
   }
   const order = await getById6(orderId);
   if (!order) throw new ApiError(404, "Order not found");
-  const job = await createPrintJob(orderId, order.orderNo, receipt);
+  const job = await createPrintJob({
+    orderId,
+    orderNo: order.orderNo,
+    receipt,
+    printerId,
+    printerName,
+    format,
+    paperWidth,
+    language,
+    copies
+  });
   res.status(201).json(new ApiResponse(201, job, "Print job created"));
 });
 var getOrderPrintJobs = asyncHandler(async (req, res) => {
@@ -6054,18 +6082,20 @@ var retryPrintJob = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, null, "Job queued for retry"));
 });
 var createTestPrintJob2 = asyncHandler(async (req, res) => {
-  const { receipt } = req.body;
+  const { receipt, printerId, printerName } = req.body;
   if (!receipt) throw new ApiError(400, "receipt is required");
-  const job = await createTestPrintJob(receipt);
+  const job = await createTestPrintJob(receipt, printerId, printerName);
   res.status(201).json(new ApiResponse(201, job, "Test print job created"));
 });
 var markOrderPrinted = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
   const order = await getById6(orderId);
   if (!order) throw new ApiError(404, "Order not found");
-  const job = await createPrintJob(orderId, order.orderNo, {
-    source: "browser",
-    note: "Marked as printed via browser"
+  const job = await createPrintJob({
+    orderId,
+    orderNo: order.orderNo,
+    receipt: { source: "browser", note: "Marked as printed via browser" },
+    format: "browser"
   });
   await markPrinted(job.id);
   res.json(new ApiResponse(200, { printedAt: (/* @__PURE__ */ new Date()).toISOString() }, "Order marked as printed"));
