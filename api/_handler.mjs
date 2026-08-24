@@ -473,7 +473,7 @@ var disconnectCache = async () => {
 };
 
 // src/routes/index.ts
-import { Router as Router26 } from "express";
+import { Router as Router27 } from "express";
 
 // src/routes/auth.routes.ts
 import { Router } from "express";
@@ -3690,6 +3690,22 @@ var updateStatus = async (orderId, status, statusHistory) => {
   if (!r.length) return null;
   return getById6(orderId);
 };
+var updatePaymentStatus = async (orderId, data) => {
+  await query(
+    `UPDATE orders SET
+       "paymentStatus" = $2::payment_status,
+       "paymentReference" = COALESCE($3, "paymentReference"),
+       "updatedAt" = now()
+     WHERE id = $1::uuid`,
+    [orderId, data.paymentStatus, data.paymentReference ?? null]
+  );
+  if (data.paymentStatus === "paid") {
+    await query(
+      `UPDATE orders SET "paidAt" = now() WHERE id = $1::uuid AND "paidAt" IS NULL`,
+      [orderId]
+    );
+  }
+};
 var stats = async () => {
   const rows = await query(`
     SELECT
@@ -6297,34 +6313,183 @@ router25.get("/product/:productId", requirePermission("products", "read"), getPr
 router25.put("/product/:productId", requirePermission("products", "update"), setProductLabels);
 var label_routes_default = router25;
 
-// src/routes/index.ts
+// src/routes/paymentWebhook.routes.ts
+import { Router as Router26 } from "express";
+
+// src/services/payment/paymentAdapter.ts
+var PaymentManager = class {
+  providers = /* @__PURE__ */ new Map();
+  registerProvider(provider) {
+    this.providers.set(provider.id, provider);
+  }
+  getProvider(id) {
+    return this.providers.get(id);
+  }
+  async processPayment(request) {
+    if (request.method === "cash") {
+      return {
+        success: true,
+        status: "paid",
+        transactionId: `CASH-${request.orderId}`,
+        reference: `cash-${Date.now()}`
+      };
+    }
+    const provider = Array.from(this.providers.values()).find(
+      (p) => p.methods.includes(request.method)
+    );
+    if (!provider) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NO_PROVIDER",
+        errorMessage: `No payment provider configured for method: ${request.method}`
+      };
+    }
+    try {
+      return await provider.charge(request);
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "PROVIDER_ERROR",
+        errorMessage: err instanceof Error ? err.message : "Payment provider error"
+      };
+    }
+  }
+  async handleWebhook(payload) {
+    const provider = this.providers.get(payload.provider);
+    if (!provider) return null;
+    return provider.verifyWebhook(payload);
+  }
+};
+var paymentManager = new PaymentManager();
+var CashProvider = {
+  id: "cash",
+  name: "Cash on Delivery",
+  methods: ["cash"],
+  async initialize() {
+    return true;
+  },
+  async charge(request) {
+    return {
+      success: true,
+      status: "paid",
+      transactionId: `CASH-${request.orderId}`,
+      reference: `cash-${Date.now()}`
+    };
+  },
+  async getStatus(transactionId) {
+    return { success: true, status: "paid", transactionId };
+  },
+  async refund() {
+    return { success: false, status: "failed", errorCode: "NOT_SUPPORTED", errorMessage: "Cash cannot be refunded via gateway" };
+  },
+  async verifyWebhook() {
+    return null;
+  }
+};
+paymentManager.registerProvider(CashProvider);
+
+// src/controllers/paymentWebhook.controller.ts
+var VALID_WEBHOOK_TRANSITIONS = {
+  pending: ["processing", "paid", "failed", "cancelled", "expired"],
+  processing: ["paid", "failed", "cancelled", "expired"],
+  paid: ["refunded"],
+  failed: ["pending", "processing"],
+  cancelled: ["pending"],
+  expired: ["pending"],
+  refunded: []
+};
+var handleWebhook = asyncHandler(async (req, res) => {
+  const { provider } = req.params;
+  const rawBody = JSON.stringify(req.body);
+  const payload = {
+    provider,
+    transactionId: req.body.transaction_id ?? req.body.referenceNumber ?? req.body.id ?? "",
+    orderId: req.body.order_id ?? req.body.merchantRefNumber ?? req.body.orderId ?? "",
+    status: req.body.status ?? "pending",
+    amount: req.body.amount ?? req.body.amount_cents,
+    rawBody,
+    signature: req.headers["x-signature"] ?? req.body.signature ?? "",
+    timestamp: req.body.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
+    metadata: req.body
+  };
+  const verifiedPayload = await paymentManager.handleWebhook(payload);
+  if (!verifiedPayload) {
+    console.warn(`[webhook] Rejected webhook from unknown provider: ${provider}`);
+    throw new ApiError(400, "Invalid webhook");
+  }
+  const { orderId, transactionId, status } = verifiedPayload;
+  if (!orderId || orderId === "00000000-0000-0000-0000-000000000000") {
+    console.log(`[webhook] Ignored webhook for test/invalid order: ${orderId}`);
+    res.json(new ApiResponse(200, null, "Webhook acknowledged"));
+    return;
+  }
+  const order = await getById6(orderId);
+  if (!order) {
+    console.warn(`[webhook] Order not found: ${orderId}`);
+    throw new ApiError(404, "Order not found");
+  }
+  const currentPaymentStatus = order.paymentStatus ?? "pending";
+  if (currentPaymentStatus === status) {
+    console.log(`[webhook] Duplicate webhook ignored: order ${order.orderNo} already ${status}`);
+    res.json(new ApiResponse(200, null, "Webhook already processed"));
+    return;
+  }
+  const allowedTransitions = VALID_WEBHOOK_TRANSITIONS[currentPaymentStatus] ?? [];
+  if (!allowedTransitions.includes(status)) {
+    console.warn(`[webhook] Invalid transition: ${currentPaymentStatus} \u2192 ${status} for order ${order.orderNo}`);
+    throw new ApiError(400, `Invalid payment status transition: ${currentPaymentStatus} \u2192 ${status}`);
+  }
+  await updatePaymentStatus(orderId, {
+    paymentStatus: status,
+    paymentReference: transactionId
+  });
+  console.log(`[webhook] Order ${order.orderNo} payment status: ${currentPaymentStatus} \u2192 ${status}`);
+  res.json(new ApiResponse(200, null, "Webhook processed"));
+});
+var handleGenericWebhook = asyncHandler(async (req, res) => {
+  const provider = req.body.provider ?? req.headers["x-provider"] ?? req.query.provider ?? "unknown";
+  req.params = { ...req.params, provider: String(provider) };
+  await handleWebhook(req, res, () => {
+  });
+});
+
+// src/routes/paymentWebhook.routes.ts
 var router26 = Router26();
-router26.use("/auth", auth_routes_default);
-router26.use("/users/me", user_routes_default);
-router26.use("/products", product_routes_default);
-router26.use("/categories", category_routes_default);
-router26.use("/reviews", review_routes_default);
-router26.use("/wishlist", wishlist_routes_default);
-router26.use("/cart", cart_routes_default);
-router26.use("/orders", order_routes_default);
-router26.use("/coupons", coupon_routes_default);
-router26.use("/offers", offer_routes_default);
-router26.use("/banners", banner_routes_default);
-router26.use("/gallery", gallery_routes_default);
-router26.use("/branches", branch_routes_default);
-router26.use("/contacts", contact_routes_default);
-router26.use("/newsletter", newsletter_routes_default);
-router26.use("/settings", setting_routes_default);
-router26.use("/notifications", notification_routes_default);
-router26.use("/analytics", analytics_routes_default);
-router26.use("/upload", upload_routes_default);
-router26.use("/posts", post_routes_default);
-router26.use("/admin/users", adminApiLimiter, adminUser_routes_default);
-router26.use("/system", systemReset_routes_default);
-router26.use("/print", print_routes_default);
-router26.use("/service-tokens", serviceToken_routes_default);
-router26.use("/labels", label_routes_default);
-var routes_default = router26;
+router26.post("/webhook/:provider", handleWebhook);
+router26.post("/webhook", handleGenericWebhook);
+var paymentWebhook_routes_default = router26;
+
+// src/routes/index.ts
+var router27 = Router27();
+router27.use("/auth", auth_routes_default);
+router27.use("/users/me", user_routes_default);
+router27.use("/products", product_routes_default);
+router27.use("/categories", category_routes_default);
+router27.use("/reviews", review_routes_default);
+router27.use("/wishlist", wishlist_routes_default);
+router27.use("/cart", cart_routes_default);
+router27.use("/orders", order_routes_default);
+router27.use("/coupons", coupon_routes_default);
+router27.use("/offers", offer_routes_default);
+router27.use("/banners", banner_routes_default);
+router27.use("/gallery", gallery_routes_default);
+router27.use("/branches", branch_routes_default);
+router27.use("/contacts", contact_routes_default);
+router27.use("/newsletter", newsletter_routes_default);
+router27.use("/settings", setting_routes_default);
+router27.use("/notifications", notification_routes_default);
+router27.use("/analytics", analytics_routes_default);
+router27.use("/upload", upload_routes_default);
+router27.use("/posts", post_routes_default);
+router27.use("/admin/users", adminApiLimiter, adminUser_routes_default);
+router27.use("/system", systemReset_routes_default);
+router27.use("/print", print_routes_default);
+router27.use("/service-tokens", serviceToken_routes_default);
+router27.use("/labels", label_routes_default);
+router27.use("/payments", paymentWebhook_routes_default);
+var routes_default = router27;
 
 // src/app.ts
 var app = express();
@@ -6485,12 +6650,578 @@ var ensureRolePermissions = async () => {
   console.log("[roles] permissions synced from presets");
 };
 
+// src/services/payment/providers/fawry.ts
+var FAWRY_STATUS_MAP = {
+  2: "paid",
+  // Paid
+  3: "failed",
+  // Failed
+  4: "expired",
+  // Expired
+  5: "cancelled",
+  // Cancelled
+  6: "paid",
+  // Paid (refunded)
+  11: "paid",
+  // Paid
+  12: "paid"
+  // Paid
+};
+var BASE_URLS = {
+  sandbox: "https://atfawry.com/e-pay",
+  production: "https://atfawry.com/e-pay"
+};
+var FawryPaymentProvider = class {
+  id = "fawry";
+  name = "Fawry";
+  methods = ["card"];
+  config = null;
+  async initialize(config) {
+    const fawryConfig = config;
+    if (!fawryConfig.merchantId || !fawryConfig.apiKey) {
+      console.error("[payment:fidawry] Missing merchantId or apiKey");
+      return false;
+    }
+    this.config = fawryConfig;
+    return true;
+  }
+  get baseUrl() {
+    return BASE_URLS[this.config?.environment ?? "sandbox"];
+  }
+  async charge(request) {
+    if (!this.config) {
+      return { success: false, status: "failed", errorCode: "NOT_INITIALIZED", errorMessage: "Fawry not initialized" };
+    }
+    try {
+      const payload = {
+        merchantId: this.config.merchantId,
+        apiKey: this.config.apiKey,
+        merchantRefNumber: request.orderId,
+        customerProfileId: request.customerPhone ?? request.customerEmail ?? "guest",
+        customerName: request.customerName ?? "",
+        customerMobile: request.customerPhone ?? "",
+        customerEmail: request.customerEmail ?? "",
+        amount: request.amount,
+        currencyCode: "EGP",
+        description: request.description ?? `Order ${request.orderNo}`,
+        expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1e3).toISOString(),
+        // 24h expiry
+        paymentMethod: "CARD",
+        // CARD, CASH_ON_DELIVERY, etc.
+        display: "ALL"
+      };
+      const response = await fetch(`${this.baseUrl}/api/v2/integration/charge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (data.statusCode === 2 || data.referenceNumber) {
+        return {
+          success: true,
+          status: "processing",
+          transactionId: data.referenceNumber,
+          reference: data.merchantRefNumber,
+          redirectUrl: data.paymentUrl
+        };
+      }
+      return {
+        success: false,
+        status: "failed",
+        errorCode: String(data.statusCode ?? "UNKNOWN"),
+        errorMessage: data.statusDescription ?? "Fawry charge failed"
+      };
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        errorMessage: err instanceof Error ? err.message : "Fawry API error"
+      };
+    }
+  }
+  async getStatus(transactionId) {
+    if (!this.config) {
+      return { success: false, status: "failed", errorCode: "NOT_INITIALIZED", errorMessage: "Fawry not initialized" };
+    }
+    try {
+      const payload = {
+        merchantId: this.config.merchantId,
+        apiKey: this.config.apiKey,
+        referenceNumber: transactionId
+      };
+      const response = await fetch(`${this.baseUrl}/api/v2/integration/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      const status = FAWRY_STATUS_MAP[data.statusCode ?? 0] ?? "failed";
+      return {
+        success: status === "paid",
+        status,
+        transactionId
+      };
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        errorMessage: err instanceof Error ? err.message : "Fawry status check failed"
+      };
+    }
+  }
+  async refund(transactionId, amount) {
+    if (!this.config) {
+      return { success: false, status: "failed", errorCode: "NOT_INITIALIZED", errorMessage: "Fawry not initialized" };
+    }
+    try {
+      const payload = {
+        merchantId: this.config.merchantId,
+        apiKey: this.config.apiKey,
+        referenceNumber: transactionId,
+        refundAmount: amount
+      };
+      const response = await fetch(`${this.baseUrl}/api/v2/integration/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      return {
+        success: response.ok && data.statusCode === 0,
+        status: response.ok ? "refunded" : "failed",
+        transactionId,
+        errorCode: response.ok ? void 0 : String(data.statusCode),
+        errorMessage: data.statusDescription
+      };
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        errorMessage: err instanceof Error ? err.message : "Fawry refund failed"
+      };
+    }
+  }
+  async verifyWebhook(payload) {
+    if (!this.config) return null;
+    if (!payload.transactionId) return null;
+    const status = FAWRY_STATUS_MAP[Number(payload.metadata?.statusCode)] ?? "failed";
+    return { ...payload, status };
+  }
+};
+
+// src/services/payment/providers/paymob.ts
+var PAYMOB_API_BASE = "https://accept.paymob.com/api";
+var PaymobPaymentProvider = class {
+  id = "paymob";
+  name = "Paymob";
+  methods = ["card", "vodafone_cash"];
+  config = null;
+  async initialize(config) {
+    const paymobConfig = config;
+    if (!paymobConfig.apiKey || !paymobConfig.integrationId) {
+      console.error("[payment:paymob] Missing apiKey or integrationId");
+      return false;
+    }
+    this.config = paymobConfig;
+    return true;
+  }
+  async authenticate() {
+    if (!this.config) throw new Error("Paymob not initialized");
+    const res = await fetch(`${PAYMOB_API_BASE}/auth/tokens`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: this.config.apiKey })
+    });
+    if (!res.ok) throw new Error(`Paymob auth failed: ${res.status}`);
+    const data = await res.json();
+    return data.token;
+  }
+  async charge(request) {
+    if (!this.config) {
+      return { success: false, status: "failed", errorCode: "NOT_INITIALIZED", errorMessage: "Paymob not initialized" };
+    }
+    try {
+      const authToken = await this.authenticate();
+      const orderRes = await fetch(`${PAYMOB_API_BASE}/ecommerce/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          auth_token: authToken,
+          delivery_needed: false,
+          amount_cents: Math.round(request.amount * 100),
+          // Paymob uses cents
+          currency: "EGP",
+          items: [{
+            name: request.description ?? `Order ${request.orderNo}`,
+            amount_cents: Math.round(request.amount * 100),
+            description: request.description ?? `Order ${request.orderNo}`,
+            quantity: 1
+          }]
+        })
+      });
+      if (!orderRes.ok) {
+        const errData = await orderRes.json();
+        return {
+          success: false,
+          status: "failed",
+          errorCode: "ORDER_CREATION_FAILED",
+          errorMessage: errData.message ?? "Failed to create Paymob order"
+        };
+      }
+      const orderData = await orderRes.json();
+      const keyRes = await fetch(`${PAYMOB_API_BASE}/acceptance/payment_keys`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          auth_token: authToken,
+          amount_cents: Math.round(request.amount * 100),
+          expiration: 3600,
+          order_id: orderData.id,
+          billing_data: {
+            apartment: "NA",
+            email: request.customerEmail ?? "no@email.com",
+            floor: "NA",
+            first_name: request.customerName?.split(" ")[0] ?? "Customer",
+            street: "NA",
+            building: "NA",
+            phone_number: request.customerPhone ?? "+200000000000",
+            shipping_method: "NA",
+            postal_code: "NA",
+            city: "Cairo",
+            country: "EG",
+            last_name: request.customerName?.split(" ").slice(1).join(" ") ?? "",
+            state: "Cairo"
+          },
+          integration_id: this.config.integrationId
+        })
+      });
+      if (!keyRes.ok) {
+        return {
+          success: false,
+          status: "failed",
+          errorCode: "PAYMENT_KEY_FAILED",
+          errorMessage: "Failed to generate payment key"
+        };
+      }
+      const keyData = await keyRes.json();
+      return {
+        success: true,
+        status: "processing",
+        transactionId: String(orderData.id),
+        reference: orderData.token,
+        redirectUrl: `https://accept.paymob.com/api/acceptance/iframes/${this.config.iframeId ?? 0}?payment_token=${keyData.token}`
+      };
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        errorMessage: err instanceof Error ? err.message : "Paymob API error"
+      };
+    }
+  }
+  async getStatus(transactionId) {
+    if (!this.config) {
+      return { success: false, status: "failed", errorCode: "NOT_INITIALIZED", errorMessage: "Paymob not initialized" };
+    }
+    try {
+      const authToken = await this.authenticate();
+      const res = await fetch(`${PAYMOB_API_BASE}/acceptance/transactions/${transactionId}`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (!res.ok) {
+        return { success: false, status: "failed", errorCode: "NOT_FOUND", errorMessage: "Transaction not found" };
+      }
+      const data = await res.json();
+      const paymobStatus = data.transaction_status ?? "";
+      const statusMap = {
+        "AUTHORIZATION_SUCCESS": "paid",
+        "CAPTURED": "paid",
+        "PEND": "processing",
+        "AUTHORIZATION_INVALID": "failed",
+        "EXPIRED": "expired",
+        "CANCELLED": "cancelled"
+      };
+      return {
+        success: statusMap[paymobStatus] === "paid",
+        status: statusMap[paymobStatus] ?? "failed",
+        transactionId
+      };
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        errorMessage: err instanceof Error ? err.message : "Paymob status check failed"
+      };
+    }
+  }
+  async refund(transactionId, amount) {
+    if (!this.config) {
+      return { success: false, status: "failed", errorCode: "NOT_INITIALIZED", errorMessage: "Paymob not initialized" };
+    }
+    try {
+      const authToken = await this.authenticate();
+      const res = await fetch(`${PAYMOB_API_BASE}/acceptance/void_refund`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          auth_token: authToken,
+          transaction_id: Number(transactionId),
+          amount_cents: Math.round(amount * 100),
+          refund: { amount_cents: Math.round(amount * 100) }
+        })
+      });
+      const data = await res.json();
+      return {
+        success: res.ok && Boolean(data.id),
+        status: res.ok ? "refunded" : "failed",
+        transactionId,
+        errorCode: res.ok ? void 0 : data.message,
+        errorMessage: data.message
+      };
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        errorMessage: err instanceof Error ? err.message : "Paymob refund failed"
+      };
+    }
+  }
+  async verifyWebhook(payload) {
+    if (!this.config) return null;
+    if (this.config.webhookHmacSecret && payload.signature) {
+    }
+    if (!payload.transactionId) return null;
+    const metadata = payload.metadata;
+    const paymobStatus = String(metadata?.transaction_status ?? "");
+    const statusMap = {
+      "AUTHORIZATION_SUCCESS": "paid",
+      "CAPTURED": "paid",
+      "PEND": "processing",
+      "AUTHORIZATION_INVALID": "failed",
+      "EXPIRED": "expired",
+      "CANCELLED": "cancelled"
+    };
+    return {
+      ...payload,
+      status: statusMap[paymobStatus] ?? payload.status
+    };
+  }
+};
+
+// src/services/payment/providers/aman.ts
+var AMAN_STATUS_MAP = {
+  "Success": "paid",
+  "Paid": "paid",
+  "Completed": "paid",
+  "Failed": "failed",
+  "Cancelled": "cancelled",
+  "Expired": "expired",
+  "Pending": "processing",
+  "Initiated": "processing"
+};
+var BASE_URLS2 = {
+  sandbox: "https://paylink.egycs.com/api",
+  production: "https://paylink.egycs.com/api"
+};
+var AmanPaymentProvider = class {
+  id = "aman";
+  name = "AMAN";
+  methods = ["other"];
+  config = null;
+  async initialize(config) {
+    const amanConfig = config;
+    if (!amanConfig.merchantCode || !amanConfig.apiKey) {
+      console.error("[payment:aman] Missing merchantCode or apiKey");
+      return false;
+    }
+    this.config = amanConfig;
+    return true;
+  }
+  get baseUrl() {
+    return BASE_URLS2[this.config?.environment ?? "sandbox"];
+  }
+  async charge(request) {
+    if (!this.config) {
+      return { success: false, status: "failed", errorCode: "NOT_INITIALIZED", errorMessage: "AMAN not initialized" };
+    }
+    try {
+      const payload = {
+        merchantCode: this.config.merchantCode,
+        apiKey: this.config.apiKey,
+        orderId: request.orderId,
+        amount: request.amount,
+        currency: "EGP",
+        description: request.description ?? `Order ${request.orderNo}`,
+        customerName: request.customerName ?? "",
+        customerPhone: request.customerPhone ?? "",
+        customerEmail: request.customerEmail ?? "",
+        expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1e3).toISOString()
+      };
+      const response = await fetch(`${this.baseUrl}/v1/payment/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (data.code === 200 || data.referenceNumber) {
+        return {
+          success: true,
+          status: "processing",
+          transactionId: data.referenceNumber ?? data.transactionId,
+          reference: data.orderId
+        };
+      }
+      return {
+        success: false,
+        status: "failed",
+        errorCode: String(data.code ?? "UNKNOWN"),
+        errorMessage: data.message ?? "AMAN charge failed"
+      };
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        errorMessage: err instanceof Error ? err.message : "AMAN API error"
+      };
+    }
+  }
+  async getStatus(transactionId) {
+    if (!this.config) {
+      return { success: false, status: "failed", errorCode: "NOT_INITIALIZED", errorMessage: "AMAN not initialized" };
+    }
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/v1/payment/status?referenceNumber=${transactionId}&merchantCode=${this.config.merchantCode}&apiKey=${this.config.apiKey}`
+      );
+      const data = await response.json();
+      const status = AMAN_STATUS_MAP[data.status ?? ""] ?? "failed";
+      return {
+        success: status === "paid",
+        status,
+        transactionId
+      };
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        errorMessage: err instanceof Error ? err.message : "AMAN status check failed"
+      };
+    }
+  }
+  async refund(transactionId, amount) {
+    if (!this.config) {
+      return { success: false, status: "failed", errorCode: "NOT_INITIALIZED", errorMessage: "AMAN not initialized" };
+    }
+    try {
+      const response = await fetch(`${this.baseUrl}/v1/payment/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          merchantCode: this.config.merchantCode,
+          apiKey: this.config.apiKey,
+          referenceNumber: transactionId,
+          refundAmount: amount
+        })
+      });
+      const data = await response.json();
+      return {
+        success: data.code === 200,
+        status: data.code === 200 ? "refunded" : "failed",
+        transactionId,
+        errorCode: data.code === 200 ? void 0 : String(data.code),
+        errorMessage: data.message
+      };
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        errorMessage: err instanceof Error ? err.message : "AMAN refund failed"
+      };
+    }
+  }
+  async verifyWebhook(payload) {
+    if (!this.config) return null;
+    if (!payload.transactionId) return null;
+    const status = AMAN_STATUS_MAP[String(payload.metadata?.status)] ?? "failed";
+    return { ...payload, status };
+  }
+};
+
+// src/services/payment/providers/index.ts
+async function initializePaymentProviders() {
+  if (process.env.FAWRY_MERCHANT_ID && process.env.FAWRY_API_KEY) {
+    const fawry = new FawryPaymentProvider();
+    const ok = await fawry.initialize({
+      merchantId: process.env.FAWRY_MERCHANT_ID,
+      apiKey: process.env.FAWRY_API_KEY,
+      environment: process.env.FAWRY_ENVIRONMENT ?? "sandbox"
+    });
+    if (ok) {
+      paymentManager.registerProvider(fawry);
+      console.log("[payment] Fawry provider registered");
+    } else {
+      console.warn("[payment] Fawry provider failed to initialize");
+    }
+  }
+  if (process.env.PAYMOB_API_KEY && process.env.PAYMOB_INTEGRATION_ID) {
+    const paymob = new PaymobPaymentProvider();
+    const ok = await paymob.initialize({
+      apiKey: process.env.PAYMOB_API_KEY,
+      integrationId: Number(process.env.PAYMOB_INTEGRATION_ID),
+      iframeId: process.env.PAYMOB_IFRAME_ID ? Number(process.env.PAYMOB_IFRAME_ID) : void 0,
+      webhookHmacSecret: process.env.PAYMOB_WEBHOOK_HMAC,
+      successUrl: process.env.PAYMOB_SUCCESS_URL,
+      cancelUrl: process.env.PAYMOB_CANCEL_URL
+    });
+    if (ok) {
+      paymentManager.registerProvider(paymob);
+      console.log("[payment] Paymob provider registered");
+    } else {
+      console.warn("[payment] Paymob provider failed to initialize");
+    }
+  }
+  if (process.env.AMAN_MERCHANT_CODE && process.env.AMAN_API_KEY) {
+    const aman = new AmanPaymentProvider();
+    const ok = await aman.initialize({
+      merchantCode: process.env.AMAN_MERCHANT_CODE,
+      apiKey: process.env.AMAN_API_KEY,
+      environment: process.env.AMAN_ENVIRONMENT ?? "sandbox"
+    });
+    if (ok) {
+      paymentManager.registerProvider(aman);
+      console.log("[payment] AMAN provider registered");
+    } else {
+      console.warn("[payment] AMAN provider failed to initialize");
+    }
+  }
+  console.log("[payment] Payment providers initialized (cash always available)");
+}
+
 // src/server.ts
 var start = async () => {
   try {
     await connectDB();
     await applyMigrations();
     await ensureRolePermissions();
+    await initializePaymentProviders();
     const server = app_default.listen(env_default.port, () => {
       console.log(`[server] API running at http://localhost:${env_default.port} (${env_default.nodeEnv})`);
     });

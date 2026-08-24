@@ -51,6 +51,7 @@ export interface WebhookPayload {
   amount?: number;
   rawBody: string;
   signature?: string;
+  metadata?: Record<string, unknown>;
 }
 
 // ── Provider Interface ──────────────────────────────────────────────────────

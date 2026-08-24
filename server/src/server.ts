@@ -5,12 +5,14 @@ import { applyMigrations } from './database/migrate';
 import { ensureRolePermissions } from './database/roleSync';
 import { perfSummaryTimer, reportLatencies } from './middlewares/diagnostics';
 import { disconnectCache } from './services/cache';
+import { initializePaymentProviders } from './services/payment/providers';
 
 const start = async (): Promise<void> => {
   try {
     await connectDB();
     await applyMigrations();
     await ensureRolePermissions();
+    await initializePaymentProviders();
     const server = app.listen(env.port, () => {
        
       console.log(`[server] API running at http://localhost:${env.port} (${env.nodeEnv})`);

@@ -200,6 +200,28 @@ export const updateStatus = async (
   return getById(orderId);
 };
 
+/** Update payment status for an order (called by webhook handlers). */
+export const updatePaymentStatus = async (
+  orderId: string,
+  data: { paymentStatus: string; paymentReference?: string },
+): Promise<void> => {
+  await query(
+    `UPDATE orders SET
+       "paymentStatus" = $2::payment_status,
+       "paymentReference" = COALESCE($3, "paymentReference"),
+       "updatedAt" = now()
+     WHERE id = $1::uuid`,
+    [orderId, data.paymentStatus, data.paymentReference ?? null],
+  );
+  // If payment is now 'paid', set paidAt
+  if (data.paymentStatus === 'paid') {
+    await query(
+      `UPDATE orders SET "paidAt" = now() WHERE id = $1::uuid AND "paidAt" IS NULL`,
+      [orderId],
+    );
+  }
+};
+
 export const stats = async (): Promise<Record<string, unknown>> => {
   const rows = await query(`
     SELECT
