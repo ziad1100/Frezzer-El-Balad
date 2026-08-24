@@ -200,17 +200,26 @@ export function AdminProductsPage() {
 
   const handleSave = (): void => {
     if (!form.name.trim()) {
-      setFormError(t('admin.nameRequired'));
+      setFormError(lang === 'ar' ? 'اسم المنتج بالعربي مطلوب' : 'Arabic product name is required');
       return;
     }
-    const price = Number(form.basePrice);
-    if (!Number.isFinite(price) || price < 0) {
-      setFormError(t('admin.invalidPrice'));
+    if (!form.nameEn.trim()) {
+      setFormError(lang === 'ar' ? 'اسم المنتج بالإنجليزي مطلوب' : 'English product name is required');
+      return;
+    }
+    if (!form.category) {
+      setFormError(lang === 'ar' ? 'يجب اختيار التصنيف' : 'Category is required');
+      return;
+    }
+    const hasSizePrice = form.sizes.some((s) => Number(s.price) > 0);
+    const basePrice = Number(form.basePrice);
+    if (!hasSizePrice && (!Number.isFinite(basePrice) || basePrice < 0)) {
+      setFormError(lang === 'ar' ? 'يجب إدخال سعر основي أو سعر على الأقل لمتغير واحد' : 'Enter a base price or at least one variant price');
       return;
     }
     const discount = Number(form.discount) || 0;
     if (discount < 0 || discount > 100) {
-      setFormError(t('admin.invalidDiscount'));
+      setFormError(lang === 'ar' ? 'نسبة الخصم يجب أن تكون بين 0 و 100' : 'Discount must be between 0 and 100');
       return;
     }
     setFormError('');
@@ -259,7 +268,7 @@ export function AdminProductsPage() {
         action={
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
-            {t('common.add')}
+            {lang === 'ar' ? 'إضافة منتج جديد' : 'Add New Product'}
           </Button>
         }
       />
@@ -360,7 +369,7 @@ export function AdminProductsPage() {
         </Card>
       )}
 
-      <Modal open={creating} onClose={closeModal} title={editing ? t('common.edit') : t('common.add')} size="lg">
+      <Modal open={creating} onClose={closeModal} title={editing ? (lang === 'ar' ? 'تعديل المنتج' : 'Edit Product') : (lang === 'ar' ? 'إضافة منتج جديد' : 'Add New Product')} size="lg">
         <div className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -418,7 +427,10 @@ export function AdminProductsPage() {
           <ImageUpload value={form.images[0] ?? ''} label={t('admin.image')} onChange={(url) => setField('images', url ? [url] : [])} />
 
           <div>
-            <Label>{t('admin.addSize')}</Label>
+            <Label>{lang === 'ar' ? 'أوزاع / أحجام المنتج' : 'Product Sizes / Weights'}</Label>
+            <p className="mb-2 text-xs text-night-500">
+              {lang === 'ar' ? 'كل وزن له سعر مستقل. تغيير سعر لن يؤثر على الباقي.' : 'Each weight has its own independent price.'}
+            </p>
             {sizeList.length > 0 ? (
               <div className="space-y-2">
                 {sizeList.map((size, idx) => (
@@ -426,12 +438,12 @@ export function AdminProductsPage() {
                     <Input
                       value={size.name}
                       onChange={(e) => setSizeField(idx, { name: e.target.value })}
-                      placeholder={t('admin.sizeNameAr')}
+                      placeholder={lang === 'ar' ? 'الوزن بالعربي (مثلاً 500 جم)' : 'Weight in Arabic (e.g. 500 جم)'}
                     />
                     <Input
                       value={size.nameEn}
                       onChange={(e) => setSizeField(idx, { nameEn: e.target.value })}
-                      placeholder={t('admin.sizeNameEn')}
+                      placeholder={lang === 'ar' ? 'الوزن بالإنجليزي (مثلاً 500g)' : 'Weight in English (e.g. 500g)'}
                     />
                     <div className="flex items-center gap-2">
                       <Input
@@ -439,7 +451,7 @@ export function AdminProductsPage() {
                         min={0}
                         value={size.price}
                         onChange={(e) => setSizeField(idx, { price: e.target.value })}
-                        placeholder={t('admin.basePrice')}
+                        placeholder={lang === 'ar' ? 'السعر (ج.م)' : 'Price (EGP)'}
                       />
                       <Button
                         variant="ghost"
@@ -477,12 +489,12 @@ export function AdminProductsPage() {
                     <Input
                       value={extra.name}
                       onChange={(e) => setExtraField(idx, { name: e.target.value })}
-                      placeholder={t('admin.extraNameAr')}
+                      placeholder={lang === 'ar' ? 'الإضافة بالعربي' : 'Extra name in Arabic'}
                     />
                     <Input
                       value={extra.nameEn}
                       onChange={(e) => setExtraField(idx, { nameEn: e.target.value })}
-                      placeholder={t('admin.extraNameEn')}
+                      placeholder={lang === 'ar' ? 'الإضافة بالإنجليزي' : 'Extra name in English'}
                     />
                     <div className="flex items-center gap-2">
                       <Input
@@ -490,7 +502,7 @@ export function AdminProductsPage() {
                         min={0}
                         value={extra.price}
                         onChange={(e) => setExtraField(idx, { price: e.target.value })}
-                        placeholder={t('admin.basePrice')}
+                        placeholder={lang === 'ar' ? 'سعر الإضافة (ج.م)' : 'Extra price (EGP)'}
                       />
                       <Button
                         variant="ghost"
