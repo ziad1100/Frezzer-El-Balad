@@ -330,8 +330,8 @@ export const buildReceiptFromOrder = (
   const statusLabel = statusLabels[order.status] ?? { ar: order.status, en: order.status };
 
   return {
-    storeNameAr: 'فريزر البلد',
-    storeNameEn: 'Freezer Elbalad',
+    storeNameAr: 'ولاد حلال',
+    storeNameEn: 'Wlad Halal',
     orderNo: order.orderNo,
     date: dateStr,
     time: timeStr,
@@ -345,8 +345,8 @@ export const buildReceiptFromOrder = (
     discount: order.discount,
     total: order.total,
     paymentMethod: order.payment?.method ?? 'cash',
-    footerAr: 'شكرًا لتسوقك من فريزر البلد',
-    footerEn: 'Thank you for shopping with Freezer Elbalad!',
+    footerAr: 'شكرًا لتسوقك من ولاد حلال',
+    footerEn: 'Thank you for shopping with Wlad Halal!',
     paperWidth,
     language,
   };

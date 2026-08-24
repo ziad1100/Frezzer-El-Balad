@@ -7,7 +7,7 @@ export function Logo({ className }: { className?: string }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={cn('shrink-0 object-contain', className)}
-      aria-label="فريزر البلد"
+      aria-label="ولاد حلال"
     >
       {/* Background circle */}
       <circle cx="50" cy="50" r="48" fill="#0F172A" />

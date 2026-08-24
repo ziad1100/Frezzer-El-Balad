@@ -6,7 +6,7 @@ export { smtpConfigured };
 
 const shellHtml = (body: string): string =>
   `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;background:#0d0d0d;color:#fff;border-radius:12px">
-    <h1 style="color:#38bdf8;text-align:center">فريزر البلد | Freezer El Balad</h1>
+    <h1 style="color:#38bdf8;text-align:center">ولاد حلال | Wlad Halal</h1>
     ${body}
   </div>`;
 
@@ -51,7 +51,7 @@ export const emailJobs = {
     name: 'notification.verification',
     data: {
       to,
-      subject: 'تفعيل حسابك - فريزر البلد',
+      subject: 'تفعيل حسابك - ولاد حلال',
       html: shellHtml(`
         <p>أهلا بك! اضغط الزر التالي لتفعيل حسابك:</p>
         <a href="${env.clientUrl}/verify-email?token=${token}" style="display:inline-block;padding:12px 24px;background:#1E3A5F;color:#fff;text-decoration:none;border-radius:8px;margin:12px 0">تفعيل الحساب</a>
@@ -62,7 +62,7 @@ export const emailJobs = {
     name: 'notification.email-change',
     data: {
       to,
-      subject: 'تأكيد تغيير البريد الإلكتروني - فريزر البلد',
+      subject: 'تأكيد تغيير البريد الإلكتروني - ولاد حلال',
       html: shellHtml(`
         <p>لقد طلبت تغيير بريدك الإلكتروني إلى <strong>${to}</strong>. اضغط الزر التالي لتأكيد التغيير:</p>
         <a href="${env.clientUrl}/admin/account?verify-email=${token}" style="display:inline-block;padding:12px 24px;background:#1E3A5F;color:#fff;text-decoration:none;border-radius:8px;margin:12px 0">تأكيد تغيير البريد</a>
@@ -73,7 +73,7 @@ export const emailJobs = {
     name: 'notification.reset-otp',
     data: {
       to,
-      subject: 'كود إعادة تعيين كلمة المرور - فريزر البلد',
+      subject: 'كود إعادة تعيين كلمة المرور - ولاد حلال',
       html: shellHtml(`
         <p style="font-size:15px;line-height:1.6">استخدم الكود التالي لإعادة تعيين كلمة المرور. الكود صالح لمدة 15 دقيقة:</p>
         <div style="text-align:center;margin:16px 0">
@@ -86,7 +86,7 @@ export const emailJobs = {
     name: 'notification.order-confirmation',
     data: {
       to,
-      subject: `تأكيد الطلب ${orderNo} - فريزر البلد`,
+      subject: `تأكيد الطلب ${orderNo} - ولاد حلال`,
       html: shellHtml(`
         <p>تم استلام طلبك <strong>${orderNo}</strong> ✅</p>
         <p>الإجمالي: <strong style="color:#f6b100">${total} ج.م</strong></p>

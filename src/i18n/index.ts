@@ -13,14 +13,14 @@ export type LanguageCode = keyof typeof LANGUAGES;
 
 /** Language-aware document title */
 const TITLES: Record<LanguageCode, string> = {
-  ar: 'فريزر البلد | لحوم وفراخ ومجمدات',
-  en: 'Freezer El Balad | Meat, Chicken & Frozen Foods',
+  ar: 'ولاد حلال | لحوم وفراخ ومجمدات',
+  en: 'Wlad Halal | Meat, Chicken & Frozen Foods',
 };
 
 /** Language-aware meta description */
 const META_DESCRIPTIONS: Record<LanguageCode, string> = {
-  ar: 'فريزر البلد — متجر إلكتروني للحوم والفراخ والمصنعات والمجمدات.',
-  en: 'Freezer El Balad — Your online store for meat, chicken, processed foods and frozen products.',
+  ar: 'ولاد حلال — متجر إلكتروني للحوم والفراخ والمصنعات والمجمدات.',
+  en: 'Wlad Halal — Your online store for meat, chicken, processed foods and frozen products.',
 };
 
 const applyDocumentDirection = (lng: string): void => {

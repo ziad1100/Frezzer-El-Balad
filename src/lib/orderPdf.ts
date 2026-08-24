@@ -177,7 +177,7 @@ function buildPdf(doc: jsPDF, order: Order, lang: string, hasArabicFont: boolean
   };
 
   // ── Header: Store branding ──
-  const storeName = isAr ? 'فريزر البلد' : 'Freezer Elbalad';
+  const storeName = isAr ? 'ولاد حلال' : 'Wlad Halal';
   writeText(storeName, 22, { bold: true, align: 'center' });
 
   const subtitle = isAr ? 'لحوم وفراخ ومجمدات' : 'Meat, Chicken & Frozen Products';
@@ -352,7 +352,7 @@ function buildPdf(doc: jsPDF, order: Order, lang: string, hasArabicFont: boolean
   // ── Footer ──
   checkPageBreak(15);
   drawLine();
-  const footerText = isAr ? 'شكراً لتسوقكم من فريزر البلد' : 'Thank you for shopping with Freezer Elbalad!';
+  const footerText = isAr ? 'شكراً لتسوقكم من ولاد حلال' : 'Thank you for shopping with Wlad Halal!';
   writeText(footerText, 10, { align: 'center' });
   const generatedLabel = isAr ? 'تم الإنشاء' : 'Generated';
   writeText(`${generatedLabel}: ${fmtDate(new Date().toISOString(), lang)}`, 8, { align: 'center' });

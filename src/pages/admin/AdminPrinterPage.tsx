@@ -127,8 +127,8 @@ export function AdminPrinterPage() {
     const divider = '-'.repeat(w);
     const center = (s: string) => ' '.repeat(Math.max(0, Math.floor((w - s.length) / 2))) + s;
     const testReceiptText = [
-      center('FREEZER ELBALAD'),
-      center('فريزر البلد'),
+      center('WLAD HALAL'),
+      center('ولاد حلال'),
       divider,
       center(lang === 'ar' ? 'اختبار الطباعة' : 'PRINTER TEST'),
       divider,
@@ -141,8 +141,8 @@ export function AdminPrinterPage() {
     ].join('\n');
 
     const testReceiptPayload = {
-      storeNameAr: '\u0641\u0631\u064a\u0632\u0631 \u0627\u0644\u0628\u0644\u062f',
-      storeNameEn: 'Freezer Elbalad',
+      storeNameAr: '\u0648\u0644\u0627\u062f \u062d\u0644\u0627\u0644',
+      storeNameEn: 'Wlad Halal',
       orderNo: 'TEST-001',
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
@@ -156,8 +156,8 @@ export function AdminPrinterPage() {
       discount: 0,
       total: 0,
       paymentMethod: 'cash',
-      footerAr: '\u0634\u0643\u0631\u064b\u0627 \u0644\u062a\u0633\u0648\u0642\u0643 \u0645\u0646 \u0641\u0631\u064a\u0632\u0631 \u0627\u0644\u0628\u0644\u062f',
-      footerEn: 'Thank you for shopping with Freezer Elbalad!',
+      footerAr: '\u0634\u0643\u0631\u064b\u0627 \u0644\u062a\u0633\u0648\u0642\u0643 \u0645\u0646 \u0648\u0644\u0627\u062f \u062d\u0644\u0627\u0644',
+      footerEn: 'Thank you for shopping with Wlad Halal!',
       paperWidth: printer.paperWidth,
       language: lang === 'ar' ? 'ar' : 'en',
     };
