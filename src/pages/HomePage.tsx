@@ -94,7 +94,7 @@ export function HomePage() {
             </div>
           </div>
           <div className="relative hidden items-center justify-center lg:flex">
-            <div className="animate-scale-in relative flex h-[26rem] w-full max-w-lg items-center justify-center overflow-hidden rounded-3xl border border-night-800 bg-gradient-to-br from-night-800 via-night-900 to-night-950 shadow-2xl">
+            <div className="animate-scale-in relative flex h-104 w-full max-w-lg items-center justify-center overflow-hidden rounded-3xl border border-night-800 bg-linear-to-br from-night-800 via-night-900 to-night-950 shadow-2xl">
               <span className="absolute h-72 w-72 rounded-full bg-brand-600/25 blur-3xl" />
               <span className="absolute h-48 w-48 rounded-full bg-gold-500/15 blur-2xl" />
               <div className="relative flex flex-col items-center gap-4">
@@ -196,7 +196,7 @@ export function HomePage() {
             <div className="grid grid-cols-1 justify-items-center gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="w-[min(92%,26rem)] sm:w-full">
-                  <Skeleton className="aspect-[4/5]" />
+                  <Skeleton className="aspect-4/5" />
                 </div>
               ))}
             </div>
@@ -235,7 +235,7 @@ export function HomePage() {
       </section>
 
       <section className="container-px pb-20">
-        <div className="relative overflow-hidden rounded-3xl border border-brand-800/40 bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 p-10 text-center md:p-16">
+        <div className="relative overflow-hidden rounded-3xl border border-brand-800/40 bg-linear-to-br from-brand-700 via-brand-600 to-brand-800 p-10 text-center md:p-16">
           <h2 className="text-3xl font-extrabold text-white md:text-4xl">{t('home.ctaTitle')}</h2>
           <p className="mt-3 text-lg text-white/80">{t('home.ctaSubtitle')}</p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
