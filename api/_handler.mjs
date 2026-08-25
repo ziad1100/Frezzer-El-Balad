@@ -141071,6 +141071,9 @@ var update2 = async (id, data) => {
     if (sets.length) {
       const result = await tx.query(`UPDATE products SET ${sets.join(", ")} WHERE id = $1 RETURNING id`, values);
       updated = result.rowCount !== null && result.rowCount > 0;
+    } else {
+      const existsResult = await tx.query("SELECT id FROM products WHERE id = $1::uuid", [id]);
+      updated = existsResult.rows.length > 0;
     }
     if (data.sizes !== void 0) await syncSizes(tx.query.bind(tx), id, data.sizes);
     if (data.extras !== void 0) await syncExtras(tx.query.bind(tx), id, data.extras);

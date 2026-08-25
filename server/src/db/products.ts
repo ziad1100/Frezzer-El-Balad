@@ -297,6 +297,11 @@ export const update = async (
     if (sets.length) {
       const result = await tx.query(`UPDATE products SET ${sets.join(', ')} WHERE id = $1 RETURNING id`, values);
       updated = result.rowCount !== null && result.rowCount > 0;
+    } else {
+      // No product columns changed — check the product exists so we can still
+      // update sizes/extras/labels below and return the product.
+      const existsResult = await tx.query('SELECT id FROM products WHERE id = $1::uuid', [id]);
+      updated = existsResult.rows.length > 0;
     }
     if (data.sizes !== undefined) await syncSizes(tx.query.bind(tx), id, data.sizes);
     if (data.extras !== undefined) await syncExtras(tx.query.bind(tx), id, data.extras);
