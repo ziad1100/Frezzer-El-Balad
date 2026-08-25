@@ -139,6 +139,9 @@ const sanitizeBody = (body: Record<string, unknown>) => {
 export const createProduct = asyncHandler(async (req: Request, res: Response) => {
   const body = sanitizeBody(req.body);
   if (!body.name) throw new ApiError(400, 'Product name is required');
+  if (typeof body.basePrice !== 'number' || !Number.isFinite(body.basePrice) || body.basePrice <= 0) {
+    throw new ApiError(400, 'Base price must be a positive number');
+  }
   const slug = slugifyText((body.nameEn as string) || (body.name as string));
   body.slug = `${slug}-${Date.now().toString(36)}`;
   try {
@@ -151,6 +154,9 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
 
 export const updateProduct = asyncHandler(async (req: Request, res: Response) => {
   const body = sanitizeBody(req.body);
+  if (body.basePrice !== undefined && (typeof body.basePrice !== 'number' || !Number.isFinite(body.basePrice) || body.basePrice <= 0)) {
+    throw new ApiError(400, 'Base price must be a positive number');
+  }
   try {
     const product = await productsRepo.update(req.params.id, body as never);
     if (!product) throw new ApiError(404, 'Product not found');

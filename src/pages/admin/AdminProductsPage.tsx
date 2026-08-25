@@ -177,6 +177,7 @@ export function AdminProductsPage() {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
     // Also invalidate customer-facing product caches so the Menu shows fresh data
     void queryClient.invalidateQueries({ queryKey: ['products'] });
+    void queryClient.invalidateQueries({ queryKey: ['product'] });
     void queryClient.invalidateQueries({ queryKey: ['categories'] });
     void queryClient.invalidateQueries({ queryKey: ['offers'] });
   };
@@ -281,9 +282,16 @@ export function AdminProductsPage() {
     }
     const hasSizePrice = form.sizes.some((s) => Number(s.price) > 0);
     const basePrice = Number(form.basePrice);
-    if (!hasSizePrice && (!Number.isFinite(basePrice) || basePrice < 0)) {
-      setFormError(lang === 'ar' ? 'يجب إدخال سعر основي أو سعر على الأقل لمتغير واحد' : 'Enter a base price or at least one variant price');
+    if (!hasSizePrice && (!Number.isFinite(basePrice) || basePrice <= 0)) {
+      setFormError(lang === 'ar' ? 'يجب إدخال سعر أساسي أكبر من صفر أو سعر على الأقل لمتغير واحد' : 'Enter a base price greater than 0 or at least one variant price');
       return;
+    }
+    // Validate size prices individually
+    for (const size of form.sizes) {
+      if (size.name.trim() && (!Number.isFinite(Number(size.price)) || Number(size.price) <= 0)) {
+        setFormError(lang === 'ar' ? `سعر المتغير "${size.name}" يجب أن يكون أكبر من صفر` : `Size "${size.name}" price must be greater than 0`);
+        return;
+      }
     }
     const discount = Number(form.discount) || 0;
     if (discount < 0 || discount > 100) {

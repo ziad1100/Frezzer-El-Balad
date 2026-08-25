@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build && npm run build:api",
   "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "/api/app"
+    },
     {
       "source": "/((?!api/|uploads/|assets/|images/|favicon|.*\\.(?:js|css|svg|png|jpe?g|webp|gif|avif|ico|woff2?|json|txt)$).*)",
       "destination": "/index.html"

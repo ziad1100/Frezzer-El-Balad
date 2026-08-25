@@ -17,9 +17,12 @@ export function ProductCard({ product }: { product: Product }) {
   const cartLines = useAppSelector((state) => state.cart.lines);
   const isWished = wishlist.includes(product._id);
 
-  const price = useMemo(() => Math.min(...product.sizes.map((s) => s.price)), [product.sizes]);
+  const price = useMemo(() => {
+    if (product.sizes.length === 0) return product.basePrice;
+    return Math.min(...product.sizes.map((s) => s.price));
+  }, [product.sizes, product.basePrice]);
   const cheapestSize = useMemo(
-    () => [...product.sizes].sort((a, b) => a.price - b.price)[0],
+    () => product.sizes.length > 0 ? [...product.sizes].sort((a, b) => a.price - b.price)[0] : null,
     [product.sizes],
   );
   const image = product.images[0];

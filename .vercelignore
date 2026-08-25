@@ -1,6 +1,3 @@
-# Vercel serverless function helpers — no longer needed
-/api/
-
 # Build scripts for serverless functions
 /scripts/
 

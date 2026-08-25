@@ -442,7 +442,7 @@ var resourceKeys = (resource) => [
 var ttlFor = (resource) => TTL_SECONDS[resource];
 
 // server/src/routes/index.ts
-import { Router as Router25 } from "express";
+import { Router as Router27 } from "express";
 
 // server/src/routes/auth.routes.ts
 import { Router } from "express";
@@ -1358,7 +1358,8 @@ import { z as z4 } from "zod";
 import { z as z3 } from "zod";
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 var objectId = (message = "Invalid id format") => z3.string().regex(UUID_RE, message);
-var nonNegative = (message = "Must be a positive number") => z3.coerce.number().min(0, message);
+var nonNegative = (message = "Must be a non-negative number") => z3.coerce.number().min(0, message);
+var positivePrice = (message = "Price must be greater than 0") => z3.coerce.number().gt(0, message);
 var dateString = (message = "Must be a valid date") => z3.string().refine((v) => !Number.isNaN(Date.parse(v)), message);
 var localizedText = z3.object({ ar: z3.string().max(1e3).optional(), en: z3.string().max(1e3).optional() }).optional();
 
@@ -1386,7 +1387,7 @@ var createAdminOrderSchema = z4.object({
   customerName: z4.string().trim().max(80).optional(),
   notes: z4.string().trim().max(1e3).optional(),
   address: addressSchema.optional(),
-  paymentMethod: z4.enum(["cash", "card"]).default("cash")
+  paymentMethod: z4.enum(["cash", "card", "vodafone_cash"]).default("cash")
 });
 var createOrderSchema = z4.object({
   items: z4.array(item).min(1, "At least one item is required").max(100),
@@ -1395,7 +1396,7 @@ var createOrderSchema = z4.object({
   customerName: z4.string().trim().max(80).optional(),
   notes: z4.string().trim().max(1e3).optional(),
   address: addressSchema,
-  paymentMethod: z4.enum(["cash", "card"]).default("cash")
+  paymentMethod: z4.enum(["cash", "card", "vodafone_cash"]).default("cash")
 });
 var updateStatusSchema = z4.object({
   status: z4.string().min(1, "Status is required")
@@ -1430,13 +1431,13 @@ import { z as z6 } from "zod";
 var size = z6.object({
   name: z6.string().trim().min(1, "Size name is required").max(50),
   nameEn: z6.string().trim().max(50).optional(),
-  price: nonNegative("Size price must be a positive number"),
+  price: positivePrice("Size price must be greater than 0"),
   isAvailable: z6.boolean().optional()
 });
 var extra3 = z6.object({
   name: z6.string().trim().min(1, "Extra name is required").max(50),
   nameEn: z6.string().trim().max(50).optional(),
-  price: nonNegative("Extra price must be a positive number")
+  price: positivePrice("Extra price must be greater than 0")
 });
 var productCreateSchema = z6.object({
   name: z6.string().trim().min(1, "Product name (Arabic) is required").max(120),
@@ -1451,7 +1452,7 @@ var productCreateSchema = z6.object({
   ingredients: z6.array(z6.string().trim().max(100)).max(50).optional(),
   ingredientsEn: z6.array(z6.string().trim().max(100)).max(50).optional(),
   tags: z6.array(z6.string().trim().max(50)).max(50).optional(),
-  basePrice: nonNegative("Base price must be a positive number"),
+  basePrice: positivePrice("Base price must be greater than 0"),
   discount: z6.coerce.number().min(0).max(100).optional(),
   preparationTime: z6.coerce.number().int().min(1).max(600).optional(),
   calories: z6.coerce.number().min(0).max(1e4).optional(),
@@ -1873,6 +1874,7 @@ import { Router as Router3 } from "express";
 // server/src/db/products.ts
 var SIZES_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', ps.id::text, 'name', ps.name, 'nameEn', ps."nameEn", 'price', ps.price::float8, 'isAvailable', ps."isAvailable") ORDER BY ps."sortOrder"), '[]'::jsonb) FROM product_sizes ps WHERE ps."productId" = p.id)`;
 var EXTRAS_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', pe.id::text, 'name', pe.name, 'nameEn', pe."nameEn", 'price', pe.price::float8) ORDER BY pe."sortOrder"), '[]'::jsonb) FROM product_extras pe WHERE pe."productId" = p.id)`;
+var LABELS_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', lb.id::text, 'name', lb.name, 'nameEn', lb."nameEn", 'color', lb.color, 'icon', lb.icon) ORDER BY lb.name), '[]'::jsonb) FROM labels lb JOIN product_labels pl ON pl."labelId" = lb.id WHERE pl."productId" = p.id)`;
 var PUBLIC_COLS2 = `
   p.id::text AS "_id",
   p.name, p."nameEn", p.slug, p.description, p."descriptionEn",
@@ -1880,7 +1882,7 @@ var PUBLIC_COLS2 = `
   p."categoryId"::text AS "category",
   p."isAvailable", p."isBestSeller", p."isOffer", p.discount::float8 AS "discount",
   p.rating::float8 AS "rating", p."reviewsCount", p."preparationTime", p.calories,
-  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras"`;
+  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras", ${LABELS_JSON} AS "labels"`;
 var ADMIN_COLS2 = `
   p.id::text AS "_id",
   p.name, p."nameEn", p.slug, p.description, p."descriptionEn",
@@ -1889,7 +1891,7 @@ var ADMIN_COLS2 = `
        ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
   p."isAvailable", p."isBestSeller", p."isOffer", p.discount::float8 AS "discount",
   p.rating::float8 AS "rating", p."reviewsCount", p."preparationTime", p.calories,
-  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras"`;
+  p."createdAt", p."updatedAt", ${SIZES_JSON} AS "sizes", ${EXTRAS_JSON} AS "extras", ${LABELS_JSON} AS "labels"`;
 var SEARCH_CLAUSE = (i) => `
   (p.name ILIKE '%' || $${i} || '%'
    OR p."nameEn" ILIKE '%' || $${i} || '%'
@@ -2012,7 +2014,7 @@ var syncSizes = async (client2, productId, sizes) => {
     await client2(
       `INSERT INTO product_sizes ("productId", "sortOrder", name, "nameEn", price, "isAvailable")
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [productId, i, s.name, s.nameEn ?? "", Number(s.price) || 0, s.isAvailable ?? true]
+      [productId, i, s.name, s.nameEn ?? "", Number(s.price), s.isAvailable ?? true]
     );
   }
 };
@@ -2022,7 +2024,7 @@ var syncExtras = async (client2, productId, extras) => {
     await client2(
       `INSERT INTO product_extras ("productId", "sortOrder", name, "nameEn", price)
        VALUES ($1, $2, $3, $4, $5)`,
-      [productId, i, e.name, e.nameEn ?? "", Number(e.price) || 0]
+      [productId, i, e.name, e.nameEn ?? "", Number(e.price)]
     );
   }
 };
@@ -2041,7 +2043,7 @@ var create2 = async (data) => {
         data.slug,
         data.description ?? "",
         data.descriptionEn ?? "",
-        Number(data.basePrice) || 0,
+        Number(data.basePrice),
         data.images ?? [],
         data.ingredients ?? [],
         data.ingredientsEn ?? [],
@@ -2059,6 +2061,11 @@ var create2 = async (data) => {
     id = inserted.rows[0].id;
     await syncSizes(tx.query.bind(tx), id, data.sizes);
     await syncExtras(tx.query.bind(tx), id, data.extras);
+    if (data.labelIds?.length) {
+      for (const labelId of data.labelIds) {
+        await tx.query('INSERT INTO product_labels ("productId", "labelId") VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING', [id, labelId]);
+      }
+    }
   });
   const created = await getByIdAdmin2(id);
   if (!created) throw new ApiError(500, "Product creation failed");
@@ -2096,6 +2103,12 @@ var update2 = async (id, data) => {
     }
     if (data.sizes !== void 0) await syncSizes(tx.query.bind(tx), id, data.sizes);
     if (data.extras !== void 0) await syncExtras(tx.query.bind(tx), id, data.extras);
+    if (data.labelIds !== void 0) {
+      await tx.query('DELETE FROM product_labels WHERE "productId" = $1::uuid', [id]);
+      for (const labelId of data.labelIds) {
+        await tx.query('INSERT INTO product_labels ("productId", "labelId") VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING', [id, labelId]);
+      }
+    }
   });
   if (!updated) return null;
   return getByIdAdmin2(id);
@@ -2226,6 +2239,7 @@ var sanitizeBody = (body) => {
   if (body.images !== void 0) clean.images = body.images;
   if (body.sizes !== void 0) clean.sizes = body.sizes;
   if (body.extras !== void 0) clean.extras = body.extras;
+  if (body.labelIds !== void 0) clean.labelIds = Array.isArray(body.labelIds) ? body.labelIds.map(String) : [];
   for (const f of ["basePrice", "discount", "preparationTime", "calories"]) {
     if (body[f] !== void 0) clean[f] = Number(body[f]);
   }
@@ -2237,6 +2251,9 @@ var sanitizeBody = (body) => {
 var createProduct = asyncHandler(async (req, res) => {
   const body = sanitizeBody(req.body);
   if (!body.name) throw new ApiError(400, "Product name is required");
+  if (typeof body.basePrice !== "number" || !Number.isFinite(body.basePrice) || body.basePrice <= 0) {
+    throw new ApiError(400, "Base price must be a positive number");
+  }
   const slug = slugifyText(body.nameEn || body.name);
   body.slug = `${slug}-${Date.now().toString(36)}`;
   try {
@@ -2248,6 +2265,9 @@ var createProduct = asyncHandler(async (req, res) => {
 });
 var updateProduct = asyncHandler(async (req, res) => {
   const body = sanitizeBody(req.body);
+  if (body.basePrice !== void 0 && (typeof body.basePrice !== "number" || !Number.isFinite(body.basePrice) || body.basePrice <= 0)) {
+    throw new ApiError(400, "Base price must be a positive number");
+  }
   try {
     const product = await update2(req.params.id, body);
     if (!product) throw new ApiError(404, "Product not found");
@@ -3645,6 +3665,22 @@ var updateStatus = async (orderId, status, statusHistory) => {
   );
   if (!r.length) return null;
   return getById6(orderId);
+};
+var updatePaymentStatus = async (orderId, data) => {
+  await query(
+    `UPDATE orders SET
+       "paymentStatus" = $2::payment_status,
+       "paymentReference" = COALESCE($3, "paymentReference"),
+       "updatedAt" = now()
+     WHERE id = $1::uuid`,
+    [orderId, data.paymentStatus, data.paymentReference ?? null]
+  );
+  if (data.paymentStatus === "paid") {
+    await query(
+      `UPDATE orders SET "paidAt" = now() WHERE id = $1::uuid AND "paidAt" IS NULL`,
+      [orderId]
+    );
+  }
 };
 var stats = async () => {
   const rows = await query(`
@@ -5898,12 +5934,22 @@ var systemReset_routes_default = router22;
 import { Router as Router23 } from "express";
 
 // server/src/db/printJobs.ts
-var createPrintJob = async (orderId, orderNo, receipt) => {
+var createPrintJob = async (opts) => {
   const rows = await query(
-    `INSERT INTO print_jobs ("orderId", "orderNo", receipt)
-     VALUES ($1::uuid, $2, $3::jsonb)
+    `INSERT INTO print_jobs ("orderId", "orderNo", receipt, "printerId", "printerName", format, "paperWidth", language, copies)
+     VALUES ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
-    [orderId, orderNo, JSON.stringify(receipt)]
+    [
+      opts.orderId,
+      opts.orderNo,
+      JSON.stringify(opts.receipt),
+      opts.printerId ?? null,
+      opts.printerName ?? null,
+      opts.format ?? "thermal_80",
+      opts.paperWidth ?? "80",
+      opts.language ?? "ar",
+      opts.copies ?? 1
+    ]
   );
   return rows[0];
 };
@@ -5955,26 +6001,44 @@ var listRecent = async (limit = 20) => {
     [limit]
   );
 };
-var createTestPrintJob = async (receipt) => {
+var createTestPrintJob = async (receipt, printerId, printerName) => {
   const placeholderId = "00000000-0000-0000-0000-000000000000";
   const rows = await query(
-    `INSERT INTO print_jobs ("orderId", "orderNo", receipt)
-     VALUES ($1::uuid, $2, $3::jsonb)
+    `INSERT INTO print_jobs ("orderId", "orderNo", receipt, "printerId", "printerName", format, "paperWidth")
+     VALUES ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7)
      RETURNING *`,
-    [placeholderId, "TEST", JSON.stringify(receipt)]
+    [
+      placeholderId,
+      "TEST",
+      JSON.stringify(receipt),
+      printerId ?? null,
+      printerName ?? null,
+      receipt.format ?? "thermal_80",
+      receipt.paperWidth ?? "80"
+    ]
   );
   return rows[0];
 };
 
 // server/src/controllers/print.controller.ts
 var createPrintJob2 = asyncHandler(async (req, res) => {
-  const { orderId, receipt } = req.body;
+  const { orderId, receipt, printerId, printerName, format, paperWidth, language, copies } = req.body;
   if (!orderId || !receipt) {
     throw new ApiError(400, "orderId and receipt are required");
   }
   const order = await getById6(orderId);
   if (!order) throw new ApiError(404, "Order not found");
-  const job = await createPrintJob(orderId, order.orderNo, receipt);
+  const job = await createPrintJob({
+    orderId,
+    orderNo: order.orderNo,
+    receipt,
+    printerId,
+    printerName,
+    format,
+    paperWidth,
+    language,
+    copies
+  });
   res.status(201).json(new ApiResponse(201, job, "Print job created"));
 });
 var getOrderPrintJobs = asyncHandler(async (req, res) => {
@@ -6010,18 +6074,20 @@ var retryPrintJob = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, null, "Job queued for retry"));
 });
 var createTestPrintJob2 = asyncHandler(async (req, res) => {
-  const { receipt } = req.body;
+  const { receipt, printerId, printerName } = req.body;
   if (!receipt) throw new ApiError(400, "receipt is required");
-  const job = await createTestPrintJob(receipt);
+  const job = await createTestPrintJob(receipt, printerId, printerName);
   res.status(201).json(new ApiResponse(201, job, "Test print job created"));
 });
 var markOrderPrinted = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
   const order = await getById6(orderId);
   if (!order) throw new ApiError(404, "Order not found");
-  const job = await createPrintJob(orderId, order.orderNo, {
-    source: "browser",
-    note: "Marked as printed via browser"
+  const job = await createPrintJob({
+    orderId,
+    orderNo: order.orderNo,
+    receipt: { source: "browser", note: "Marked as printed via browser" },
+    format: "browser"
   });
   await markPrinted(job.id);
   res.json(new ApiResponse(200, { printedAt: (/* @__PURE__ */ new Date()).toISOString() }, "Order marked as printed"));
@@ -6076,33 +6142,330 @@ router24.get("/", requirePermission("settings", "read"), listTokens);
 router24.delete("/:id", requirePermission("settings", "update"), revokeToken);
 var serviceToken_routes_default = router24;
 
-// server/src/routes/index.ts
+// server/src/routes/label.routes.ts
+import { Router as Router25 } from "express";
+
+// server/src/db/labels.ts
+var LABEL_COLS = `
+  l.id::text AS "_id",
+  l.name, l."nameEn", l.color, l.icon,
+  l."isActive", l."createdAt", l."updatedAt"`;
+var list18 = async (all = false) => await query(
+  `SELECT ${LABEL_COLS} FROM labels l
+     ${all ? "" : 'WHERE l."isActive" = true'}
+     ORDER BY l.name`
+);
+var getById15 = async (id) => {
+  const rows = await query(`SELECT ${LABEL_COLS} FROM labels l WHERE l.id = $1::uuid LIMIT 1`, [id]);
+  return rows[0] ?? null;
+};
+var create21 = async (data) => {
+  const rows = await query(
+    `INSERT INTO labels (name, "nameEn", color, icon, "isActive")
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING ${LABEL_COLS}`,
+    [
+      data.name,
+      data.nameEn ?? "",
+      data.color ?? "#38BDF8",
+      data.icon ?? "",
+      data.isActive ?? true
+    ]
+  );
+  return rows[0];
+};
+var update20 = async (id, data) => {
+  const sets = [];
+  const values = [id];
+  const nxt = () => values.length;
+  const push = (col, v) => {
+    values.push(v);
+    sets.push(`"${col}" = $${nxt()}`);
+  };
+  if (data.name !== void 0) push("name", data.name);
+  if (data.nameEn !== void 0) push("nameEn", data.nameEn);
+  if (data.color !== void 0) push("color", data.color);
+  if (data.icon !== void 0) push("icon", data.icon);
+  if (data.isActive !== void 0) push("isActive", Boolean(data.isActive));
+  if (!sets.length) return getById15(id);
+  push("updatedAt", (/* @__PURE__ */ new Date()).toISOString());
+  const r = await query(`UPDATE labels SET ${sets.join(", ")} WHERE id = $1::uuid RETURNING id`, values);
+  if (!r.length) return null;
+  return getById15(id);
+};
+var remove20 = async (id) => {
+  const usage = await query('SELECT 1 FROM product_labels WHERE "labelId" = $1::uuid LIMIT 1', [id]);
+  if (usage.length) return { ok: false, inUse: true };
+  const r = await query("DELETE FROM labels WHERE id = $1::uuid RETURNING id", [id]);
+  return { ok: r.length > 0, inUse: false };
+};
+var getLabelsForProduct = async (productId) => await query(
+  `SELECT ${LABEL_COLS} FROM labels l
+     JOIN product_labels pl ON pl."labelId" = l.id
+     WHERE pl."productId" = $1::uuid
+     ORDER BY l.name`,
+  [productId]
+);
+var setLabelsForProduct = async (productId, labelIds) => {
+  await withTransaction(async (tx) => {
+    await tx.query('DELETE FROM product_labels WHERE "productId" = $1::uuid', [productId]);
+    for (const labelId of labelIds) {
+      await tx.query(
+        'INSERT INTO product_labels ("productId", "labelId") VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING',
+        [productId, labelId]
+      );
+    }
+  });
+};
+var listWithCounts = async () => await query(
+  `SELECT ${LABEL_COLS},
+       (SELECT count(*)::int FROM product_labels pl WHERE pl."labelId" = l.id) AS "productCount"
+     FROM labels l
+     ORDER BY l.name`
+);
+
+// server/src/controllers/label.controller.ts
+var list19 = asyncHandler(async (_req, res) => {
+  const all = _req.query.all === "true";
+  const labels = await list18(all);
+  res.json(new ApiResponse(200, labels));
+});
+var adminList7 = asyncHandler(async (_req, res) => {
+  const labels = await listWithCounts();
+  res.json(new ApiResponse(200, labels));
+});
+var getById16 = asyncHandler(async (req, res) => {
+  const label = await getById15(req.params.id);
+  if (!label) throw new ApiError(404, "Label not found");
+  res.json(new ApiResponse(200, label));
+});
+var create22 = asyncHandler(async (req, res) => {
+  const { name, nameEn, color, icon, isActive } = req.body;
+  if (!name || !String(name).trim()) throw new ApiError(400, "Label name is required");
+  const label = await create21({
+    name: String(name).trim(),
+    nameEn: nameEn ? String(nameEn).trim() : "",
+    color: color ? String(color) : void 0,
+    icon: icon ? String(icon) : void 0,
+    isActive: isActive !== void 0 ? Boolean(isActive) : void 0
+  });
+  res.status(201).json(new ApiResponse(201, label, "Label created"));
+});
+var update21 = asyncHandler(async (req, res) => {
+  const label = await update20(req.params.id, req.body);
+  if (!label) throw new ApiError(404, "Label not found");
+  res.json(new ApiResponse(200, label, "Label updated"));
+});
+var remove21 = asyncHandler(async (req, res) => {
+  const result = await remove20(req.params.id);
+  if (!result.ok) {
+    if (result.inUse) throw new ApiError(400, "Cannot delete label that is in use by products");
+    throw new ApiError(404, "Label not found");
+  }
+  res.json(new ApiResponse(200, null, "Label deleted"));
+});
+var getProductLabels = asyncHandler(async (req, res) => {
+  const labels = await getLabelsForProduct(req.params.productId);
+  res.json(new ApiResponse(200, labels));
+});
+var setProductLabels = asyncHandler(async (req, res) => {
+  const { labelIds } = req.body;
+  if (!Array.isArray(labelIds)) throw new ApiError(400, "labelIds must be an array");
+  await setLabelsForProduct(req.params.productId, labelIds.map(String));
+  const labels = await getLabelsForProduct(req.params.productId);
+  res.json(new ApiResponse(200, labels, "Product labels updated"));
+});
+
+// server/src/routes/label.routes.ts
 var router25 = Router25();
-router25.use("/auth", auth_routes_default);
-router25.use("/users/me", user_routes_default);
-router25.use("/products", product_routes_default);
-router25.use("/categories", category_routes_default);
-router25.use("/reviews", review_routes_default);
-router25.use("/wishlist", wishlist_routes_default);
-router25.use("/cart", cart_routes_default);
-router25.use("/orders", order_routes_default);
-router25.use("/coupons", coupon_routes_default);
-router25.use("/offers", offer_routes_default);
-router25.use("/banners", banner_routes_default);
-router25.use("/gallery", gallery_routes_default);
-router25.use("/branches", branch_routes_default);
-router25.use("/contacts", contact_routes_default);
-router25.use("/newsletter", newsletter_routes_default);
-router25.use("/settings", setting_routes_default);
-router25.use("/notifications", notification_routes_default);
-router25.use("/analytics", analytics_routes_default);
-router25.use("/upload", upload_routes_default);
-router25.use("/posts", post_routes_default);
-router25.use("/admin/users", adminApiLimiter, adminUser_routes_default);
-router25.use("/system", systemReset_routes_default);
-router25.use("/print", print_routes_default);
-router25.use("/service-tokens", serviceToken_routes_default);
-var routes_default = router25;
+router25.get("/", list19);
+router25.get("/admin", requireAuth, requirePermission("products", "read"), adminList7);
+router25.get("/:id", getById16);
+router25.use(requireAuth);
+router25.post("/", requirePermission("products", "create"), create22);
+router25.patch("/:id", requirePermission("products", "update"), update21);
+router25.delete("/:id", requirePermission("products", "delete"), remove21);
+router25.get("/product/:productId", requirePermission("products", "read"), getProductLabels);
+router25.put("/product/:productId", requirePermission("products", "update"), setProductLabels);
+var label_routes_default = router25;
+
+// server/src/routes/paymentWebhook.routes.ts
+import { Router as Router26 } from "express";
+
+// server/src/services/payment/paymentAdapter.ts
+var PaymentManager = class {
+  providers = /* @__PURE__ */ new Map();
+  registerProvider(provider) {
+    this.providers.set(provider.id, provider);
+  }
+  getProvider(id) {
+    return this.providers.get(id);
+  }
+  async processPayment(request) {
+    if (request.method === "cash") {
+      return {
+        success: true,
+        status: "paid",
+        transactionId: `CASH-${request.orderId}`,
+        reference: `cash-${Date.now()}`
+      };
+    }
+    const provider = Array.from(this.providers.values()).find(
+      (p) => p.methods.includes(request.method)
+    );
+    if (!provider) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "NO_PROVIDER",
+        errorMessage: `No payment provider configured for method: ${request.method}`
+      };
+    }
+    try {
+      return await provider.charge(request);
+    } catch (err) {
+      return {
+        success: false,
+        status: "failed",
+        errorCode: "PROVIDER_ERROR",
+        errorMessage: err instanceof Error ? err.message : "Payment provider error"
+      };
+    }
+  }
+  async handleWebhook(payload) {
+    const provider = this.providers.get(payload.provider);
+    if (!provider) return null;
+    return provider.verifyWebhook(payload);
+  }
+};
+var paymentManager = new PaymentManager();
+var CashProvider = {
+  id: "cash",
+  name: "Cash on Delivery",
+  methods: ["cash"],
+  async initialize() {
+    return true;
+  },
+  async charge(request) {
+    return {
+      success: true,
+      status: "paid",
+      transactionId: `CASH-${request.orderId}`,
+      reference: `cash-${Date.now()}`
+    };
+  },
+  async getStatus(transactionId) {
+    return { success: true, status: "paid", transactionId };
+  },
+  async refund() {
+    return { success: false, status: "failed", errorCode: "NOT_SUPPORTED", errorMessage: "Cash cannot be refunded via gateway" };
+  },
+  async verifyWebhook() {
+    return null;
+  }
+};
+paymentManager.registerProvider(CashProvider);
+
+// server/src/controllers/paymentWebhook.controller.ts
+var VALID_WEBHOOK_TRANSITIONS = {
+  pending: ["processing", "paid", "failed", "cancelled", "expired"],
+  processing: ["paid", "failed", "cancelled", "expired"],
+  paid: ["refunded"],
+  failed: ["pending", "processing"],
+  cancelled: ["pending"],
+  expired: ["pending"],
+  refunded: []
+};
+var handleWebhook = asyncHandler(async (req, res) => {
+  const { provider } = req.params;
+  const rawBody = JSON.stringify(req.body);
+  const payload = {
+    provider,
+    transactionId: req.body.transaction_id ?? req.body.referenceNumber ?? req.body.id ?? "",
+    orderId: req.body.order_id ?? req.body.merchantRefNumber ?? req.body.orderId ?? "",
+    status: req.body.status ?? "pending",
+    amount: req.body.amount ?? req.body.amount_cents,
+    rawBody,
+    signature: req.headers["x-signature"] ?? req.body.signature ?? "",
+    timestamp: req.body.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
+    metadata: req.body
+  };
+  const verifiedPayload = await paymentManager.handleWebhook(payload);
+  if (!verifiedPayload) {
+    console.warn(`[webhook] Rejected webhook from unknown provider: ${provider}`);
+    throw new ApiError(400, "Invalid webhook");
+  }
+  const { orderId, transactionId, status } = verifiedPayload;
+  if (!orderId || orderId === "00000000-0000-0000-0000-000000000000") {
+    console.log(`[webhook] Ignored webhook for test/invalid order: ${orderId}`);
+    res.json(new ApiResponse(200, null, "Webhook acknowledged"));
+    return;
+  }
+  const order = await getById6(orderId);
+  if (!order) {
+    console.warn(`[webhook] Order not found: ${orderId}`);
+    throw new ApiError(404, "Order not found");
+  }
+  const currentPaymentStatus = order.paymentStatus ?? "pending";
+  if (currentPaymentStatus === status) {
+    console.log(`[webhook] Duplicate webhook ignored: order ${order.orderNo} already ${status}`);
+    res.json(new ApiResponse(200, null, "Webhook already processed"));
+    return;
+  }
+  const allowedTransitions = VALID_WEBHOOK_TRANSITIONS[currentPaymentStatus] ?? [];
+  if (!allowedTransitions.includes(status)) {
+    console.warn(`[webhook] Invalid transition: ${currentPaymentStatus} \u2192 ${status} for order ${order.orderNo}`);
+    throw new ApiError(400, `Invalid payment status transition: ${currentPaymentStatus} \u2192 ${status}`);
+  }
+  await updatePaymentStatus(orderId, {
+    paymentStatus: status,
+    paymentReference: transactionId
+  });
+  console.log(`[webhook] Order ${order.orderNo} payment status: ${currentPaymentStatus} \u2192 ${status}`);
+  res.json(new ApiResponse(200, null, "Webhook processed"));
+});
+var handleGenericWebhook = asyncHandler(async (req, res) => {
+  const provider = req.body.provider ?? req.headers["x-provider"] ?? req.query.provider ?? "unknown";
+  req.params = { ...req.params, provider: String(provider) };
+  await handleWebhook(req, res, () => {
+  });
+});
+
+// server/src/routes/paymentWebhook.routes.ts
+var router26 = Router26();
+router26.post("/webhook/:provider", handleWebhook);
+router26.post("/webhook", handleGenericWebhook);
+var paymentWebhook_routes_default = router26;
+
+// server/src/routes/index.ts
+var router27 = Router27();
+router27.use("/auth", auth_routes_default);
+router27.use("/users/me", user_routes_default);
+router27.use("/products", product_routes_default);
+router27.use("/categories", category_routes_default);
+router27.use("/reviews", review_routes_default);
+router27.use("/wishlist", wishlist_routes_default);
+router27.use("/cart", cart_routes_default);
+router27.use("/orders", order_routes_default);
+router27.use("/coupons", coupon_routes_default);
+router27.use("/offers", offer_routes_default);
+router27.use("/banners", banner_routes_default);
+router27.use("/gallery", gallery_routes_default);
+router27.use("/branches", branch_routes_default);
+router27.use("/contacts", contact_routes_default);
+router27.use("/newsletter", newsletter_routes_default);
+router27.use("/settings", setting_routes_default);
+router27.use("/notifications", notification_routes_default);
+router27.use("/analytics", analytics_routes_default);
+router27.use("/upload", upload_routes_default);
+router27.use("/posts", post_routes_default);
+router27.use("/admin/users", adminApiLimiter, adminUser_routes_default);
+router27.use("/system", systemReset_routes_default);
+router27.use("/print", print_routes_default);
+router27.use("/service-tokens", serviceToken_routes_default);
+router27.use("/labels", label_routes_default);
+router27.use("/payments", paymentWebhook_routes_default);
+var routes_default = router27;
 
 // server/src/app.ts
 var app = express();

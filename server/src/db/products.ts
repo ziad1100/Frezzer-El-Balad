@@ -191,7 +191,7 @@ const syncSizes = async (client: typeof query, productId: string, sizes: Array<{
     await client(
       `INSERT INTO product_sizes ("productId", "sortOrder", name, "nameEn", price, "isAvailable")
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [productId, i, s.name, s.nameEn ?? '', Number(s.price) || 0, s.isAvailable ?? true],
+      [productId, i, s.name, s.nameEn ?? '', Number(s.price), s.isAvailable ?? true],
     );
   }
 };
@@ -202,7 +202,7 @@ const syncExtras = async (client: typeof query, productId: string, extras: Array
     await client(
       `INSERT INTO product_extras ("productId", "sortOrder", name, "nameEn", price)
        VALUES ($1, $2, $3, $4, $5)`,
-      [productId, i, e.name, e.nameEn ?? '', Number(e.price) || 0],
+      [productId, i, e.name, e.nameEn ?? '', Number(e.price)],
     );
   }
 };
@@ -239,7 +239,7 @@ export const create = async (data: {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid,$12,$13,$14,$15,$16,$17,$18)
        RETURNING id`,
       [data.name, data.nameEn ?? '', data.slug, data.description ?? '', data.descriptionEn ?? '',
-       Number(data.basePrice) || 0, data.images ?? [], data.ingredients ?? [], data.ingredientsEn ?? [],
+       Number(data.basePrice), data.images ?? [], data.ingredients ?? [], data.ingredientsEn ?? [],
        data.tags ?? [], data.category ?? null, data.isAvailable ?? true, data.isBestSeller ?? false,
        data.isOffer ?? false, Number(data.discount) || 0, Number(data.preparationTime) || 20,
        Number(data.calories) || 0, Number(data.sortOrder) || 0],

@@ -8,8 +8,7 @@ import { asyncHandler } from '../utils/asyncHandler';
  *
  * Safe system reset — admin only.
  * Clears orders, carts, offers, coupon redemptions, analytics.
- * Resets product/variant prices to 0.
- * Preserves users, products, categories, variants, reviews, coupons (structure).
+ * Preserves users, products (including prices), categories, variants, reviews, coupons (structure).
  */
 export const systemResetHandler = asyncHandler(async (_req: Request, res: Response) => {
   const result = await systemResetRepo.systemReset();
