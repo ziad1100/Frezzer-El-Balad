@@ -2,7 +2,7 @@
 # Re-create on a new machine:
 #   schtasks /create /tn ORABIBackup /tr "powershell -ExecutionPolicy Bypass -File `"C:\Self Work\PizzaProject\scripts\backup.ps1`"" /sc daily /st 03:00 /f
 $ErrorActionPreference = 'Continue'
-$repo = 'C:\Self Work\PizzaProject'
+$repo = 'C:\Self Work\Frezzer El Balad'
 
 if (-not (Test-Path $repo)) { Write-Output "[backup] repo not found: $repo"; exit 0 }
 Set-Location $repo
