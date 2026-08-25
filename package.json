@@ -23,6 +23,7 @@
     "backup:db": "node scripts/backup-db.mjs",
     "backup:remote": "node scripts/backup-remote.mjs",
     "restore:db": "node scripts/restore-db.mjs",
+    "restore:remote": "node scripts/restore-remote.mjs",
     "backup": "node scripts/backup.mjs",
     "start": "cross-env NODE_ENV=production node server/dist/server.js"
   },
