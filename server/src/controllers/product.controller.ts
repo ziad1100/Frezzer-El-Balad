@@ -154,8 +154,10 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
 
 export const updateProduct = asyncHandler(async (req: Request, res: Response) => {
   const body = sanitizeBody(req.body);
-  if (body.basePrice !== undefined && (typeof body.basePrice !== 'number' || !Number.isFinite(body.basePrice) || body.basePrice <= 0)) {
-    throw new ApiError(400, 'Base price must be a positive number');
+  // On update, allow 0 price (existing products may have legacy 0 values).
+  // Zod schema already validated >= 0 for the update path.
+  if (body.basePrice !== undefined && (typeof body.basePrice !== 'number' || !Number.isFinite(body.basePrice) || body.basePrice < 0)) {
+    throw new ApiError(400, 'Base price must be a non-negative number');
   }
   try {
     const product = await productsRepo.update(req.params.id, body as never);

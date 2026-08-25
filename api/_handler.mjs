@@ -140412,7 +140412,38 @@ var productCreateSchema = external_exports.object({
   isBestSeller: external_exports.boolean().optional(),
   isOffer: external_exports.boolean().optional()
 });
-var productUpdateSchema = productCreateSchema.partial();
+var sizeUpdate = external_exports.object({
+  name: external_exports.string().trim().min(1, "Size name is required").max(50),
+  nameEn: external_exports.string().trim().max(50).optional(),
+  price: nonNegative("Size price must be a non-negative number"),
+  isAvailable: external_exports.boolean().optional()
+});
+var extraUpdate = external_exports.object({
+  name: external_exports.string().trim().min(1, "Extra name is required").max(50),
+  nameEn: external_exports.string().trim().max(50).optional(),
+  price: nonNegative("Extra price must be a non-negative number")
+});
+var productUpdateSchema = external_exports.object({
+  name: external_exports.string().trim().min(1, "Product name (Arabic) is required").max(120).optional(),
+  nameEn: external_exports.string().trim().max(120).optional(),
+  description: external_exports.string().trim().max(5e3).optional(),
+  descriptionEn: external_exports.string().trim().max(5e3).optional(),
+  category: objectId("Category is required").optional(),
+  images: external_exports.array(external_exports.string().trim().max(500)).max(20).optional(),
+  sizes: external_exports.array(sizeUpdate).max(10).optional(),
+  extras: external_exports.array(extraUpdate).max(30).optional(),
+  ingredients: external_exports.array(external_exports.string().trim().max(100)).max(50).optional(),
+  ingredientsEn: external_exports.array(external_exports.string().trim().max(100)).max(50).optional(),
+  tags: external_exports.array(external_exports.string().trim().max(50)).max(50).optional(),
+  basePrice: nonNegative("Base price must be a non-negative number").optional(),
+  discount: external_exports.coerce.number().min(0).max(100).optional(),
+  preparationTime: external_exports.coerce.number().int().min(1).max(600).optional(),
+  calories: external_exports.coerce.number().min(0).max(1e4).optional(),
+  isAvailable: external_exports.boolean().optional(),
+  isBestSeller: external_exports.boolean().optional(),
+  isOffer: external_exports.boolean().optional(),
+  labelIds: external_exports.array(external_exports.string()).optional()
+});
 
 // server/src/schemas/category.ts
 var categoryCreateSchema = external_exports.object({
@@ -141205,8 +141236,8 @@ var createProduct = asyncHandler(async (req, res) => {
 });
 var updateProduct = asyncHandler(async (req, res) => {
   const body = sanitizeBody(req.body);
-  if (body.basePrice !== void 0 && (typeof body.basePrice !== "number" || !Number.isFinite(body.basePrice) || body.basePrice <= 0)) {
-    throw new ApiError(400, "Base price must be a positive number");
+  if (body.basePrice !== void 0 && (typeof body.basePrice !== "number" || !Number.isFinite(body.basePrice) || body.basePrice < 0)) {
+    throw new ApiError(400, "Base price must be a non-negative number");
   }
   try {
     const product = await update2(req.params.id, body);
@@ -166568,10 +166599,6 @@ var systemReset = async () => {
     await tx.query("DELETE FROM coupon_redemptions");
     await tx.query('UPDATE coupons SET "usedCount" = 0');
     await tx.query("TRUNCATE TABLE analytics");
-    const productsResult = await tx.query('UPDATE products SET "isOffer" = false');
-    const productsReset = productsResult.rowCount ?? 0;
-    const sizesReset = 0;
-    const extrasReset = 0;
     await tx.query(
       `INSERT INTO settings (key, value) VALUES ('statsClearedAt', $1::jsonb)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -166580,10 +166607,7 @@ var systemReset = async () => {
     return {
       ordersDeleted,
       cartsCleared,
-      offersDeleted,
-      productsReset,
-      sizesReset,
-      extrasReset
+      offersDeleted
     };
   });
 };
@@ -166597,10 +166621,7 @@ var systemResetHandler = asyncHandler(async (_req, res) => {
       summary: {
         ordersDeleted: result.ordersDeleted,
         cartsCleared: result.cartsCleared,
-        offersDeleted: result.offersDeleted,
-        productsReset: result.productsReset,
-        sizesReset: result.sizesReset,
-        extrasReset: result.extrasReset
+        offersDeleted: result.offersDeleted
       }
     }, "System reset completed successfully")
   );

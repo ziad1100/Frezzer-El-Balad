@@ -2,37 +2,33 @@ import { withTransaction } from './index';
 
 /**
  * Safe system reset — clears transactional/promotional data while preserving
- * core business entities (users, products, categories, variants, reviews).
+ * ALL core business entities (users, products, categories, variants, reviews,
+ * labels, banners, branches, posts, settings, notifications).
  *
- * What gets CLEARED:
- *   - Orders + order_items
- *   - Carts + cart_items
- *   - Offers + offer_products
- *   - Coupon redemptions (not coupons themselves)
- *   - Analytics rollup table
+ * What gets CLEARED (allow-list approach):
+ *   - Orders + order_items  (transactional)
+ *   - Carts + cart_items    (transactional)
+ *   - Offers + offer_products (promotional — products themselves stay)
+ *   - Coupon redemptions    (transactional — coupon structure stays)
+ *   - Analytics rollup table (statistics)
  *
  * What gets RESET:
- *   - Product isOffer → false (since offers are cleared)
+ *   - Coupon usedCount → 0  (counter tied to cleared redemptions)
+ *   - statsClearedAt setting (dashboard state marker)
  *
- * IMPORTANT: Product prices are NEVER reset. Existing prices are preserved.
- *
- * What is PRESERVED:
+ * IMPORTANT — NEVER modified by reset:
+ *   - Product records (names, prices, descriptions, images, categories, etc.)
+ *   - Product sizes / extras (names, prices, relationships)
+ *   - Product isOffer / isBestSeller / isAvailable flags
  *   - Users / admins
- *   - Products (names, descriptions, images, categories, etc.)
- *   - Categories
- *   - Product sizes (names, relationships — prices preserved)
- *   - Product extras (names, relationships — prices preserved)
+ *   - Categories / labels
  *   - Reviews / ratings
- *   - Coupons (structure preserved, only redemptions cleared)
- *   - Banners, branches, posts, contacts, settings, notifications
+ *   - Banners / branches / posts / contacts / settings (except statsClearedAt)
  */
 export const systemReset = async (): Promise<{
   ordersDeleted: number;
   cartsCleared: number;
   offersDeleted: number;
-  productsReset: number;
-  sizesReset: number;
-  extrasReset: number;
 }> => {
   return await withTransaction(async (tx) => {
     // 1. Delete all order items first (FK dependency on orders)
@@ -59,22 +55,13 @@ export const systemReset = async (): Promise<{
     // 7. Clear coupon redemptions (keep coupons structure)
     await tx.query('DELETE FROM coupon_redemptions');
 
-    // 8. Reset coupon usedCount to 0
+    // 8. Reset coupon usedCount to 0 (counter tied to cleared redemptions)
     await tx.query('UPDATE coupons SET "usedCount" = 0');
 
-    // 9. Truncate analytics table
+    // 9. Truncate analytics table (statistics only)
     await tx.query('TRUNCATE TABLE analytics');
 
-    // 10. Reset isOffer flag on products (since offers are cleared)
-    const productsResult = await tx.query('UPDATE products SET "isOffer" = false');
-    const productsReset = productsResult.rowCount ?? 0;
-
-    // NOTE: Product prices and variant prices are intentionally NOT reset.
-    // Prices are preserved so that the system reset does not destroy product pricing data.
-    const sizesReset = 0;
-    const extrasReset = 0;
-
-    // 11. Reset the stats cutoff so dashboard shows clean state
+    // 10. Reset the stats cutoff so dashboard shows clean state
     await tx.query(
       `INSERT INTO settings (key, value) VALUES ('statsClearedAt', $1::jsonb)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -85,9 +72,6 @@ export const systemReset = async (): Promise<{
       ordersDeleted,
       cartsCleared,
       offersDeleted,
-      productsReset,
-      sizesReset,
-      extrasReset,
     };
   });
 };

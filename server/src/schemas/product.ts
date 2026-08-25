@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { objectId, positivePrice } from './common';
+import { objectId, nonNegative, positivePrice } from './common';
+
+// ── Create schemas (strict — new products must have valid data) ──────────
 
 const size = z.object({
   name: z.string().trim().min(1, 'Size name is required').max(50),
@@ -36,4 +38,41 @@ export const productCreateSchema = z.object({
   isOffer: z.boolean().optional(),
 });
 
-export const productUpdateSchema = productCreateSchema.partial();
+// ── Update schemas (lenient — existing products may have legacy 0-prices,
+//    empty images, or other data that was valid before stricter rules).
+//    The PATCH flow only overwrites fields the admin actually sends. ─────
+
+const sizeUpdate = z.object({
+  name: z.string().trim().min(1, 'Size name is required').max(50),
+  nameEn: z.string().trim().max(50).optional(),
+  price: nonNegative('Size price must be a non-negative number'),
+  isAvailable: z.boolean().optional(),
+});
+
+const extraUpdate = z.object({
+  name: z.string().trim().min(1, 'Extra name is required').max(50),
+  nameEn: z.string().trim().max(50).optional(),
+  price: nonNegative('Extra price must be a non-negative number'),
+});
+
+export const productUpdateSchema = z.object({
+  name: z.string().trim().min(1, 'Product name (Arabic) is required').max(120).optional(),
+  nameEn: z.string().trim().max(120).optional(),
+  description: z.string().trim().max(5000).optional(),
+  descriptionEn: z.string().trim().max(5000).optional(),
+  category: objectId('Category is required').optional(),
+  images: z.array(z.string().trim().max(500)).max(20).optional(),
+  sizes: z.array(sizeUpdate).max(10).optional(),
+  extras: z.array(extraUpdate).max(30).optional(),
+  ingredients: z.array(z.string().trim().max(100)).max(50).optional(),
+  ingredientsEn: z.array(z.string().trim().max(100)).max(50).optional(),
+  tags: z.array(z.string().trim().max(50)).max(50).optional(),
+  basePrice: nonNegative('Base price must be a non-negative number').optional(),
+  discount: z.coerce.number().min(0).max(100).optional(),
+  preparationTime: z.coerce.number().int().min(1).max(600).optional(),
+  calories: z.coerce.number().min(0).max(10000).optional(),
+  isAvailable: z.boolean().optional(),
+  isBestSeller: z.boolean().optional(),
+  isOffer: z.boolean().optional(),
+  labelIds: z.array(z.string()).optional(),
+});

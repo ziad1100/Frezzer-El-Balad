@@ -235,9 +235,10 @@ export function AdminProductsPage() {
         description: form.description.trim(),
         descriptionEn: form.descriptionEn.trim(),
         category: form.category,
-        images: form.images,
-        sizes: form.sizes.map((s) => ({ name: s.name, nameEn: s.nameEn, price: Number(s.price) || 0, isAvailable: s.isAvailable ?? true })),
-        extras: form.extras.map((e) => ({ name: e.name, nameEn: e.nameEn, price: Number(e.price) || 0 })),
+        // Only send images if the product actually has one (avoids 422 from min(1) on create)
+        ...(form.images.length > 0 ? { images: form.images } : {}),
+        sizes: form.sizes.map((s) => ({ name: s.name, nameEn: s.nameEn, price: Number(s.price), isAvailable: s.isAvailable ?? true })),
+        extras: form.extras.map((e) => ({ name: e.name, nameEn: e.nameEn, price: Number(e.price) })),
         ingredients: form.ingredients.split(',').map((s) => s.trim()).filter(Boolean),
         ingredientsEn: form.ingredientsEn.split(',').map((s) => s.trim()).filter(Boolean),
         tags: form.tags.split(',').map((s) => s.trim()).filter(Boolean),

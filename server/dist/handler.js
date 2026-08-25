@@ -1460,7 +1460,38 @@ var productCreateSchema = z6.object({
   isBestSeller: z6.boolean().optional(),
   isOffer: z6.boolean().optional()
 });
-var productUpdateSchema = productCreateSchema.partial();
+var sizeUpdate = z6.object({
+  name: z6.string().trim().min(1, "Size name is required").max(50),
+  nameEn: z6.string().trim().max(50).optional(),
+  price: nonNegative("Size price must be a non-negative number"),
+  isAvailable: z6.boolean().optional()
+});
+var extraUpdate = z6.object({
+  name: z6.string().trim().min(1, "Extra name is required").max(50),
+  nameEn: z6.string().trim().max(50).optional(),
+  price: nonNegative("Extra price must be a non-negative number")
+});
+var productUpdateSchema = z6.object({
+  name: z6.string().trim().min(1, "Product name (Arabic) is required").max(120).optional(),
+  nameEn: z6.string().trim().max(120).optional(),
+  description: z6.string().trim().max(5e3).optional(),
+  descriptionEn: z6.string().trim().max(5e3).optional(),
+  category: objectId("Category is required").optional(),
+  images: z6.array(z6.string().trim().max(500)).max(20).optional(),
+  sizes: z6.array(sizeUpdate).max(10).optional(),
+  extras: z6.array(extraUpdate).max(30).optional(),
+  ingredients: z6.array(z6.string().trim().max(100)).max(50).optional(),
+  ingredientsEn: z6.array(z6.string().trim().max(100)).max(50).optional(),
+  tags: z6.array(z6.string().trim().max(50)).max(50).optional(),
+  basePrice: nonNegative("Base price must be a non-negative number").optional(),
+  discount: z6.coerce.number().min(0).max(100).optional(),
+  preparationTime: z6.coerce.number().int().min(1).max(600).optional(),
+  calories: z6.coerce.number().min(0).max(1e4).optional(),
+  isAvailable: z6.boolean().optional(),
+  isBestSeller: z6.boolean().optional(),
+  isOffer: z6.boolean().optional(),
+  labelIds: z6.array(z6.string()).optional()
+});
 
 // server/src/schemas/category.ts
 import { z as z7 } from "zod";
@@ -2265,8 +2296,8 @@ var createProduct = asyncHandler(async (req, res) => {
 });
 var updateProduct = asyncHandler(async (req, res) => {
   const body = sanitizeBody(req.body);
-  if (body.basePrice !== void 0 && (typeof body.basePrice !== "number" || !Number.isFinite(body.basePrice) || body.basePrice <= 0)) {
-    throw new ApiError(400, "Base price must be a positive number");
+  if (body.basePrice !== void 0 && (typeof body.basePrice !== "number" || !Number.isFinite(body.basePrice) || body.basePrice < 0)) {
+    throw new ApiError(400, "Base price must be a non-negative number");
   }
   try {
     const product = await update2(req.params.id, body);
@@ -5881,10 +5912,6 @@ var systemReset = async () => {
     await tx.query("DELETE FROM coupon_redemptions");
     await tx.query('UPDATE coupons SET "usedCount" = 0');
     await tx.query("TRUNCATE TABLE analytics");
-    const productsResult = await tx.query('UPDATE products SET "isOffer" = false');
-    const productsReset = productsResult.rowCount ?? 0;
-    const sizesReset = 0;
-    const extrasReset = 0;
     await tx.query(
       `INSERT INTO settings (key, value) VALUES ('statsClearedAt', $1::jsonb)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -5893,10 +5920,7 @@ var systemReset = async () => {
     return {
       ordersDeleted,
       cartsCleared,
-      offersDeleted,
-      productsReset,
-      sizesReset,
-      extrasReset
+      offersDeleted
     };
   });
 };
@@ -5910,10 +5934,7 @@ var systemResetHandler = asyncHandler(async (_req, res) => {
       summary: {
         ordersDeleted: result.ordersDeleted,
         cartsCleared: result.cartsCleared,
-        offersDeleted: result.offersDeleted,
-        productsReset: result.productsReset,
-        sizesReset: result.sizesReset,
-        extrasReset: result.extrasReset
+        offersDeleted: result.offersDeleted
       }
     }, "System reset completed successfully")
   );

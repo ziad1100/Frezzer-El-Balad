@@ -20,9 +20,6 @@ export const systemResetHandler = asyncHandler(async (_req: Request, res: Respon
         ordersDeleted: result.ordersDeleted,
         cartsCleared: result.cartsCleared,
         offersDeleted: result.offersDeleted,
-        productsReset: result.productsReset,
-        sizesReset: result.sizesReset,
-        extrasReset: result.extrasReset,
       },
     }, 'System reset completed successfully'),
   );
