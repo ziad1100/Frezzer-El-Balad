@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Printer, Send, RefreshCw, CheckCircle, XCircle, AlertTriangle, Key, Copy, Trash2, Plus, Star, StarOff } from 'lucide-react';
+import { Printer, Send, RefreshCw, CheckCircle, XCircle, AlertTriangle, Key, Copy, Trash2, Plus, Star, StarOff, Wifi, Usb, Bluetooth, Monitor, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminSettings, updateSettings } from '@/api/admin';
-import { listRecentPrintJobs, retryPrintJob, generateServiceToken, listServiceTokens, revokeServiceToken, createTestPrintJob } from '@/api/print';
+import { listRecentPrintJobs, retryPrintJob, generateServiceToken, listServiceTokens, revokeServiceToken, createTestPrintJob, getAgentStatus, type AgentStatus } from '@/api/print';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, Skeleton } from '@/components/ui/Card';
 import { Input, Select } from '@/components/ui/Input';
@@ -70,6 +70,11 @@ export function AdminPrinterPage() {
   const settings = useQuery({ queryKey: ['admin', 'settings'], queryFn: getAdminSettings });
   const printJobs = useQuery({ queryKey: ['admin', 'print-jobs'], queryFn: listRecentPrintJobs, refetchInterval: 10000 });
   const serviceTokens = useQuery({ queryKey: ['admin', 'service-tokens'], queryFn: listServiceTokens });
+  const agentStatusQuery = useQuery({ queryKey: ['admin', 'agent-status'], queryFn: getAgentStatus, refetchInterval: 15000 });
+
+  // Connection test state
+  const [testingConnection, setTestingConnection] = useState<string | null>(null);
+  const [connectionResults, setConnectionResults] = useState<Record<string, { success: boolean; message: string }>>({});
 
   const savedPrinters = useMemo(() => migratePrinters(settings.data?.printerConfig), [settings.data?.printerConfig]);
   const [printers, setPrinters] = useState<PrinterConfig[]>(savedPrinters);
@@ -126,6 +131,57 @@ export function AdminPrinterPage() {
       toast.success(lang === 'ar' ? 'تم إلغاء الرمز' : 'Token revoked');
     },
   });
+
+  // Connection test handler
+  const handleConnectionTest = useCallback(async (printer: PrinterConfig): Promise<void> => {
+    setTestingConnection(printer.id);
+    setConnectionResults((prev) => ({ ...prev, [printer.id]: { success: false, message: lang === 'ar' ? 'جاري الفحص...' : 'Testing...' } }));
+
+    try {
+      // Test by sending a test print job
+      const testReceiptPayload = {
+        storeNameAr: '\u0648\u0644\u0627\u062f \u062d\u0644\u0627\u0644',
+        storeNameEn: 'Welad Halal',
+        orderNo: 'TEST-CONN',
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString(),
+        customerName: '',
+        customerPhone: '',
+        customerAddress: '',
+        status: 'Connection Test',
+        items: [],
+        subtotal: 0,
+        deliveryFee: 0,
+        discount: 0,
+        total: 0,
+        paymentMethod: 'cash',
+        footerAr: 'اختبار الاتصال',
+        footerEn: 'Connection Test',
+        paperWidth: printer.paperWidth,
+        language: 'en',
+      };
+      await createTestPrintJob(testReceiptPayload);
+      setConnectionResults((prev) => ({
+        ...prev,
+        [printer.id]: {
+          success: true,
+          message: lang === 'ar' ? '✓ تم إرسال اختبار الاتصال — تحقق من الطابعة' : '✓ Connection test sent — check printer',
+        },
+      }));
+    } catch {
+      setConnectionResults((prev) => ({
+        ...prev,
+        [printer.id]: {
+          success: false,
+          message: lang === 'ar'
+            ? '✗ فشل الاتصال — تأكد من أن خدمة الطباعة المحلية تعمل'
+            : '✗ Connection failed — ensure local print service is running',
+        },
+      }));
+    } finally {
+      setTimeout(() => setTestingConnection(null), 2000);
+    }
+  }, [lang]);
 
   const handleTestPrint = async (printer: PrinterConfig): Promise<void> => {
     setTestPrinting(printer.id);
@@ -235,6 +291,16 @@ export function AdminPrinterPage() {
       bluetooth: { ar: 'بلوتوث', en: 'Bluetooth' }, wifi: { ar: 'واي فاي', en: 'Wi-Fi' },
     };
     return m[c]?.[lang === 'ar' ? 'ar' : 'en'] ?? c.toUpperCase();
+  };
+
+  const connectionIcon = (c: string) => {
+    switch (c) {
+      case 'usb': return <Usb className="h-3 w-3" />;
+      case 'lan': return <Wifi className="h-3 w-3" />;
+      case 'wifi': return <Wifi className="h-3 w-3" />;
+      case 'bluetooth': return <Bluetooth className="h-3 w-3" />;
+      default: return <Monitor className="h-3 w-3" />;
+    }
   };
 
   return (
@@ -374,8 +440,25 @@ export function AdminPrinterPage() {
                             {connLabel(p.connection)} · {p.paperWidth}mm
                             {(p.connection === 'lan' || p.connection === 'wifi') && p.ipAddress ? ` · ${p.ipAddress}:${p.port}` : ''}
                           </p>
+                          {connectionResults[p.id] && (
+                            <p className={cn('mt-1 text-xs font-semibold', connectionResults[p.id].success ? 'text-emerald-400' : 'text-red-400')}>
+                              {connectionResults[p.id].message}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
+                          {/* Connection Test */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title={lang === 'ar' ? 'فحص الاتصال' : 'Test Connection'}
+                            loading={testingConnection === p.id}
+                            onClick={() => void handleConnectionTest(p)}
+                            className="text-blue-400 hover:bg-blue-500/10"
+                          >
+                            <Wifi className="h-3.5 w-3.5" />
+                          </Button>
+                          {/* Test Print */}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -484,6 +567,87 @@ export function AdminPrinterPage() {
               <p className="py-8 text-center text-sm text-night-500">
                 {lang === 'ar' ? 'لا توجد jobs طباعة' : 'No print jobs yet'}
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Agent Status */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-night-300">
+                <Monitor className="h-4 w-4" />
+                {lang === 'ar' ? 'حالة خدمة الطباعة المحلية' : 'Local Print Agent Status'}
+              </h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => void queryClient.invalidateQueries({ queryKey: ['admin', 'agent-status'] })}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {agentStatusQuery.isLoading ? (
+              <Skeleton className="h-24" />
+            ) : agentStatusQuery.data && agentStatusQuery.data.length > 0 ? (
+              <div className="space-y-2">
+                {agentStatusQuery.data.map((agent: AgentStatus) => (
+                  <div
+                    key={agent.agentId}
+                    className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        'flex h-8 w-8 items-center justify-center rounded-lg',
+                        agent.connected ? 'bg-emerald-500/10' : 'bg-red-500/10',
+                      )}>
+                        {connectionIcon(agent.connectionType)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-night-100">
+                          {agent.connectionType.toUpperCase()}
+                          <span className="ml-2 text-xs text-night-500">({agent.paperWidth}mm)</span>
+                        </p>
+                        <div className="flex items-center gap-1 text-xs">
+                          <Clock className="h-3 w-3" />
+                          <span className="text-night-500">
+                            {agent.isRecent
+                              ? (lang === 'ar' ? 'متصل الآن' : 'Connected now')
+                              : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
+                          </span>
+                          <span className="text-night-600">·</span>
+                          <span className="text-night-500">{new Date(agent.lastSeen).toLocaleTimeString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className={cn(
+                      'rounded-md px-2 py-0.5 text-xs font-bold',
+                      agent.isRecent
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-red-500/20 text-red-400',
+                    )}>
+                      {agent.isRecent
+                        ? (lang === 'ar' ? 'نشط' : 'Online')
+                        : (lang === 'ar' ? 'غير متصل' : 'Offline')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-6 text-center">
+                <Monitor className="mx-auto mb-2 h-8 w-8 text-night-600" />
+                <p className="text-sm text-night-500">
+                  {lang === 'ar'
+                    ? 'لا توجد خدمة طباعة محلية متصلة'
+                    : 'No local print agent connected'}
+                </p>
+                <p className="mt-1 text-xs text-night-600">
+                  {lang === 'ar'
+                    ? 'قم بتشغيل خدمة الطباعة المحلية على جهاز المحل'
+                    : 'Start the local print service on the shop computer'}
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>

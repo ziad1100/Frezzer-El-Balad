@@ -70,3 +70,35 @@ export const listServiceTokens = (): Promise<ServiceToken[]> =>
 
 export const revokeServiceToken = (id: string): Promise<null> =>
   unwrap(api.delete<ApiEnvelope<null>>(`/service-tokens/${id}`));
+
+// Agent status reporting
+export interface AgentStatus {
+  agentId: string;
+  connectionType: string;
+  connected: boolean;
+  status: string;
+  paperWidth: number;
+  lastSeen: string;
+  isRecent: boolean;
+  ip?: string;
+}
+
+export const updateAgentStatus = (status: {
+  connectionType: string;
+  connected: boolean;
+  status: string;
+  paperWidth: number;
+}): Promise<null> =>
+  unwrap(api.patch<ApiEnvelope<null>>('/print/agent/status', status));
+
+export const getAgentStatus = (): Promise<AgentStatus[]> =>
+  unwrap(api.get<ApiEnvelope<AgentStatus[]>>('/print/agent/status'));
+
+// Print error codes
+export interface PrintErrorCodes {
+  [key: string]: string;
+}
+
+export const getPrintErrorCodes = (): Promise<PrintErrorCodes> =>
+  unwrap(api.get<ApiEnvelope<PrintErrorCodes>>('/print/error-codes'));
+

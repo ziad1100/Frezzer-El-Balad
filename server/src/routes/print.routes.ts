@@ -17,6 +17,13 @@ router.patch('/:jobId/failure', requirePermission('orders', 'update'), print.rep
 router.post('/:jobId/retry', requirePermission('orders', 'update'), print.retryPrintJob);
 router.post('/order/:orderId/mark', requirePermission('orders', 'update'), print.markOrderPrinted);
 
+// Agent status endpoints (local print agent reports status)
+router.patch('/agent/status', requirePermission('orders', 'update'), print.updateAgentStatus);
+router.get('/agent/status', requirePermission('orders', 'read'), print.getAgentStatus);
+
+// Print error codes reference
+router.get('/error-codes', requirePermission('orders', 'read'), print.getErrorCodes);
+
 // Local print service polling — requires a service token (basic auth)
 router.get('/poll', print.pollJob);
 
