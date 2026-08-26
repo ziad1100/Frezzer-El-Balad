@@ -158,7 +158,6 @@ describe('backup file integrity', () => {
         'newsletters', 'wishlists', 'wishlist_items', 'analytics',
       ]);
       const missingWith: string[] = [];
-      const missingWithout: string[] = [];
       for (const table of REQUIRED_TABLES) {
         const hasInsert = sql.includes(`INTO "${table}"`);
         const hasLock = sql.includes(`LOCK TABLE "${table}"`);
