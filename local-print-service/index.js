@@ -1206,6 +1206,16 @@ async function poll(adapter) {
 // ─── Health Check HTTP Server ────────────────────────────────────────────────
 function startHealthServer(adapter) {
   const server = http.createServer(async (req, res) => {
+    // CORS headers — allow browser frontend to call discovery endpoints
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
     if (req.url === '/health' && req.method === 'GET') {
       try {
         const status = await adapter.getStatus();
@@ -1354,6 +1364,146 @@ function startHealthServer(adapter) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ reachable: false, error: err.message }));
       }
+    } else if (req.url === '/discover' && req.method === 'GET') {
+      // Universal printer discovery — scans USB, LAN, Windows, Bluetooth
+      log('info', 'HEALTH', 'Universal printer discovery requested');
+      try {
+        const discovered = [];
+
+        // 1. Windows installed printers (USB, Bluetooth, Serial, Network)
+        if (platform() === 'win32') {
+          try {
+            const winPrinters = await WindowsPrinterDiscovery.discoverPrinters();
+            for (const p of winPrinters) {
+              const connType = (p.portName || '').match(/^USB/i) ? 'usb'
+                : (p.portName || '').match(/^(COM|LPT)/i) ? 'serial'
+                : (p.portName || '').match(/^IP_/i) || p.isNetwork ? 'lan'
+                : 'windows';
+              discovered.push({
+                id: 'win-' + p.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase(),
+                name: p.name,
+                model: p.driver || '',
+                connection: connType,
+                status: p.status === 'idle' || p.status === 'other' ? 'available' : p.status,
+                paperWidth: '80',
+                port: p.portName || '',
+                ip: connType === 'lan' ? (p.portName || '').replace(/^IP_/, '').replace(/_/g, '.') : '',
+                source: 'windows',
+                detectedAt: new Date().toISOString(),
+              });
+            }
+          } catch (err) {
+            log('warn', 'HEALTH', 'Windows printer discovery failed', { error: err.message });
+          }
+        }
+
+        // 2. LAN network scan — probe common ESC/POS ports on local subnet
+        try {
+          const net = await import('node:net');
+          // Get local IP to determine subnet
+          const localIps = [];
+          const { networkInterfaces } = await import('node:os');
+          const interfaces = networkInterfaces();
+          for (const name of Object.keys(interfaces)) {
+            for (const iface of interfaces[name] || []) {
+              if (iface.family === 'IPv4' && !iface.internal) {
+                localIps.push(iface.address);
+              }
+            }
+          }
+
+          if (localIps.length > 0) {
+            const baseIp = localIps[0].split('.').slice(0, 3).join('.');
+            const scanPorts = [9100, 9101]; // Common ESC/POS ports
+            const scanPromises = [];
+
+            for (let hostOctet = 1; hostOctet <= 254; hostOctet++) {
+              for (const port of scanPorts) {
+                scanPromises.push(new Promise((resolve) => {
+                  const socket = new net.Socket();
+                  socket.setTimeout(800);
+                  socket.on('connect', () => {
+                    socket.destroy();
+                    resolve({ ip: baseIp + '.' + hostOctet, port, open: true });
+                  });
+                  socket.on('timeout', () => { socket.destroy(); resolve(null); });
+                  socket.on('error', () => { socket.destroy(); resolve(null); });
+                  socket.connect(port, baseIp + '.' + hostOctet);
+                }));
+              }
+            }
+
+            const results = await Promise.all(scanPromises);
+            const openPorts = results.filter((r) => r && r.open);
+
+            for (const target of openPorts) {
+              const id = 'lan-' + target.ip.replace(/\./g, '-');
+              // Skip if already discovered via Windows
+              if (!discovered.some((d) => d.ip === target.ip)) {
+                discovered.push({
+                  id,
+                  name: 'Network Printer',
+                  model: '',
+                  connection: 'lan',
+                  status: 'available',
+                  paperWidth: '80',
+                  port: String(target.port),
+                  ip: target.ip,
+                  source: 'lan-scan',
+                  detectedAt: new Date().toISOString(),
+                });
+              }
+            }
+          }
+        } catch (err) {
+          log('warn', 'HEALTH', 'LAN scan failed', { error: err.message });
+        }
+
+        // 3. USB adapter availability
+        try {
+          const usbTest = new USBPrinterAdapter();
+          const available = await usbTest.isAvailable();
+          if (available && !discovered.some((d) => d.connection === 'usb' && d.source === 'windows')) {
+            discovered.push({
+              id: 'usb-detected',
+              name: 'USB Thermal Printer',
+              model: '',
+              connection: 'usb',
+              status: 'available',
+              paperWidth: String(CONFIG.paperWidth),
+              port: '',
+              ip: '',
+              source: 'usb-detect',
+              detectedAt: new Date().toISOString(),
+            });
+          }
+        } catch {
+          // USB not available
+        }
+
+        log('info', 'HEALTH', `Universal discovery found ${discovered.length} printer(s)`);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          printers: discovered,
+          summary: {
+            total: discovered.length,
+            usb: discovered.filter((d) => d.connection === 'usb').length,
+            lan: discovered.filter((d) => d.connection === 'lan').length,
+            bluetooth: discovered.filter((d) => d.connection === 'bluetooth').length,
+            serial: discovered.filter((d) => d.connection === 'serial').length,
+            windows: discovered.filter((d) => d.connection === 'windows').length,
+          },
+          platform: platform(),
+          arch: arch(),
+          currentAdapter: adapter.connectionType,
+          timestamp: new Date().toISOString(),
+        }));
+      } catch (err) {
+        log('error', 'HEALTH', 'Universal discovery failed', { error: err.message });
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Discovery failed', details: err.message }));
+      }
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found' }));
@@ -1365,6 +1515,7 @@ function startHealthServer(adapter) {
     log('info', 'HEALTH', `  GET  http://localhost:${CONFIG.healthPort}/health`);
     log('info', 'HEALTH', `  GET  http://localhost:${CONFIG.healthPort}/status`);
     log('info', 'HEALTH', `  GET  http://localhost:${CONFIG.healthPort}/printers`);
+    log('info', 'HEALTH', `  GET  http://localhost:${CONFIG.healthPort}/discover`);
     log('info', 'HEALTH', `  POST http://localhost:${CONFIG.healthPort}/test`);
     log('info', 'HEALTH', `  POST http://localhost:${CONFIG.healthPort}/printers/{name}/test`);
   });

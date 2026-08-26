@@ -24,6 +24,10 @@ router.get('/agent/status', requirePermission('orders', 'read'), print.getAgentS
 // Print error codes reference
 router.get('/error-codes', requirePermission('orders', 'read'), print.getErrorCodes);
 
+// Printer discovery — proxies to local print agent
+router.get('/discover', requirePermission('orders', 'read'), print.discoverPrinters);
+router.post('/discover/test', requirePermission('orders', 'update'), print.testDiscoveredPrinter);
+
 // Local print service polling — requires a service token (basic auth)
 router.get('/poll', print.pollJob);
 

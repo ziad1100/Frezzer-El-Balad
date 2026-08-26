@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Printer, Eye, Send, Image } from 'lucide-react';
+import { Printer, Eye, Send, Image, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Select, Label } from '@/components/ui/Input';
@@ -131,11 +131,20 @@ export function PrintInvoiceDialog({
               ))}
             </Select>
           ) : (
-            <p className="mt-2 text-sm text-night-500">
-              {lang === 'ar'
-                ? 'لا توجد طابعات متاحة. الطبع سيتم من المتصفح.'
-                : 'No printers configured. Will print via browser.'}
-            </p>
+            <div className="mt-2 space-y-2">
+              <p className="text-sm text-night-500">
+                {lang === 'ar'
+                  ? 'لا توجد طابعات متاحة. الطبع سيتم من المتصفح.'
+                  : 'No printers configured. Will print via browser.'}
+              </p>
+              <a
+                href="/admin/printers"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-brand-400 hover:text-brand-300 transition-colors"
+              >
+                <Search className="h-3.5 w-3.5" />
+                {lang === 'ar' ? 'بحث عن الطابعات' : 'Scan for Printers'}
+              </a>
+            </div>
           )}
         </div>
 

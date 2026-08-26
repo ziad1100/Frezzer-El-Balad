@@ -102,3 +102,42 @@ export interface PrintErrorCodes {
 export const getPrintErrorCodes = (): Promise<PrintErrorCodes> =>
   unwrap(api.get<ApiEnvelope<PrintErrorCodes>>('/print/error-codes'));
 
+// ── Printer Discovery ───────────────────────────────────────────────────────
+
+export interface DiscoveredPrinter {
+  id: string;
+  name: string;
+  model: string;
+  connection: 'usb' | 'lan' | 'bluetooth' | 'serial' | 'windows';
+  status: string;
+  paperWidth: string;
+  port: string;
+  ip: string;
+  source: string;
+  detectedAt: string;
+}
+
+export interface DiscoveryResult {
+  printers: DiscoveredPrinter[];
+  summary: {
+    total: number;
+    usb: number;
+    lan: number;
+    bluetooth: number;
+    serial: number;
+    windows: number;
+  };
+  platform: string;
+  arch: string;
+  currentAdapter: string;
+  timestamp: string;
+}
+
+/** Discover printers via the local print agent (proxied through backend). */
+export const discoverPrinters = (agentUrl: string): Promise<DiscoveryResult> =>
+  unwrap(api.get<ApiEnvelope<DiscoveryResult>>(`/print/discover?agentUrl=${encodeURIComponent(agentUrl)}`));
+
+/** Test a discovered printer via the local print agent. */
+export const testDiscoveredPrinter = (agentUrl: string, printerName: string): Promise<{ reachable: boolean; status?: string; error?: string }> =>
+  unwrap(api.post<ApiEnvelope<{ reachable: boolean; status?: string; error?: string }>>('/print/discover/test', { agentUrl, printerName }));
+

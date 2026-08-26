@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Printer, Send, RefreshCw, CheckCircle, XCircle, AlertTriangle, Key, Copy, Trash2, Plus, Star, StarOff, Wifi, Usb, Bluetooth, Monitor, Clock } from 'lucide-react';
+import { Printer, Send, RefreshCw, CheckCircle, XCircle, AlertTriangle, Key, Copy, Trash2, Plus, Star, StarOff, Wifi, Usb, Bluetooth, Monitor, Clock, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminSettings, updateSettings } from '@/api/admin';
 import { listRecentPrintJobs, retryPrintJob, generateServiceToken, listServiceTokens, revokeServiceToken, createTestPrintJob, getAgentStatus, type AgentStatus } from '@/api/print';
@@ -10,6 +10,8 @@ import { Card, CardContent, Skeleton } from '@/components/ui/Card';
 import { Input, Select } from '@/components/ui/Input';
 import { PageHeader } from '@/components/admin/primitives';
 import { cn } from '@/lib/utils';
+import { PrinterScanner } from '@/components/admin/PrinterScanner';
+import type { DiscoveredPrinter } from '@/api/print';
 
 interface PrinterConfig {
   id: string;
@@ -93,6 +95,14 @@ export function AdminPrinterPage() {
     deviceModel: '',
     isDefault: false,
     isActive: true,
+  });
+
+  // Scanner state
+  const [showScanner, setShowScanner] = useState(false);
+  const [agentUrl, setAgentUrl] = useState(() => {
+    // Try to read from saved settings
+    const saved = settings.data?.printerAgentUrl;
+    return typeof saved === 'string' ? saved : 'http://localhost:9200';
   });
 
 
@@ -246,6 +256,26 @@ export function AdminPrinterPage() {
     setTimeout(() => setTestPrinting(null), 1000);
   };
 
+  const handleSelectDiscoveredPrinter = (printer: DiscoveredPrinter) => {
+    const id = newPrinterId();
+    const connType = printer.connection === 'serial' ? 'usb' : printer.connection;
+    const p: PrinterConfig = {
+      id,
+      name: printer.name,
+      type: 'thermal',
+      paperWidth: (printer.paperWidth === '58' ? '58' : '80') as '58' | '80',
+      connection: connType as PrinterConfig['connection'],
+      ipAddress: printer.ip || '',
+      port: printer.port || (connType === 'lan' ? '9100' : ''),
+      deviceModel: printer.model || '',
+      isDefault: printers.length === 0,
+      isActive: true,
+    };
+    setPrinters([...printers, p]);
+    toast.success(lang === 'ar' ? `تمت إضافة ${printer.name}` : `Added ${printer.name}`);
+    setShowScanner(false);
+  };
+
   const handleAddPrinter = () => {
     const id = newPrinterId();
     const p: PrinterConfig = {
@@ -317,11 +347,29 @@ export function AdminPrinterPage() {
                 {lang === 'ar' ? 'الطابعات المتاحة' : 'Available Printers'}
                 <span className="text-night-500">({printers.length})</span>
               </h3>
-              <Button size="sm" onClick={() => { setShowAddForm(!showAddForm); setEditingId(null); }}>
-                <Plus className="h-4 w-4" />
-                {lang === 'ar' ? 'إضافة طابعة' : 'Add Printer'}
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setShowScanner(!showScanner); setShowAddForm(false); setEditingId(null); }}>
+                  <Search className="h-4 w-4" />
+                  {lang === 'ar' ? 'بحث عن الطابعات' : 'Scan Printers'}
+                </Button>
+                <Button size="sm" onClick={() => { setShowAddForm(!showAddForm); setShowScanner(false); setEditingId(null); }}>
+                  <Plus className="h-4 w-4" />
+                  {lang === 'ar' ? 'إضافة طابعة' : 'Add Printer'}
+                </Button>
+              </div>
             </div>
+
+            {/* Printer Scanner */}
+            {showScanner && (
+              <div className="mb-4">
+                <PrinterScanner
+                  agentUrl={agentUrl}
+                  onAgentUrlChange={setAgentUrl}
+                  onSelectPrinter={handleSelectDiscoveredPrinter}
+                  onClose={() => setShowScanner(false)}
+                />
+              </div>
+            )}
 
             {/* Add Printer Form */}
             {showAddForm && !editingId && (

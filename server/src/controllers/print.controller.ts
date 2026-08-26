@@ -157,3 +157,66 @@ export const getAgentStatus = asyncHandler(async (req: Request, res: Response) =
 export const getErrorCodes = asyncHandler(async (_req: Request, res: Response) => {
   res.json(new ApiResponse(200, PrintErrorCode));
 });
+
+// ── Printer Discovery ───────────────────────────────────────────────────────
+// The local print agent exposes a /discover endpoint on its health server.
+// The backend proxies discovery requests so the frontend has a single API.
+// Agent URL is stored in settings as `printerAgentUrl`.
+
+/** Discover printers via the local print agent. */
+export const discoverPrinters = asyncHandler(async (req: Request, res: Response) => {
+  const agentUrl = (req.query.agentUrl as string) || '';
+  if (!agentUrl) {
+    throw new ApiError(400, 'agentUrl query parameter is required (e.g. http://192.168.1.50:9200)');
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const response = await fetch(`${agentUrl.replace(/\/+$/, '')}/discover`, {
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      throw new ApiError(502, `Local print agent returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    res.json(new ApiResponse(200, data));
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('abort') || message.includes('fetch')) {
+      throw new ApiError(502, 'Local print agent is not reachable. Ensure it is running on the local network.');
+    }
+    throw err;
+  }
+});
+
+/** Test a specific printer via the local print agent. */
+export const testDiscoveredPrinter = asyncHandler(async (req: Request, res: Response) => {
+  const { agentUrl, printerName } = req.body;
+  if (!agentUrl || !printerName) {
+    throw new ApiError(400, 'agentUrl and printerName are required');
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch(
+      `${agentUrl.replace(/\/+$/, '')}/printers/${encodeURIComponent(printerName)}/test`,
+      { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json' } },
+    );
+    clearTimeout(timeout);
+
+    const data = await response.json();
+    res.json(new ApiResponse(200, data));
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('abort') || message.includes('fetch')) {
+      throw new ApiError(502, 'Local print agent is not reachable');
+    }
+    throw err;
+  }
+});
