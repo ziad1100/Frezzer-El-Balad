@@ -39,6 +39,8 @@ import fetch from 'node-fetch';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import http from 'node:http';
+import { execSync } from 'node:child_process';
+import { platform, arch } from 'node:os';
 
 // ─── Load .env file ──────────────────────────────────────────────────────────
 const envPath = resolve(process.cwd(), '.env');
@@ -113,6 +115,8 @@ const CONFIG = {
   printerConnection: process.env.PRINTER_CONNECTION || 'lan',
   printerIp: process.env.PRINTER_IP || '192.168.1.100',
   printerPort: parseInt(process.env.PRINTER_PORT || '9100', 10),
+  windowsPrinterName: process.env.WINDOWS_PRINTER_NAME || '',
+  bluetoothComPort: process.env.BLUETOOTH_COM_PORT || '',
   pollInterval: parseInt(process.env.POLL_INTERVAL || '3000', 10),
   paperWidth: parseInt(process.env.PAPER_WIDTH || '80', 10),
   healthPort: parseInt(process.env.HEALTH_PORT || '9200', 10),
@@ -525,6 +529,407 @@ class SimulatedPrinterAdapter {
   }
 }
 
+// ─── Windows Printer Discovery ───────────────────────────────────────────────
+/**
+ * Discovers printers available on Windows via WMI and PowerShell.
+ * Falls back gracefully on non-Windows platforms.
+ */
+class WindowsPrinterDiscovery {
+  /**
+   * List all printers installed on the Windows print spooler.
+   * Uses wmic as primary, PowerShell Get-Printer as fallback.
+   * @returns {Promise<Array<{name: string, driver: string, portName: string, status: string, shared: boolean, printProcessor: string}>>}
+   */
+  static async discoverPrinters() {
+    const isWindows = platform() === 'win32';
+    if (!isWindows) {
+      log('info', 'DISCOVERY', 'Printer discovery only available on Windows');
+      return [];
+    }
+
+    // Try PowerShell Get-Printer first (more reliable on modern Windows)
+    try {
+      return await WindowsPrinterDiscovery._discoverViaPowerShell();
+    } catch (psErr) {
+      log('warn', 'DISCOVERY', 'PowerShell Get-Printer failed, trying wmic', { error: psErr.message });
+    }
+
+    // Fallback to wmic
+    try {
+      return await WindowsPrinterDiscovery._discoverViaWmic();
+    } catch (wmicErr) {
+      log('error', 'DISCOVERY', 'Both discovery methods failed', { error: wmicErr.message });
+      return [];
+    }
+  }
+
+  /**
+   * Discover printers via PowerShell Get-Printer cmdlet.
+   * Returns detailed info including port, driver, status, and capabilities.
+   */
+  static async _discoverViaPowerShell() {
+    const psCommand = [
+      'Get-Printer |',
+      'Select-Object Name,DriverName,PortName,PrinterStatus,Type,Shared,PrintProcessor,Environment,PrinterUri,Location,Comment |',
+      'ConvertTo-Json -Compress',
+    ].join(' ');
+
+    const raw = execSync(
+      `powershell -NoProfile -NonInteractive -Command "${psCommand}"`,
+      { encoding: 'utf8', timeout: 10000, windowsHide: true }
+    ).trim();
+
+    if (!raw || raw === 'null') {
+      log('info', 'DISCOVERY', 'No printers found via PowerShell');
+      return [];
+    }
+
+    // PowerShell may return a single object or an array
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      log('error', 'DISCOVERY', 'Failed to parse PowerShell output');
+      return [];
+    }
+
+    const printers = Array.isArray(parsed) ? parsed : [parsed];
+    const statusMap = {
+      0: 'other',
+      1: 'idle',
+      2: 'printing',
+      3: 'warmup',
+      4: 'stopped',
+      5: 'offline',
+    };
+
+    return printers.map((p) => ({
+      name: p.Name || '',
+      driver: p.DriverName || '',
+      portName: p.PortName || '',
+      status: statusMap[p.PrinterStatus] || `unknown(${p.PrinterStatus})`,
+      type: p.Type || 0,
+      shared: !!p.Shared,
+      printProcessor: p.PrintProcessor || '',
+      environment: p.Environment || '',
+      location: p.Location || '',
+      comment: p.Comment || '',
+      isLocal: !!(p.Type & 1),
+      isNetwork: !!(p.Type & 4),
+    }));
+  }
+
+  /**
+   * Discover printers via wmic (legacy, works on older Windows).
+   */
+  static async _discoverViaWmic() {
+    const raw = execSync(
+      'wmic printer list brief /format:csv',
+      { encoding: 'utf8', timeout: 10000, windowsHide: true }
+    ).trim();
+
+    const lines = raw.split('\n').filter(Boolean);
+    if (lines.length < 2) {
+      log('info', 'DISCOVERY', 'No printers found via wmic');
+      return [];
+    }
+
+    // CSV: Node,DriverName,Name,PortName,PrinterStatus,Shared
+    const headers = lines[0].split(',').map((h) => h.trim());
+    const printers = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map((v) => v.trim());
+      const obj = {};
+      headers.forEach((h, idx) => { obj[h] = values[idx] || ''; });
+
+      printers.push({
+        name: obj.Name || '',
+        driver: obj.DriverName || '',
+        portName: obj.PortName || '',
+        status: obj.PrinterStatus || 'unknown',
+        shared: obj.Shared === 'TRUE',
+        printProcessor: '',
+        environment: '',
+        location: '',
+        comment: '',
+        isLocal: !!(obj.PortName || '').match(/^USB|^LPT|^COM/i),
+        isNetwork: !!(obj.PortName || '').match(/^IP_/i),
+      });
+    }
+
+    return printers;
+  }
+
+  /**
+   * Test connectivity to a discovered printer.
+   * @param {string} printerName
+   * @returns {Promise<{reachable: boolean, error?: string}>}
+   */
+  static async testPrinter(printerName) {
+    const isWindows = platform() === 'win32';
+    if (!isWindows) {
+      return { reachable: false, error: 'Printer testing only available on Windows' };
+    }
+
+    try {
+      const psCommand = `
+        $printer = Get-Printer -Name '${printerName.replace(/'/g, "''")}' -ErrorAction Stop;
+        if ($printer.PrinterStatus -eq 5) { 'OFFLINE' }
+        elseif ($printer.PrinterStatus -eq 4) { 'STOPPED' }
+        else { 'READY' }
+      `.trim();
+
+      const result = execSync(
+        `powershell -NoProfile -NonInteractive -Command "${psCommand}"`,
+        { encoding: 'utf8', timeout: 10000, windowsHide: true }
+      ).trim();
+
+      return { reachable: result === 'READY', status: result };
+    } catch (err) {
+      return { reachable: false, error: err.message };
+    }
+  }
+
+  /**
+   * Get detailed info for a single printer.
+   * @param {string} printerName
+   * @returns {Promise<object|null>}
+   */
+  static async getPrinterDetails(printerName) {
+    const printers = await WindowsPrinterDiscovery.discoverPrinters();
+    return printers.find((p) => p.name === printerName) || null;
+  }
+}
+
+// ─── Windows System Printer Adapter ──────────────────────────────────────────
+/**
+ * Prints via the Windows print spooler using raw ESC/POS data.
+ * Uses `copy /b` to send raw bytes to a USB/LPT port, or `print` command,
+ * or PowerShell Out-Printer for system-registered printers.
+ */
+class WindowsSystemPrinterAdapter {
+  constructor(printerName, paperWidth) {
+    this.name = 'Windows System';
+    this.connectionType = 'windows';
+    this.printerName = printerName || process.env.WINDOWS_PRINTER_NAME || '';
+    this.paperWidth = paperWidth || 80;
+    this.connected = false;
+  }
+
+  /**
+   * Escape a string for safe embedding in a PowerShell single-quoted string.
+   * In PowerShell single-quoted strings, only single quotes need escaping (double them).
+   */
+  static escapePsString(str) {
+    return str.replace(/'/g, "''");
+  }
+
+  /**
+   * Escape a Windows file path for use inside a PowerShell single-quoted string.
+   * Forward slashes become backslashes; single quotes are doubled.
+   */
+  static escapePsPath(filePath) {
+    const normalized = filePath.replace(/\//g, '\\');
+    return normalized.replace(/'/g, "''");
+  }
+
+  /**
+   * Escape a string for use inside a PowerShell double-quoted string.
+   * Backticks, dollar signs, and double quotes need escaping.
+   */
+  static escapePsDoubleQuoted(str) {
+    return str.replace(/`/g, '``').replace(/\$/g, '`$').replace(/"/g, '\"');
+  }
+
+  async connect() {
+    if (platform() !== 'win32') {
+      log('error', 'WIN', 'Windows printer adapter requires Windows');
+      return false;
+    }
+
+    if (!this.printerName) {
+      log('error', 'WIN', 'No printer name configured', { code: ErrorCode.INVALID_PRINTER_CONFIGURATION });
+      return false;
+    }
+
+    try {
+      // Verify the printer exists in the spooler
+      const details = await WindowsPrinterDiscovery.getPrinterDetails(this.printerName);
+      if (!details) {
+        log('error', 'WIN', `Printer "${this.printerName}" not found in Windows spooler`, { code: ErrorCode.PRINTER_NOT_FOUND });
+        return false;
+      }
+
+      if (details.status === 'offline') {
+        log('warn', 'WIN', `Printer "${this.printerName}" is offline`, { code: ErrorCode.PRINTER_OFFLINE });
+        return false;
+      }
+
+      this.printerDetails = details;
+      this.connected = true;
+      log('info', 'WIN', `Connected to Windows printer: ${this.printerName}`, {
+        driver: details.driver,
+        port: details.portName,
+        status: details.status,
+      });
+      return true;
+    } catch (err) {
+      log('error', 'WIN', 'Connection failed', { error: err.message, code: ErrorCode.PRINTER_NOT_FOUND });
+      this.connected = false;
+      return false;
+    }
+  }
+
+  async disconnect() {
+    this.connected = false;
+    this.printerDetails = null;
+    log('info', 'WIN', 'Disconnected from Windows printer');
+  }
+
+  async getStatus() {
+    if (!this.printerName) {
+      return { connected: false, status: 'no_printer_configured', details: { connectionType: 'windows' } };
+    }
+
+    try {
+      const test = await WindowsPrinterDiscovery.testPrinter(this.printerName);
+      this.connected = test.reachable;
+      return {
+        connected: test.reachable,
+        status: test.reachable ? 'online' : (test.status || 'offline'),
+        details: {
+          connectionType: 'windows',
+          printerName: this.printerName,
+          driver: this.printerDetails?.driver || '',
+          port: this.printerDetails?.portName || '',
+          status: test.status,
+        },
+      };
+    } catch (err) {
+      return { connected: false, status: 'error', details: { connectionType: 'windows', error: err.message } };
+    }
+  }
+
+  async isAvailable() {
+    if (platform() !== 'win32') return false;
+    try {
+      const test = await WindowsPrinterDiscovery.testPrinter(this.printerName);
+      return test.reachable;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Execute a PowerShell command safely.
+   */
+  static runPowerShell(command) {
+    return execSync(
+      'powershell -NoProfile -NonInteractive -Command "' + WindowsSystemPrinterAdapter.escapePsDoubleQuoted(command) + '"',
+      { encoding: 'utf8', timeout: 15000, windowsHide: true }
+    );
+  }
+
+  /**
+   * Send raw ESC/POS data to a Windows system printer.
+   * Strategy 1: Write raw bytes to a temp file, send via WMI Win32_Printer.
+   * Strategy 2: Use PowerShell Out-Printer.
+   */
+  async printRaw(data) {
+    if (platform() !== 'win32') throw new Error('Windows printer adapter requires Windows');
+    if (!this.connected) throw new Error(ErrorCode.PRINTER_NOT_FOUND);
+
+    const { writeFileSync, unlinkSync, mkdtempSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+
+    // Strategy 1: Write raw bytes to temp file, print via WMI
+    let tmpDir, tmpFile;
+    try {
+      tmpDir = mkdtempSync(join(tmpdir(), 'print-'));
+      tmpFile = join(tmpDir, 'receipt.bin');
+      const buffer = Buffer.from(data, 'binary');
+      writeFileSync(tmpFile, buffer);
+
+      const psFilePath = WindowsSystemPrinterAdapter.escapePsPath(tmpFile);
+      const psPrinterName = WindowsSystemPrinterAdapter.escapePsString(this.printerName);
+
+      const psScript = [
+        '$bytes = [System.IO.File]::ReadAllBytes(\'' + psFilePath + '\')',
+        '$printer = Get-WmiObject -Query "SELECT * from Win32_Printer WHERE Name=\'' + psPrinterName + '\'"',
+        'if ($printer) {',
+        '  $printer.RawPrintable = $true',
+        '  $printer.Print()',
+        '} else {',
+        '  throw "Printer not found: ' + psPrinterName + '"',
+        '}',
+      ].join('; ');
+
+      WindowsSystemPrinterAdapter.runPowerShell(psScript);
+      log('info', 'WIN', `Raw data sent to printer: ${this.printerName}`);
+      return true;
+    } catch (psErr) {
+      log('warn', 'WIN', 'WMI print method failed, trying Out-Printer', { error: psErr.message });
+    } finally {
+      // Cleanup temp files
+      if (tmpFile) try { unlinkSync(tmpFile); } catch {}
+      if (tmpDir) try { require('node:fs').rmdirSync(tmpDir); } catch {}
+    }
+
+    // Strategy 2: PowerShell Out-Printer (sends text output to printer)
+    try {
+      const psPrinterName = WindowsSystemPrinterAdapter.escapePsString(this.printerName);
+      const safeData = data.replace(/\x1B/g, '').replace(/\x1D/g, '');
+      const hereDoc = '@RECEIPT_END@\n' + safeData + '\n@RECEIPT_END@';
+      const psScript = '$text = ' + hereDoc + '; $text | Out-Printer -Name \'' + psPrinterName + '\'';
+      WindowsSystemPrinterAdapter.runPowerShell(psScript);
+      log('info', 'WIN', `Data sent via Out-Printer to: ${this.printerName}`);
+      return true;
+    } catch (opErr) {
+      log('error', 'WIN', 'All Windows print methods failed', { error: opErr.message, code: ErrorCode.PRINT_JOB_FAILED });
+      throw new Error(ErrorCode.PRINT_JOB_FAILED);
+    }
+  }
+
+  async printImage(base64Data) {
+    if (platform() !== 'win32') throw new Error('Windows printer adapter requires Windows');
+    if (!this.connected) throw new Error(ErrorCode.PRINTER_NOT_FOUND);
+
+    const { writeFileSync, unlinkSync, mkdtempSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+
+    let tmpDir, imgFile;
+    try {
+      tmpDir = mkdtempSync(join(tmpdir(), 'print-img-'));
+      const base64 = base64Data.replace(/^data:image\/png;base64,/, '');
+      imgFile = join(tmpDir, 'receipt.png');
+      writeFileSync(imgFile, Buffer.from(base64, 'base64'));
+
+      const psFilePath = WindowsSystemPrinterAdapter.escapePsPath(imgFile);
+      const psPrinterName = WindowsSystemPrinterAdapter.escapePsString(this.printerName);
+
+      const psScript = [
+        'Start-Process -FilePath \'' + psFilePath + '\'',
+        '  -Verb PrintTo',
+        '  -ArgumentList \'' + psPrinterName + '\'',
+        '  -Wait -WindowStyle Hidden',
+      ].join(' ');
+
+      WindowsSystemPrinterAdapter.runPowerShell(psScript);
+      log('info', 'WIN', `Image sent to printer: ${this.printerName}`);
+      return true;
+    } catch (err) {
+      log('error', 'WIN', 'Image print failed', { error: err.message, code: ErrorCode.PRINT_JOB_FAILED });
+      throw new Error(ErrorCode.PRINT_JOB_FAILED);
+    } finally {
+      if (imgFile) try { unlinkSync(imgFile); } catch {}
+      if (tmpDir) try { require('node:fs').rmdirSync(tmpDir); } catch {}
+    }
+  }
+}
+
 // ─── Adapter Factory ─────────────────────────────────────────────────────────
 function createAdapter(connectionType, config) {
   switch (connectionType) {
@@ -535,6 +940,8 @@ function createAdapter(connectionType, config) {
       return new NetworkPrinterAdapter(config.printerIp, config.printerPort);
     case 'bluetooth':
       return new BluetoothPrinterAdapter();
+    case 'windows':
+      return new WindowsSystemPrinterAdapter(config.windowsPrinterName, config.paperWidth);
     default:
       log('warn', 'ADAPTER', `Unknown connection type "${connectionType}", using simulated printer`);
       return new SimulatedPrinterAdapter();
@@ -879,6 +1286,74 @@ function startHealthServer(adapter) {
           maxRetries: CONFIG.maxRetries,
         },
       }));
+    } else if (req.url === '/printers' && req.method === 'GET') {
+      // Discover available printers on the local machine
+      try {
+        const isWindows = platform() === 'win32';
+        if (!isWindows) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            printers: [],
+            platform: platform(),
+            message: 'Printer discovery is only available on Windows',
+          }));
+          return;
+        }
+
+        log('info', 'HEALTH', 'Printer discovery requested');
+        const printers = await WindowsPrinterDiscovery.discoverPrinters();
+
+        // Categorize printers for convenience
+        const usbPrinters = printers.filter((p) => p.isLocal && (p.portName || '').match(/^USB/i));
+        const networkPrinters = printers.filter((p) => p.isNetwork || (p.portName || '').match(/^IP_/i));
+        const serialPrinters = printers.filter((p) => (p.portName || '').match(/^(COM|LPT)/i));
+        const allPrinters = printers;
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          printers: allPrinters,
+          byConnection: {
+            usb: usbPrinters,
+            network: networkPrinters,
+            serial: serialPrinters,
+          },
+          summary: {
+            total: allPrinters.length,
+            usb: usbPrinters.length,
+            network: networkPrinters.length,
+            serial: serialPrinters.length,
+          },
+          platform: platform(),
+          arch: arch(),
+          timestamp: new Date().toISOString(),
+        }));
+
+        log('info', 'HEALTH', `Discovered ${printers.length} printers (USB: ${usbPrinters.length}, Network: ${networkPrinters.length}, Serial: ${serialPrinters.length})`);
+      } catch (err) {
+        log('error', 'HEALTH', 'Printer discovery failed', { error: err.message });
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Printer discovery failed', details: err.message }));
+      }
+    } else if (req.url?.startsWith('/printers/') && req.url?.endsWith('/test') && req.method === 'POST') {
+      // Test a specific printer by name
+      const printerName = decodeURIComponent(req.url.split('/')[2]);
+      try {
+        if (platform() !== 'win32') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ reachable: false, error: 'Only available on Windows' }));
+          return;
+        }
+
+        log('info', 'HEALTH', `Testing printer: ${printerName}`);
+        const result = await WindowsPrinterDiscovery.testPrinter(printerName);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        log('error', 'HEALTH', 'Printer test failed', { error: err.message, printerName });
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ reachable: false, error: err.message }));
+      }
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found' }));
@@ -889,7 +1364,9 @@ function startHealthServer(adapter) {
     log('info', 'HEALTH', `Health check server listening on port ${CONFIG.healthPort}`);
     log('info', 'HEALTH', `  GET  http://localhost:${CONFIG.healthPort}/health`);
     log('info', 'HEALTH', `  GET  http://localhost:${CONFIG.healthPort}/status`);
+    log('info', 'HEALTH', `  GET  http://localhost:${CONFIG.healthPort}/printers`);
     log('info', 'HEALTH', `  POST http://localhost:${CONFIG.healthPort}/test`);
+    log('info', 'HEALTH', `  POST http://localhost:${CONFIG.healthPort}/printers/{name}/test`);
   });
 
   return server;
