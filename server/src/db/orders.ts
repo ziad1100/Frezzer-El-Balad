@@ -10,7 +10,8 @@ const ITEMS_JSON = `
       'size', oi.size, 'extras', oi.extras,
       'qty', oi.qty,
       'unitPrice', oi."unitPrice"::float8,
-      'lineTotal', oi."lineTotal"::float8)
+      'lineTotal', oi."lineTotal"::float8,
+      'isCustomPrice', oi."isCustomPrice")
     ORDER BY oi."sortOrder"), '[]'::jsonb)
    FROM order_items oi
    LEFT JOIN products p ON p.id = oi."productId"
@@ -247,6 +248,8 @@ export interface PlaceOrderItem {
   qty: number;
   unitPrice: number;
   lineTotal: number;
+  /** Whether this item uses an admin custom price (not the normal product price). */
+  isCustomPrice?: boolean;
 }
 
 export interface PlaceOrderInput {
@@ -374,9 +377,9 @@ export const placeOrder = async (input: PlaceOrderInput): Promise<Record<string,
     for (const [i, item] of input.items.entries()) {
       await tx.query(
         `INSERT INTO order_items ("orderId", "productId", "sortOrder", name, size, extras,
-           qty, "unitPrice", "lineTotal")
-         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, $7, $8, $9)`,
-        [orderId, item.productId, i, item.name, item.size, JSON.stringify(item.extras), item.qty, item.unitPrice, item.lineTotal],
+           qty, "unitPrice", "lineTotal", "isCustomPrice")
+         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, $7, $8, $9, $10)`,
+        [orderId, item.productId, i, item.name, item.size, JSON.stringify(item.extras), item.qty, item.unitPrice, item.lineTotal, item.isCustomPrice ?? false],
       );
     }
 

@@ -15,6 +15,11 @@ const item = z.object({
     .max(99, 'Quantity must be at most 99'),
 });
 
+/** Admin-only item schema: adds optional customPrice for per-order price override. */
+const adminItem = item.extend({
+  customPrice: z.coerce.number().min(0, 'Custom price must be a non-negative number').optional(),
+});
+
 const addressSchema = z.object({
   label: z.string().trim().max(50).optional(),
   city: z.string().trim().min(1, 'City is required').max(100),
@@ -27,7 +32,7 @@ const phoneRegex = /^01[0125]\d{8}$/;
 
 /** Admin orders: phone & address are optional (admin creates on behalf of a customer). */
 export const createAdminOrderSchema = z.object({
-  items: z.array(item).min(1, 'At least one item is required').max(100),
+  items: z.array(adminItem).min(1, 'At least one item is required').max(100),
   couponCode: z.string().trim().max(40).optional(),
   phone: z.string().trim().regex(phoneRegex).optional(),
   customerName: z.string().trim().max(80).optional(),

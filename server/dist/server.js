@@ -1389,7 +1389,8 @@ import { z as z4 } from "zod";
 import { z as z3 } from "zod";
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 var objectId = (message = "Invalid id format") => z3.string().regex(UUID_RE, message);
-var nonNegative = (message = "Must be a positive number") => z3.coerce.number().min(0, message);
+var nonNegative = (message = "Must be a non-negative number") => z3.coerce.number().min(0, message);
+var positivePrice = (message = "Price must be greater than 0") => z3.coerce.number().gt(0, message);
 var dateString = (message = "Must be a valid date") => z3.string().refine((v) => !Number.isNaN(Date.parse(v)), message);
 var localizedText = z3.object({ ar: z3.string().max(1e3).optional(), en: z3.string().max(1e3).optional() }).optional();
 
@@ -1402,6 +1403,9 @@ var item = z4.object({
   extras: z4.array(extra).max(30).optional(),
   qty: z4.coerce.number().int("Quantity must be a whole number").min(1, "Quantity must be at least 1").max(99, "Quantity must be at most 99")
 });
+var adminItem = item.extend({
+  customPrice: z4.coerce.number().min(0, "Custom price must be a non-negative number").optional()
+});
 var addressSchema = z4.object({
   label: z4.string().trim().max(50).optional(),
   city: z4.string().trim().min(1, "City is required").max(100),
@@ -1411,7 +1415,7 @@ var addressSchema = z4.object({
 });
 var phoneRegex = /^01[0125]\d{8}$/;
 var createAdminOrderSchema = z4.object({
-  items: z4.array(item).min(1, "At least one item is required").max(100),
+  items: z4.array(adminItem).min(1, "At least one item is required").max(100),
   couponCode: z4.string().trim().max(40).optional(),
   phone: z4.string().trim().regex(phoneRegex).optional(),
   customerName: z4.string().trim().max(80).optional(),
@@ -1461,13 +1465,13 @@ import { z as z6 } from "zod";
 var size = z6.object({
   name: z6.string().trim().min(1, "Size name is required").max(50),
   nameEn: z6.string().trim().max(50).optional(),
-  price: nonNegative("Size price must be a positive number"),
+  price: positivePrice("Size price must be greater than 0"),
   isAvailable: z6.boolean().optional()
 });
 var extra3 = z6.object({
   name: z6.string().trim().min(1, "Extra name is required").max(50),
   nameEn: z6.string().trim().max(50).optional(),
-  price: nonNegative("Extra price must be a positive number")
+  price: positivePrice("Extra price must be greater than 0")
 });
 var productCreateSchema = z6.object({
   name: z6.string().trim().min(1, "Product name (Arabic) is required").max(120),
@@ -1482,7 +1486,7 @@ var productCreateSchema = z6.object({
   ingredients: z6.array(z6.string().trim().max(100)).max(50).optional(),
   ingredientsEn: z6.array(z6.string().trim().max(100)).max(50).optional(),
   tags: z6.array(z6.string().trim().max(50)).max(50).optional(),
-  basePrice: nonNegative("Base price must be a positive number"),
+  basePrice: positivePrice("Base price must be greater than 0"),
   discount: z6.coerce.number().min(0).max(100).optional(),
   preparationTime: z6.coerce.number().int().min(1).max(600).optional(),
   calories: z6.coerce.number().min(0).max(1e4).optional(),
@@ -1490,7 +1494,38 @@ var productCreateSchema = z6.object({
   isBestSeller: z6.boolean().optional(),
   isOffer: z6.boolean().optional()
 });
-var productUpdateSchema = productCreateSchema.partial();
+var sizeUpdate = z6.object({
+  name: z6.string().trim().min(1, "Size name is required").max(50),
+  nameEn: z6.string().trim().max(50).optional(),
+  price: nonNegative("Size price must be a non-negative number"),
+  isAvailable: z6.boolean().optional()
+});
+var extraUpdate = z6.object({
+  name: z6.string().trim().min(1, "Extra name is required").max(50),
+  nameEn: z6.string().trim().max(50).optional(),
+  price: nonNegative("Extra price must be a non-negative number")
+});
+var productUpdateSchema = z6.object({
+  name: z6.string().trim().min(1, "Product name (Arabic) is required").max(120).optional(),
+  nameEn: z6.string().trim().max(120).optional(),
+  description: z6.string().trim().max(5e3).optional(),
+  descriptionEn: z6.string().trim().max(5e3).optional(),
+  category: objectId("Category is required").optional(),
+  images: z6.array(z6.string().trim().max(500)).max(20).optional(),
+  sizes: z6.array(sizeUpdate).max(10).optional(),
+  extras: z6.array(extraUpdate).max(30).optional(),
+  ingredients: z6.array(z6.string().trim().max(100)).max(50).optional(),
+  ingredientsEn: z6.array(z6.string().trim().max(100)).max(50).optional(),
+  tags: z6.array(z6.string().trim().max(50)).max(50).optional(),
+  basePrice: nonNegative("Base price must be a non-negative number").optional(),
+  discount: z6.coerce.number().min(0).max(100).optional(),
+  preparationTime: z6.coerce.number().int().min(1).max(600).optional(),
+  calories: z6.coerce.number().min(0).max(1e4).optional(),
+  isAvailable: z6.boolean().optional(),
+  isBestSeller: z6.boolean().optional(),
+  isOffer: z6.boolean().optional(),
+  labelIds: z6.array(z6.string()).optional()
+});
 
 // src/schemas/category.ts
 import { z as z7 } from "zod";
@@ -2044,7 +2079,7 @@ var syncSizes = async (client2, productId, sizes) => {
     await client2(
       `INSERT INTO product_sizes ("productId", "sortOrder", name, "nameEn", price, "isAvailable")
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [productId, i, s.name, s.nameEn ?? "", Number(s.price) || 0, s.isAvailable ?? true]
+      [productId, i, s.name, s.nameEn ?? "", Number(s.price), s.isAvailable ?? true]
     );
   }
 };
@@ -2054,7 +2089,7 @@ var syncExtras = async (client2, productId, extras) => {
     await client2(
       `INSERT INTO product_extras ("productId", "sortOrder", name, "nameEn", price)
        VALUES ($1, $2, $3, $4, $5)`,
-      [productId, i, e.name, e.nameEn ?? "", Number(e.price) || 0]
+      [productId, i, e.name, e.nameEn ?? "", Number(e.price)]
     );
   }
 };
@@ -2073,7 +2108,7 @@ var create2 = async (data) => {
         data.slug,
         data.description ?? "",
         data.descriptionEn ?? "",
-        Number(data.basePrice) || 0,
+        Number(data.basePrice),
         data.images ?? [],
         data.ingredients ?? [],
         data.ingredientsEn ?? [],
@@ -2130,6 +2165,9 @@ var update2 = async (id, data) => {
     if (sets.length) {
       const result = await tx.query(`UPDATE products SET ${sets.join(", ")} WHERE id = $1 RETURNING id`, values);
       updated = result.rowCount !== null && result.rowCount > 0;
+    } else {
+      const existsResult = await tx.query("SELECT id FROM products WHERE id = $1::uuid", [id]);
+      updated = existsResult.rows.length > 0;
     }
     if (data.sizes !== void 0) await syncSizes(tx.query.bind(tx), id, data.sizes);
     if (data.extras !== void 0) await syncExtras(tx.query.bind(tx), id, data.extras);
@@ -2281,6 +2319,9 @@ var sanitizeBody = (body) => {
 var createProduct = asyncHandler(async (req, res) => {
   const body = sanitizeBody(req.body);
   if (!body.name) throw new ApiError(400, "Product name is required");
+  if (typeof body.basePrice !== "number" || !Number.isFinite(body.basePrice) || body.basePrice <= 0) {
+    throw new ApiError(400, "Base price must be a positive number");
+  }
   const slug = slugifyText(body.nameEn || body.name);
   body.slug = `${slug}-${Date.now().toString(36)}`;
   try {
@@ -2292,6 +2333,9 @@ var createProduct = asyncHandler(async (req, res) => {
 });
 var updateProduct = asyncHandler(async (req, res) => {
   const body = sanitizeBody(req.body);
+  if (body.basePrice !== void 0 && (typeof body.basePrice !== "number" || !Number.isFinite(body.basePrice) || body.basePrice < 0)) {
+    throw new ApiError(400, "Base price must be a non-negative number");
+  }
   try {
     const product = await update2(req.params.id, body);
     if (!product) throw new ApiError(404, "Product not found");
@@ -3540,7 +3584,8 @@ var ITEMS_JSON = `
       'size', oi.size, 'extras', oi.extras,
       'qty', oi.qty,
       'unitPrice', oi."unitPrice"::float8,
-      'lineTotal', oi."lineTotal"::float8)
+      'lineTotal', oi."lineTotal"::float8,
+      'isCustomPrice', oi."isCustomPrice")
     ORDER BY oi."sortOrder"), '[]'::jsonb)
    FROM order_items oi
    LEFT JOIN products p ON p.id = oi."productId"
@@ -3807,9 +3852,9 @@ var placeOrder = async (input) => {
     for (const [i, item2] of input.items.entries()) {
       await tx.query(
         `INSERT INTO order_items ("orderId", "productId", "sortOrder", name, size, extras,
-           qty, "unitPrice", "lineTotal")
-         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, $7, $8, $9)`,
-        [orderId, item2.productId, i, item2.name, item2.size, JSON.stringify(item2.extras), item2.qty, item2.unitPrice, item2.lineTotal]
+           qty, "unitPrice", "lineTotal", "isCustomPrice")
+         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, $7, $8, $9, $10)`,
+        [orderId, item2.productId, i, item2.name, item2.size, JSON.stringify(item2.extras), item2.qty, item2.unitPrice, item2.lineTotal, item2.isCustomPrice ?? false]
       );
     }
     if (couponId) {
@@ -4239,7 +4284,7 @@ var createOrder = asyncHandler(async (req, res) => {
     if (!product) throw new ApiError(404, "Product not found in order");
     const sizes = product.sizes ?? [];
     const size2 = sizes.find((s) => String(s._id) === String(item2.size));
-    const unitPrice = size2?.price ?? product.basePrice ?? 0;
+    const normalUnitPrice = size2?.price ?? product.basePrice ?? 0;
     const extras = (item2.extras ?? []).map((e) => {
       const dbExtra = (product.extras ?? []).find(
         (p) => p.name === e.name || p.nameEn === e.name
@@ -4250,7 +4295,17 @@ var createOrder = asyncHandler(async (req, res) => {
       return { name: dbExtra.name, price: dbExtra.price };
     });
     const extrasTotal = extras.reduce((acc, e) => acc + (Number(e.price) || 0), 0);
-    const lineTotal = (unitPrice + extrasTotal) * Math.max(1, item2.qty);
+    let isCustomPrice = false;
+    let unitPrice;
+    if (isAdmin && typeof item2.customPrice === "number" && Number.isFinite(item2.customPrice) && item2.customPrice >= 0) {
+      unitPrice = item2.customPrice;
+      isCustomPrice = true;
+    } else if (isAdmin && item2.customPrice !== void 0) {
+      throw new ApiError(400, "Invalid custom price value");
+    } else {
+      unitPrice = normalUnitPrice + extrasTotal;
+    }
+    const lineTotal = unitPrice * Math.max(1, item2.qty);
     subtotal += lineTotal;
     return {
       productId: product._id,
@@ -4258,8 +4313,9 @@ var createOrder = asyncHandler(async (req, res) => {
       size: size2?.name ?? "",
       extras,
       qty: Math.max(1, item2.qty),
-      unitPrice: unitPrice + extrasTotal,
-      lineTotal
+      unitPrice,
+      lineTotal,
+      isCustomPrice
     };
   });
   const settings = await getSettingsMap();
@@ -5905,10 +5961,6 @@ var systemReset = async () => {
     await tx.query("DELETE FROM coupon_redemptions");
     await tx.query('UPDATE coupons SET "usedCount" = 0');
     await tx.query("TRUNCATE TABLE analytics");
-    const productsResult = await tx.query('UPDATE products SET "isOffer" = false');
-    const productsReset = productsResult.rowCount ?? 0;
-    const sizesReset = 0;
-    const extrasReset = 0;
     await tx.query(
       `INSERT INTO settings (key, value) VALUES ('statsClearedAt', $1::jsonb)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -5917,10 +5969,7 @@ var systemReset = async () => {
     return {
       ordersDeleted,
       cartsCleared,
-      offersDeleted,
-      productsReset,
-      sizesReset,
-      extrasReset
+      offersDeleted
     };
   });
 };
@@ -5934,10 +5983,7 @@ var systemResetHandler = asyncHandler(async (_req, res) => {
       summary: {
         ordersDeleted: result.ordersDeleted,
         cartsCleared: result.cartsCleared,
-        offersDeleted: result.offersDeleted,
-        productsReset: result.productsReset,
-        sizesReset: result.sizesReset,
-        extrasReset: result.extrasReset
+        offersDeleted: result.offersDeleted
       }
     }, "System reset completed successfully")
   );
@@ -6045,6 +6091,23 @@ var createTestPrintJob = async (receipt, printerId, printerName) => {
 };
 
 // src/controllers/print.controller.ts
+var PrintErrorCode = Object.freeze({
+  PRINT_AGENT_OFFLINE: "PRINT_AGENT_OFFLINE",
+  PRINTER_NOT_FOUND: "PRINTER_NOT_FOUND",
+  USB_DEVICE_NOT_FOUND: "USB_DEVICE_NOT_FOUND",
+  LAN_PRINTER_UNREACHABLE: "LAN_PRINTER_UNREACHABLE",
+  BLUETOOTH_UNAVAILABLE: "BLUETOOTH_UNAVAILABLE",
+  PRINTER_BUSY: "PRINTER_BUSY",
+  PRINT_TIMEOUT: "PRINT_TIMEOUT",
+  UNSUPPORTED_PRINTER: "UNSUPPORTED_PRINTER",
+  INVALID_PRINTER_CONFIGURATION: "INVALID_PRINTER_CONFIGURATION",
+  PRINT_PERMISSION_DENIED: "PRINT_PERMISSION_DENIED",
+  PRINT_JOB_FAILED: "PRINT_JOB_FAILED",
+  PRINTER_OFFLINE: "PRINTER_OFFLINE",
+  CONNECTION_REFUSED: "CONNECTION_REFUSED",
+  PAPER_OUT: "PAPER_OUT"
+});
+var agentStatus = /* @__PURE__ */ new Map();
 var createPrintJob2 = asyncHandler(async (req, res) => {
   const { orderId, receipt, printerId, printerName, format, paperWidth, language, copies } = req.body;
   if (!orderId || !receipt) {
@@ -6052,6 +6115,16 @@ var createPrintJob2 = asyncHandler(async (req, res) => {
   }
   const order = await getById6(orderId);
   if (!order) throw new ApiError(404, "Order not found");
+  if (printerId) {
+    const recentJobs = await listByOrder(orderId);
+    const recentDuplicate = recentJobs.find(
+      (j) => j.printerId === printerId && j.status === "printed" && Date.now() - new Date(j.createdAt).getTime() < 6e4
+      // Within last minute
+    );
+    if (recentDuplicate) {
+      throw new ApiError(409, "Duplicate print detected. Use reprint to print again.");
+    }
+  }
   const job = await createPrintJob({
     orderId,
     orderNo: order.orderNo,
@@ -6088,7 +6161,7 @@ var reportSuccess = asyncHandler(async (req, res) => {
 });
 var reportFailure = asyncHandler(async (req, res) => {
   const { jobId } = req.params;
-  const { error } = req.body;
+  const { error, errorCode: _errorCode } = req.body;
   if (!error) throw new ApiError(400, "Error message is required");
   await markFailed(jobId, String(error));
   res.json(new ApiResponse(200, null, "Failure recorded"));
@@ -6116,6 +6189,80 @@ var markOrderPrinted = asyncHandler(async (req, res) => {
   await markPrinted(job.id);
   res.json(new ApiResponse(200, { printedAt: (/* @__PURE__ */ new Date()).toISOString() }, "Order marked as printed"));
 });
+var updateAgentStatus = asyncHandler(async (req, res) => {
+  const { connectionType, connected, status: printerStatus, paperWidth, ip } = req.body;
+  const agentId = req.ip || "unknown";
+  agentStatus.set(agentId, {
+    connectionType: connectionType || "unknown",
+    connected: connected ?? false,
+    status: printerStatus || "unknown",
+    paperWidth: paperWidth || 80,
+    lastSeen: (/* @__PURE__ */ new Date()).toISOString(),
+    ip
+  });
+  res.json(new ApiResponse(200, null, "Agent status updated"));
+});
+var getAgentStatus = asyncHandler(async (req, res) => {
+  const statuses = Array.from(agentStatus.entries()).map(([id, s]) => ({
+    agentId: id,
+    ...s,
+    isRecent: Date.now() - new Date(s.lastSeen).getTime() < 3e4
+    // Within last 30s
+  }));
+  res.json(new ApiResponse(200, statuses));
+});
+var getErrorCodes = asyncHandler(async (_req, res) => {
+  res.json(new ApiResponse(200, PrintErrorCode));
+});
+var discoverPrinters = asyncHandler(async (req, res) => {
+  const agentUrl = req.query.agentUrl || "";
+  if (!agentUrl) {
+    throw new ApiError(400, "agentUrl query parameter is required (e.g. http://192.168.1.50:9200)");
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15e3);
+    const response = await fetch(`${agentUrl.replace(/\/+$/, "")}/discover`, {
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" }
+    });
+    clearTimeout(timeout);
+    if (!response.ok) {
+      throw new ApiError(502, `Local print agent returned ${response.status}`);
+    }
+    const data = await response.json();
+    res.json(new ApiResponse(200, data));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("abort") || message.includes("fetch")) {
+      throw new ApiError(502, "Local print agent is not reachable. Ensure it is running on the local network.");
+    }
+    throw err;
+  }
+});
+var testDiscoveredPrinter = asyncHandler(async (req, res) => {
+  const { agentUrl, printerName } = req.body;
+  if (!agentUrl || !printerName) {
+    throw new ApiError(400, "agentUrl and printerName are required");
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1e4);
+    const response = await fetch(
+      `${agentUrl.replace(/\/+$/, "")}/printers/${encodeURIComponent(printerName)}/test`,
+      { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" } }
+    );
+    clearTimeout(timeout);
+    const data = await response.json();
+    res.json(new ApiResponse(200, data));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("abort") || message.includes("fetch")) {
+      throw new ApiError(502, "Local print agent is not reachable");
+    }
+    throw err;
+  }
+});
 
 // src/routes/print.routes.ts
 var router23 = Router23();
@@ -6128,6 +6275,11 @@ router23.patch("/:jobId/success", requirePermission("orders", "update"), reportS
 router23.patch("/:jobId/failure", requirePermission("orders", "update"), reportFailure);
 router23.post("/:jobId/retry", requirePermission("orders", "update"), retryPrintJob);
 router23.post("/order/:orderId/mark", requirePermission("orders", "update"), markOrderPrinted);
+router23.patch("/agent/status", requirePermission("orders", "update"), updateAgentStatus);
+router23.get("/agent/status", requirePermission("orders", "read"), getAgentStatus);
+router23.get("/error-codes", requirePermission("orders", "read"), getErrorCodes);
+router23.get("/discover", requirePermission("orders", "read"), discoverPrinters);
+router23.post("/discover/test", requirePermission("orders", "update"), testDiscoveredPrinter);
 router23.get("/poll", pollJob);
 var print_routes_default = router23;
 

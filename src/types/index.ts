@@ -305,6 +305,8 @@ export interface OrderItem {
   qty: number;
   unitPrice: number;
   lineTotal: number;
+  /** Whether this item uses an admin custom price (not the normal product price). */
+  isCustomPrice?: boolean;
 }
 
 export interface Order {

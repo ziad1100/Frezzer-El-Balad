@@ -510,6 +510,11 @@ export function AdminOrdersPage() {
                     <span className="font-semibold text-night-100">
                       {item.qty} × {itemName(item)}
                       {item.size ? <span className="text-night-500"> ({item.size})</span> : null}
+                      {item.isCustomPrice ? (
+                        <span className="ms-1 inline-block rounded bg-gold-500/20 px-1.5 py-0.5 text-xs font-bold text-gold-400">
+                          {lang === 'ar' ? 'سعر مخصص' : 'Custom Price'}
+                        </span>
+                      ) : null}
                       {item.extras?.length ? (
                         <span className="block text-xs text-night-500">{item.extras.map((e) => e.name).join(', ')}</span>
                       ) : null}

@@ -85,6 +85,32 @@ export function CheckoutPage() {
     defaultValues: { customerName: '', phone: '', city: '', street: '', building: '' },
   });
 
+  // Admin custom price state: map of line index -> custom price value
+  const [customPrices, setCustomPrices] = useState<Record<number, number>>({});
+  const [customPriceEnabled, setCustomPriceEnabled] = useState<Record<number, boolean>>({});
+
+  const toggleCustomPrice = (index: number) => {
+    setCustomPriceEnabled((prev) => ({ ...prev, [index]: !prev[index] }));
+    // When disabling, remove the custom price
+    if (customPriceEnabled[index]) {
+      setCustomPrices((prev) => {
+        const next = { ...prev };
+        delete next[index];
+        return next;
+      });
+      // Also update the cart line
+      dispatch({ type: 'cart/setCustomPrice', payload: { index, customPrice: undefined, isCustomPrice: false } });
+    }
+  };
+
+  const updateCustomPrice = (index: number, value: string) => {
+    const num = parseFloat(value);
+    if (!Number.isNaN(num) && num >= 0) {
+      setCustomPrices((prev) => ({ ...prev, [index]: num }));
+      dispatch({ type: 'cart/setCustomPrice', payload: { index, customPrice: num, isCustomPrice: true } });
+    }
+  };
+
   const buildOrderPayload = (values: FormValues | AdminFormValues) => {
     const hasAddress = values.city && values.street && values.building;
     return {
@@ -94,6 +120,10 @@ export function CheckoutPage() {
         sizeName: line.sizeName,
         extras: line.extras.map((e) => ({ name: e.name, price: e.price })),
         qty: line.qty,
+        // Admin-only: include customPrice if set
+        ...(isAdmin && line.isCustomPrice && typeof line.customPrice === 'number'
+          ? { customPrice: line.customPrice }
+          : {}),
       })),
       couponCode: couponCode || undefined,
       ...(hasAddress
@@ -202,6 +232,61 @@ export function CheckoutPage() {
                   </div>
                 </Section>
 
+                <Section title={i18n.language === 'ar' ? 'السعر المخصص' : 'Custom Pricing'}>
+                  <div className="space-y-3">
+                    {lines.map((line, idx) => {
+                      const normalPrice = line.unitPrice;
+                      const isEnabled = customPriceEnabled[idx] ?? line.isCustomPrice ?? false;
+                      const currentCustom = customPrices[idx] ?? line.customPrice;
+                      return (
+                        <div key={`${line.productId}-${line.size ?? ''}`} className="rounded-lg border border-night-700 p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-night-200">
+                              {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
+                              {line.sizeName ? <span className="text-night-500"> ({line.sizeName})</span> : null}
+                              <span className="text-night-500"> × {line.qty}</span>
+                            </span>
+                            <span className="text-sm font-bold text-night-100">
+                              {formatPrice(normalPrice, i18n.language)}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-center gap-3">
+                            <label className="flex items-center gap-2 text-xs text-night-400">
+                              <input
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={() => toggleCustomPrice(idx)}
+                                className="h-4 w-4 rounded border-night-600 bg-night-800 text-brand-500 focus:ring-brand-500"
+                              />
+                              {i18n.language === 'ar' ? 'سعر مخصص' : 'Custom Price'}
+                            </label>
+                            {isEnabled && (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={currentCustom ?? ''}
+                                  onChange={(e) => updateCustomPrice(idx, e.target.value)}
+                                  className="w-24"
+                                  dir="ltr"
+                                  placeholder={i18n.language === 'ar' ? 'السعر' : 'Price'}
+                                />
+                                <span className="text-xs text-night-500">EGP</span>
+                              </div>
+                            )}
+                          </div>
+                          {isEnabled && typeof currentCustom === 'number' && (
+                            <div className="mt-1 text-xs text-gold-400">
+                              {i18n.language === 'ar' ? 'السعر المطبق' : 'Applied Price'}: {formatPrice(currentCustom, i18n.language)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Section>
+
                 <Section title={t('checkout.notes')}>
                   <Textarea rows={3} value={note} onChange={(e) => dispatch({ type: 'cart/setNote', payload: e.target.value })} />
                 </Section>
@@ -274,17 +359,23 @@ export function CheckoutPage() {
           <CardContent>
             <h2 className="mb-4 text-lg font-bold text-night-50">{t('cart.title')}</h2>
             <div className="space-y-3 border-b border-night-800 pb-4">
-              {lines.map((line) => (
-                <div key={`${line.productId}-${line.size ?? ''}`} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="line-clamp-1 text-night-200">
-                    {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
-                    <span className="text-night-500"> × {line.qty}</span>
-                  </span>
-                  <span className="shrink-0 font-bold text-night-100">
-                    {formatPrice(line.unitPrice * line.qty, i18n.language)}
-                  </span>
-                </div>
-              ))}
+              {lines.map((line) => {
+                const effectivePrice = line.isCustomPrice && typeof line.customPrice === 'number' ? line.customPrice : line.unitPrice;
+                return (
+                  <div key={`${line.productId}-${line.size ?? ''}`} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="line-clamp-1 text-night-200">
+                      {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
+                      <span className="text-night-500"> × {line.qty}</span>
+                      {line.isCustomPrice && (
+                        <span className="ms-1 text-xs text-gold-400">★</span>
+                      )}
+                    </span>
+                    <span className="shrink-0 font-bold text-night-100">
+                      {formatPrice(effectivePrice * line.qty, i18n.language)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="mt-4 flex gap-2">

@@ -12,6 +12,10 @@ export interface CartLine {
   extras: ProductExtra[];
   qty: number;
   unitPrice: number;
+  /** Admin-only: custom price override for this line. */
+  customPrice?: number;
+  /** Whether this line is using a custom price. */
+  isCustomPrice?: boolean;
 }
 
 export interface CartState {
@@ -74,6 +78,13 @@ const cartSlice = createSlice({
     setNote: (state, action: PayloadAction<string>) => {
       state.note = action.payload;
     },
+    setCustomPrice: (state, action: PayloadAction<{ index: number; customPrice?: number; isCustomPrice: boolean }>) => {
+      const line = state.lines[action.payload.index];
+      if (line) {
+        line.customPrice = action.payload.customPrice;
+        line.isCustomPrice = action.payload.isCustomPrice;
+      }
+    },
     clearCart: (state) => {
       state.lines = [];
       state.couponCode = '';
@@ -83,11 +94,15 @@ const cartSlice = createSlice({
   },
 });
 
-export const { addLine, updateQty, removeLine, setCoupon, clearCoupon, setNote, clearCart } =
+export const { addLine, updateQty, removeLine, setCoupon, clearCoupon, setNote, setCustomPrice, clearCart } =
   cartSlice.actions;
 
 export const selectSubtotal = (state: { cart: CartState }): number =>
-  state.cart.lines.reduce((sum, line) => sum + line.unitPrice * line.qty, 0);
+  state.cart.lines.reduce((sum, line) => {
+    // Use custom price if set (admin custom pricing), otherwise use normal unitPrice
+    const effectivePrice = line.isCustomPrice && typeof line.customPrice === 'number' ? line.customPrice : line.unitPrice;
+    return sum + effectivePrice * line.qty;
+  }, 0);
 
 export const selectCartCount = (state: { cart: CartState }): number =>
   state.cart.lines.reduce((sum, line) => sum + line.qty, 0);

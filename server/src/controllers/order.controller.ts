@@ -20,6 +20,8 @@ interface OrderItemInput {
   size?: string | null;
   extras?: { name: string; price: number }[];
   qty: number;
+  /** Admin-only: override the normal product price for this order item. */
+  customPrice?: number;
 }
 
 export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -48,7 +50,7 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
     if (!product) throw new ApiError(404, 'Product not found in order');
     const sizes = (product.sizes as Array<{ _id: string; price: number; name: string }>) ?? [];
     const size = sizes.find((s) => String(s._id) === String(item.size));
-    const unitPrice = size?.price ?? (product.basePrice as number) ?? 0;
+    const normalUnitPrice = size?.price ?? (product.basePrice as number) ?? 0;
     const extras = (item.extras ?? []).map((e) => {
       const dbExtra = ((product.extras as Array<{ name: string; nameEn: string; price: number }>) ?? []).find(
         (p) => p.name === e.name || p.nameEn === e.name,
@@ -59,7 +61,23 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
       return { name: dbExtra.name, price: dbExtra.price };
     });
     const extrasTotal = extras.reduce((acc, e) => acc + (Number(e.price) || 0), 0);
-    const lineTotal = (unitPrice + extrasTotal) * Math.max(1, item.qty);
+
+    // Admin custom price: only allowed for admin/manager/employee roles.
+    // If customPrice is provided, it replaces the normal unitPrice (including extras total).
+    // The product's permanent database price is NEVER modified.
+    let isCustomPrice = false;
+    let unitPrice: number;
+    if (isAdmin && typeof item.customPrice === 'number' && Number.isFinite(item.customPrice) && item.customPrice >= 0) {
+      unitPrice = item.customPrice;
+      isCustomPrice = true;
+    } else if (isAdmin && item.customPrice !== undefined) {
+      // Invalid customPrice provided — reject
+      throw new ApiError(400, 'Invalid custom price value');
+    } else {
+      unitPrice = normalUnitPrice + extrasTotal;
+    }
+
+    const lineTotal = unitPrice * Math.max(1, item.qty);
     subtotal += lineTotal;
     return {
       productId: product._id as string,
@@ -67,8 +85,9 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
       size: size?.name ?? '',
       extras,
       qty: Math.max(1, item.qty),
-      unitPrice: unitPrice + extrasTotal,
+      unitPrice,
       lineTotal,
+      isCustomPrice,
     };
   });
 

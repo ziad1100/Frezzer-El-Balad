@@ -432,7 +432,7 @@ var syncSizes = async (client, productId, sizes) => {
     await client(
       `INSERT INTO product_sizes ("productId", "sortOrder", name, "nameEn", price, "isAvailable")
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [productId, i, s.name, s.nameEn ?? "", Number(s.price) || 0, s.isAvailable ?? true]
+      [productId, i, s.name, s.nameEn ?? "", Number(s.price), s.isAvailable ?? true]
     );
   }
 };
@@ -442,7 +442,7 @@ var syncExtras = async (client, productId, extras) => {
     await client(
       `INSERT INTO product_extras ("productId", "sortOrder", name, "nameEn", price)
        VALUES ($1, $2, $3, $4, $5)`,
-      [productId, i, e.name, e.nameEn ?? "", Number(e.price) || 0]
+      [productId, i, e.name, e.nameEn ?? "", Number(e.price)]
     );
   }
 };
@@ -461,7 +461,7 @@ var create3 = async (data) => {
         data.slug,
         data.description ?? "",
         data.descriptionEn ?? "",
-        Number(data.basePrice) || 0,
+        Number(data.basePrice),
         data.images ?? [],
         data.ingredients ?? [],
         data.ingredientsEn ?? [],
