@@ -243,15 +243,15 @@ export interface SystemResetResult {
 export const systemReset = (): Promise<SystemResetResult> =>
   unwrap(api.post<ApiEnvelope<SystemResetResult>>('/system/reset'));
 
-export const exportDashboard = async (date?: string, period = 'today'): Promise<{ blob: Blob; filename: string }> => {
+export const exportDashboard = async (date?: string, period = 'today', startDate?: string, endDate?: string): Promise<{ blob: Blob; filename: string }> => {
   const res = await api.get<Blob>('/analytics/export', {
-    params: { date: date || undefined, period },
+    params: { date: date || undefined, period, startDate: startDate || undefined, endDate: endDate || undefined },
     responseType: 'blob',
   });
   // Prefer the server-provided filename (respects the selected period/date range).
   const disposition = String(res.headers?.['content-disposition'] ?? '');
   const match = disposition.match(/filename="?([^";]+)"?/);
-  const fallback = `dashboard-report-${date ?? new Date().toISOString().slice(0, 10)}.xlsx`;
+  const fallback = `freezer-elbalad-sales-purchases-${date ?? new Date().toISOString().slice(0, 10)}.xlsx`;
   return { blob: res.data, filename: match?.[1] ?? fallback };
 };
 

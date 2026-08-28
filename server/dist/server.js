@@ -5729,6 +5729,191 @@ var notification_routes_default = router17;
 // src/routes/analytics.routes.ts
 import { Router as Router18 } from "express";
 
+// src/db/purchases.ts
+var toPage7 = (rows, limit) => {
+  const total = rows[0] ? rows[0].__total : 0;
+  const items = rows.map(({ __total, ...rest }) => rest);
+  return { items, total, pages: Math.max(1, Math.ceil(total / limit)) };
+};
+var PURCHASE_COLS = `
+  pu.id::text AS "_id",
+  pu."productId"::text AS "productId",
+  pu."productName",
+  pu."productSize",
+  pu.quantity,
+  pu."unitCost"::float8 AS "unitCost",
+  pu."totalCost"::float8 AS "totalCost",
+  pu.supplier,
+  pu.notes,
+  pu."purchaseDate",
+  pu."createdAt",
+  jsonb_build_object('_id', u.id::text, 'fullName', u."fullName") AS "createdBy"
+`;
+var createPurchase = async (data) => {
+  let purchaseId = "";
+  await withTransaction(async (tx) => {
+    const inserted = await tx.query(
+      `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
+         quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
+       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
+       RETURNING id`,
+      [
+        data.productId,
+        data.sizeId || null,
+        data.productName,
+        data.productSize,
+        data.quantity,
+        data.unitCost,
+        data.totalCost,
+        data.supplier,
+        data.notes,
+        data.purchaseDate,
+        data.createdBy
+      ]
+    );
+    purchaseId = inserted.rows[0].id;
+    if (data.sizeId) {
+      await tx.query(
+        `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
+        [data.quantity, data.sizeId]
+      );
+    } else {
+      await tx.query(
+        `UPDATE products SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
+        [data.quantity, data.productId]
+      );
+    }
+  });
+  const rows = await query(
+    `SELECT ${PURCHASE_COLS}
+     FROM purchases pu
+     LEFT JOIN users u ON u.id = pu."createdBy"
+     WHERE pu.id = $1::uuid`,
+    [purchaseId]
+  );
+  return rows[0];
+};
+var listPurchases = async (page, limit, startDate, endDate, productId) => {
+  const conds = [];
+  const values = [];
+  const nxt = () => values.length;
+  if (startDate) {
+    values.push(startDate);
+    conds.push(`pu."purchaseDate" >= $${nxt()}::timestamptz`);
+  }
+  if (endDate) {
+    values.push(endDate);
+    conds.push(`pu."purchaseDate" <= $${nxt()}::timestamptz`);
+  }
+  if (productId) {
+    values.push(productId);
+    conds.push(`pu."productId" = $${nxt()}::uuid`);
+  }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const rows = await query(
+    `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
+     FROM purchases pu
+     LEFT JOIN users u ON u.id = pu."createdBy"
+     ${where}
+     ORDER BY pu."purchaseDate" DESC, pu.id
+     LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+    [...values, limit, (page - 1) * limit]
+  );
+  return toPage7(rows, limit);
+};
+var deletePurchase = async (id) => {
+  let deleted = false;
+  await withTransaction(async (tx) => {
+    const result = await tx.query(
+      `SELECT "productId", "sizeId", quantity FROM purchases WHERE id = $1::uuid`,
+      [id]
+    );
+    const rows = result.rows;
+    if (rows.length === 0) throw new ApiError(404, "Purchase not found");
+    const purchase = rows[0];
+    if (purchase.sizeId) {
+      await tx.query(
+        `UPDATE product_sizes SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+        [purchase.quantity, purchase.sizeId]
+      );
+    } else {
+      await tx.query(
+        `UPDATE products SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+        [purchase.quantity, purchase.productId]
+      );
+    }
+    const deleteResult = await tx.query(`DELETE FROM purchases WHERE id = $1::uuid`, [id]);
+    deleted = (deleteResult.rowCount ?? 0) > 0;
+  });
+  return deleted;
+};
+var getPurchaseStats = async (startDate, endDate) => {
+  const conds = [];
+  const values = [];
+  const nxt = () => values.length;
+  if (startDate) {
+    values.push(startDate);
+    conds.push(`"purchaseDate" >= $${nxt()}::timestamptz`);
+  }
+  if (endDate) {
+    values.push(endDate);
+    conds.push(`"purchaseDate" <= $${nxt()}::timestamptz`);
+  }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const rows = await query(
+    `SELECT
+       COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
+       COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
+       count(*)::int AS "purchaseCount"
+     FROM purchases ${where}`,
+    values
+  );
+  const byProduct = await query(
+    `SELECT "productId"::text AS "productId", "productName", "productSize",
+            SUM(quantity)::int AS "totalQuantity",
+            SUM("totalCost")::float8 AS "totalCost"
+     FROM purchases ${where}
+     GROUP BY "productId", "productName", "productSize"
+     ORDER BY "totalCost" DESC`,
+    values
+  );
+  return {
+    totalCost: rows[0]?.totalCost ?? 0,
+    totalQuantity: rows[0]?.totalQuantity ?? 0,
+    purchaseCount: rows[0]?.purchaseCount ?? 0,
+    byProduct
+  };
+};
+var getProductReport = async (productId) => {
+  const productRows = await query(
+    `SELECT id::text AS "_id", name, "nameEn", "basePrice"::float8 AS "basePrice", "stockQuantity"
+     FROM products WHERE id = $1::uuid`,
+    [productId]
+  );
+  if (productRows.length === 0) return null;
+  const product = productRows[0];
+  const salesRows = await query(
+    `SELECT COALESCE(SUM(oi.qty), 0)::int AS "quantity",
+            COALESCE(SUM(oi."lineTotal"), 0)::float8 AS "revenue"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     WHERE oi."productId" = $1::uuid
+       AND o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')`,
+    [productId]
+  );
+  const purchaseRows = await query(
+    `SELECT COALESCE(SUM(quantity), 0)::int AS "quantity",
+            COALESCE(SUM("totalCost"), 0)::float8 AS "cost"
+     FROM purchases WHERE "productId" = $1::uuid`,
+    [productId]
+  );
+  return {
+    product,
+    sales: salesRows[0] ?? { quantity: 0, revenue: 0 },
+    purchases: purchaseRows[0] ?? { quantity: 0, cost: 0 }
+  };
+};
+
 // src/controllers/analytics.controller.ts
 import * as XLSX from "xlsx";
 var periodWindows = (now = /* @__PURE__ */ new Date()) => {
@@ -5835,12 +6020,32 @@ var REVIEW_STATUS_AR = {
 var exportStats = asyncHandler(async (req, res) => {
   const date = String(req.query.date ?? "");
   const period = String(req.query.period ?? "today");
+  const startDate = String(req.query.startDate ?? "");
+  const endDate = String(req.query.endDate ?? "");
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new ApiError(400, "A valid date (YYYY-MM-DD) is required");
-  if (!["today", "week", "month"].includes(period)) throw new ApiError(400, "Invalid period");
+  if (!["today", "week", "month", "custom"].includes(period)) throw new ApiError(400, "Invalid period");
   const today = /* @__PURE__ */ new Date();
   const todayIso = iso(today);
   const selectedDate = date && date <= todayIso ? date : todayIso;
   const { todayStart, weekStart, monthStart } = periodWindows();
+  let periodStart;
+  let periodEnd;
+  if (period === "today") {
+    periodStart = todayStart;
+    periodEnd = today;
+  } else if (period === "week") {
+    periodStart = weekStart;
+    periodEnd = today;
+  } else if (period === "month") {
+    periodStart = monthStart;
+    periodEnd = today;
+  } else if (period === "custom" && startDate && endDate) {
+    periodStart = new Date(startDate);
+    periodEnd = /* @__PURE__ */ new Date(endDate + "T23:59:59");
+  } else {
+    periodStart = todayStart;
+    periodEnd = today;
+  }
   const [
     totals2,
     recent2,
@@ -5856,7 +6061,11 @@ var exportStats = asyncHandler(async (req, res) => {
     ordersPage,
     productsPage,
     customers,
-    reviewsPage
+    reviewsPage,
+    purchasesPage,
+    purchaseStats,
+    inventoryStats,
+    salesStats
   ] = await Promise.all([
     totals(),
     recent(daysAgo(30)),
@@ -5872,7 +6081,11 @@ var exportStats = asyncHandler(async (req, res) => {
     adminList5(1, 500, "", ""),
     adminList(1, 1e3, "", "", ""),
     customersBreakdown(),
-    adminList3(1, 500, "", "", "", "", "", "newest", "")
+    adminList3(1, 500, "", "", "", "", "", "newest", ""),
+    listPurchases(1, 1e3, periodStart.toISOString(), periodEnd.toISOString()),
+    getPurchaseStats(periodStart.toISOString(), periodEnd.toISOString()),
+    getInventoryStats(),
+    getSalesStats(periodStart.toISOString(), periodEnd.toISOString())
   ]);
   const reviewStats = reviewData;
   const periodMap = [
@@ -5908,12 +6121,22 @@ var exportStats = asyncHandler(async (req, res) => {
     [`\u0625\u064A\u0631\u0627\u062F\u0627\u062A ${periodMap.find((p) => p.key === period)?.label ?? "\u0627\u0644\u064A\u0648\u0645"}`, periodMap.find((p) => p.key === period)?.stats.revenue ?? todayStats.revenue],
     [`\u0637\u0644\u0628\u0627\u062A ${periodMap.find((p) => p.key === period)?.label ?? "\u0627\u0644\u064A\u0648\u0645"}`, periodMap.find((p) => p.key === period)?.stats.orders ?? todayStats.orders],
     ["\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u064A\u0648\u0645 \u0627\u0644\u0645\u062D\u062F\u062F", dayStatsData.revenue],
-    ["\u0637\u0644\u0628\u0627\u062A \u0627\u0644\u064A\u0648\u0645 \u0627\u0644\u0645\u062D\u062F\u062F", dayStatsData.orders]
+    ["\u0637\u0644\u0628\u0627\u062A \u0627\u0644\u064A\u0648\u0645 \u0627\u0644\u0645\u062D\u062F\u062F", dayStatsData.orders],
+    ["", ""],
+    ["\u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", ""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", purchaseStats.totalCost],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629", purchaseStats.totalQuantity],
+    ["\u0639\u062F\u062F \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", purchaseStats.purchaseCount],
+    ["", ""],
+    ["\u0627\u0644\u0645\u062E\u0632\u0648\u0646", ""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u062E\u0632\u0648\u0646", inventoryStats.totalStockQuantity],
+    ["\u0645\u0646\u062A\u062C\u0627\u062A \u0645\u062E\u0632\u0648\u0646 \u0645\u0646\u062E\u0641\u0636", inventoryStats.lowStockCount],
+    ["\u0645\u0646\u062A\u062C\u0627\u062A \u063A\u064A\u0631 \u0645\u062A\u0648\u0641\u0631\u0629", inventoryStats.outOfStockCount]
   ];
   const summary = sheetOf(summaryRows);
-  const moneyRows = [1, 2, 3, 4, 5, 14, 22, 24];
+  const moneyRows = [1, 2, 3, 4, 5, 14, 22, 24, 28];
   for (let r = 1; r < summaryRows.length; r++) setFormat(summary, r, 1, moneyRows.includes(r) ? MONEY : RATING);
-  for (const r of [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 20, 21, 23, 25]) setFormat(summary, r, 1, COUNT);
+  for (const r of [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 20, 21, 23, 25, 29, 30, 31, 33, 34, 35]) setFormat(summary, r, 1, COUNT);
   summary["!cols"] = [{ wch: 30 }, { wch: 20 }];
   XLSX.utils.book_append_sheet(wb, summary, "\u0645\u0644\u062E\u0635 \u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645");
   const orderRows = [
@@ -6067,7 +6290,112 @@ var exportStats = asyncHandler(async (req, res) => {
   }
   analyticsWs["!cols"] = [{ wch: 24 }, { wch: 14 }, { wch: 18 }];
   XLSX.utils.book_append_sheet(wb, analyticsWs, "\u0627\u0644\u062A\u062D\u0644\u064A\u0644\u0627\u062A");
-  const filename = period === "today" ? `dashboard-report-${selectedDate}.xlsx` : `dashboard-report-${iso(period === "week" ? weekStart : monthStart)}-to-${selectedDate}.xlsx`;
+  const purchaseRows = [
+    ["\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", "\u0627\u0644\u062A\u0627\u0631\u064A\u062E", "\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0646\u0648\u0639/\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0643\u0645\u064A\u0629", "\u0633\u0639\u0631 \u0627\u0644\u0648\u062D\u062F\u0629", "\u0627\u0644\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A\u0629", "\u0627\u0644\u0645\u0648\u0631\u062F", "\u0645\u0644\u0627\u062D\u0638\u0627\u062A"]
+  ];
+  for (const p of purchasesPage.items) {
+    purchaseRows.push([
+      String(p._id ?? ""),
+      p.purchaseDate ? fmtDate(new Date(String(p.purchaseDate))) : "",
+      String(p.productName ?? ""),
+      String(p.productSize ?? ""),
+      Number(p.quantity) || 0,
+      Number(p.unitCost) || 0,
+      Number(p.totalCost) || 0,
+      String(p.supplier ?? ""),
+      String(p.notes ?? "")
+    ]);
+  }
+  const purchaseWs = sheetOf(purchaseRows);
+  for (let r = 1; r < purchaseRows.length; r++) {
+    setFormat(purchaseWs, r, 5, MONEY);
+    setFormat(purchaseWs, r, 6, MONEY);
+    setFormat(purchaseWs, r, 4, COUNT);
+  }
+  purchaseWs["!cols"] = [{ wch: 40 }, { wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 24 }];
+  XLSX.utils.book_append_sheet(wb, purchaseWs, "\u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A");
+  const productSummaryRows = [
+    ["\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0646\u0648\u0639/\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0628\u0627\u0639\u0629", "\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A", "\u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629", "\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", "\u0627\u0644\u0645\u062E\u0632\u0648\u0646 \u0627\u0644\u062D\u0627\u0644\u064A"]
+  ];
+  const salesByProduct = /* @__PURE__ */ new Map();
+  for (const s of salesStats.byProduct) {
+    const key = `${s.productId}:${s.productSize}`;
+    salesByProduct.set(key, {
+      name: s.productName,
+      size: s.productSize,
+      qty: s.totalQuantity,
+      revenue: s.totalRevenue
+    });
+  }
+  const purchasesByProduct = /* @__PURE__ */ new Map();
+  for (const p of purchaseStats.byProduct) {
+    const key = `${p.productId}:${p.productSize}`;
+    const existing = purchasesByProduct.get(key);
+    if (existing) {
+      existing.qty += p.totalQuantity;
+      existing.cost += p.totalCost;
+    } else {
+      purchasesByProduct.set(key, {
+        name: p.productName,
+        size: p.productSize,
+        qty: p.totalQuantity,
+        cost: p.totalCost
+      });
+    }
+  }
+  const allProductKeys = /* @__PURE__ */ new Set([...salesByProduct.keys(), ...purchasesByProduct.keys()]);
+  for (const key of allProductKeys) {
+    const sales = salesByProduct.get(key);
+    const purchases = purchasesByProduct.get(key);
+    productSummaryRows.push([
+      sales?.name ?? purchases?.name ?? "",
+      sales?.size ?? purchases?.size ?? "",
+      sales?.qty ?? 0,
+      sales?.revenue ?? 0,
+      purchases?.qty ?? 0,
+      purchases?.cost ?? 0,
+      ""
+      // Current inventory is shown in dashboard, not calculated here per product
+    ]);
+  }
+  const productSummaryWs = sheetOf(productSummaryRows);
+  for (let r = 1; r < productSummaryRows.length; r++) {
+    setFormat(productSummaryWs, r, 2, COUNT);
+    setFormat(productSummaryWs, r, 3, MONEY);
+    setFormat(productSummaryWs, r, 4, COUNT);
+    setFormat(productSummaryWs, r, 5, MONEY);
+    setFormat(productSummaryWs, r, 6, COUNT);
+  }
+  productSummaryWs["!cols"] = [{ wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }];
+  XLSX.utils.book_append_sheet(wb, productSummaryWs, "\u0645\u0644\u062E\u0635 \u0627\u0644\u0645\u0646\u062A\u062C\u0627\u062A");
+  const periodLabel = period === "today" ? "\u0627\u0644\u064A\u0648\u0645" : period === "week" ? "\u0647\u0630\u0627 \u0627\u0644\u0623\u0633\u0628\u0648\u0639" : period === "month" ? "\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631" : "\u0641\u062A\u0631\u0629 \u0645\u062E\u0635\u0635\u0629";
+  const periodDateRange = `${iso(periodStart)} \u2192 ${iso(periodEnd)}`;
+  const financialRows = [
+    ["\u0627\u0644\u0645\u0624\u0634\u0631", "\u0627\u0644\u0642\u064A\u0645\u0629"],
+    ["\u0641\u062A\u0631\u0629 \u0627\u0644\u062A\u0642\u0631\u064A\u0631", `${periodLabel} (${periodDateRange})`],
+    ["", ""],
+    ["\u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A / \u0627\u0644\u0625\u064A\u0631\u0627\u062F\u0627\u062A", ""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0625\u064A\u0631\u0627\u062F\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", salesStats.salesValue],
+    ["\u0639\u062F\u062F \u0627\u0644\u0637\u0644\u0628\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", salesStats.orderCount],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0648\u062D\u062F\u0627\u062A \u0627\u0644\u0645\u0628\u0627\u0639\u0629 (\u0627\u0644\u0641\u062A\u0631\u0629)", salesStats.salesQuantity],
+    ["", ""],
+    ["\u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", ""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", purchaseStats.totalCost],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629 (\u0627\u0644\u0641\u062A\u0631\u0629)", purchaseStats.totalQuantity],
+    ["\u0639\u062F\u062F \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", purchaseStats.purchaseCount],
+    ["", ""],
+    ["\u0627\u0644\u0645\u062E\u0632\u0648\u0646", ""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u062E\u0632\u0648\u0646 \u0627\u0644\u062D\u0627\u0644\u064A", inventoryStats.totalStockQuantity],
+    ["\u0627\u0644\u0645\u0646\u062A\u062C\u0627\u062A \u0630\u0627\u062A \u0627\u0644\u0645\u062E\u0632\u0648\u0646 \u0627\u0644\u0645\u0646\u062E\u0641\u0636", inventoryStats.lowStockCount],
+    ["\u0627\u0644\u0645\u0646\u062A\u062C\u0627\u062A \u063A\u064A\u0631 \u0627\u0644\u0645\u062A\u0648\u0641\u0631\u0629", inventoryStats.outOfStockCount]
+  ];
+  const financialWs = sheetOf(financialRows);
+  for (let r = 4; r <= 7; r++) setFormat(financialWs, r, 1, MONEY);
+  for (let r = 9; r <= 11; r++) setFormat(financialWs, r, 1, MONEY);
+  for (let r = 13; r <= 15; r++) setFormat(financialWs, r, 1, COUNT);
+  financialWs["!cols"] = [{ wch: 36 }, { wch: 28 }];
+  XLSX.utils.book_append_sheet(wb, financialWs, "\u0645\u0644\u062E\u0635 \u0645\u0627\u0644\u064A");
+  const filename = period === "today" ? `freezer-elbalad-sales-purchases-${selectedDate}.xlsx` : period === "custom" && startDate && endDate ? `freezer-elbalad-sales-purchases-${startDate}-to-${endDate}.xlsx` : `freezer-elbalad-sales-purchases-${iso(period === "week" ? weekStart : monthStart)}-to-${selectedDate}.xlsx`;
   const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -6168,7 +6496,7 @@ var POST_COLS = `
   p.title, p."titleEn", p.slug, p.excerpt, p."excerptEn",
   p.content, p."contentEn", p.image, p.tags,
   p."publishedAt", p."isPublished", p."createdAt", p."updatedAt"`;
-var toPage7 = (rows, limit, maxPages) => {
+var toPage8 = (rows, limit, maxPages) => {
   const total = rows[0] ? rows[0].__total : 0;
   const items = rows.map(({ __total, ...rest }) => rest);
   return { items, total, pages: maxPages ? Math.max(1, Math.ceil(total / limit)) : Math.ceil(total / limit) };
@@ -6182,7 +6510,7 @@ var listPublished = async (page, limit) => {
      LIMIT $1 OFFSET $2`,
     [limit, (page - 1) * limit]
   );
-  return toPage7(rows, limit, false);
+  return toPage8(rows, limit, false);
 };
 var getBySlug2 = async (slug, publishedOnly = true) => {
   const rows = await query(
@@ -6209,7 +6537,7 @@ var listAll2 = async (q, page, limit) => {
      LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
     [...values, limit, (page - 1) * limit]
   );
-  return toPage7(rows, limit, true);
+  return toPage8(rows, limit, true);
 };
 var exists2 = async (slug, excludeId) => {
   const rows = await query(
@@ -6918,191 +7246,6 @@ var inventory_routes_default = router26;
 
 // src/routes/purchase.routes.ts
 import { Router as Router27 } from "express";
-
-// src/db/purchases.ts
-var toPage8 = (rows, limit) => {
-  const total = rows[0] ? rows[0].__total : 0;
-  const items = rows.map(({ __total, ...rest }) => rest);
-  return { items, total, pages: Math.max(1, Math.ceil(total / limit)) };
-};
-var PURCHASE_COLS = `
-  pu.id::text AS "_id",
-  pu."productId"::text AS "productId",
-  pu."productName",
-  pu."productSize",
-  pu.quantity,
-  pu."unitCost"::float8 AS "unitCost",
-  pu."totalCost"::float8 AS "totalCost",
-  pu.supplier,
-  pu.notes,
-  pu."purchaseDate",
-  pu."createdAt",
-  jsonb_build_object('_id', u.id::text, 'fullName', u."fullName") AS "createdBy"
-`;
-var createPurchase = async (data) => {
-  let purchaseId = "";
-  await withTransaction(async (tx) => {
-    const inserted = await tx.query(
-      `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
-         quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
-       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
-       RETURNING id`,
-      [
-        data.productId,
-        data.sizeId || null,
-        data.productName,
-        data.productSize,
-        data.quantity,
-        data.unitCost,
-        data.totalCost,
-        data.supplier,
-        data.notes,
-        data.purchaseDate,
-        data.createdBy
-      ]
-    );
-    purchaseId = inserted.rows[0].id;
-    if (data.sizeId) {
-      await tx.query(
-        `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
-        [data.quantity, data.sizeId]
-      );
-    } else {
-      await tx.query(
-        `UPDATE products SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
-        [data.quantity, data.productId]
-      );
-    }
-  });
-  const rows = await query(
-    `SELECT ${PURCHASE_COLS}
-     FROM purchases pu
-     LEFT JOIN users u ON u.id = pu."createdBy"
-     WHERE pu.id = $1::uuid`,
-    [purchaseId]
-  );
-  return rows[0];
-};
-var listPurchases = async (page, limit, startDate, endDate, productId) => {
-  const conds = [];
-  const values = [];
-  const nxt = () => values.length;
-  if (startDate) {
-    values.push(startDate);
-    conds.push(`pu."purchaseDate" >= $${nxt()}::timestamptz`);
-  }
-  if (endDate) {
-    values.push(endDate);
-    conds.push(`pu."purchaseDate" <= $${nxt()}::timestamptz`);
-  }
-  if (productId) {
-    values.push(productId);
-    conds.push(`pu."productId" = $${nxt()}::uuid`);
-  }
-  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-  const rows = await query(
-    `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
-     FROM purchases pu
-     LEFT JOIN users u ON u.id = pu."createdBy"
-     ${where}
-     ORDER BY pu."purchaseDate" DESC, pu.id
-     LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-    [...values, limit, (page - 1) * limit]
-  );
-  return toPage8(rows, limit);
-};
-var deletePurchase = async (id) => {
-  let deleted = false;
-  await withTransaction(async (tx) => {
-    const result = await tx.query(
-      `SELECT "productId", "sizeId", quantity FROM purchases WHERE id = $1::uuid`,
-      [id]
-    );
-    const rows = result.rows;
-    if (rows.length === 0) throw new ApiError(404, "Purchase not found");
-    const purchase = rows[0];
-    if (purchase.sizeId) {
-      await tx.query(
-        `UPDATE product_sizes SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
-        [purchase.quantity, purchase.sizeId]
-      );
-    } else {
-      await tx.query(
-        `UPDATE products SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
-        [purchase.quantity, purchase.productId]
-      );
-    }
-    const deleteResult = await tx.query(`DELETE FROM purchases WHERE id = $1::uuid`, [id]);
-    deleted = (deleteResult.rowCount ?? 0) > 0;
-  });
-  return deleted;
-};
-var getPurchaseStats = async (startDate, endDate) => {
-  const conds = [];
-  const values = [];
-  const nxt = () => values.length;
-  if (startDate) {
-    values.push(startDate);
-    conds.push(`"purchaseDate" >= $${nxt()}::timestamptz`);
-  }
-  if (endDate) {
-    values.push(endDate);
-    conds.push(`"purchaseDate" <= $${nxt()}::timestamptz`);
-  }
-  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-  const rows = await query(
-    `SELECT
-       COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
-       COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
-       count(*)::int AS "purchaseCount"
-     FROM purchases ${where}`,
-    values
-  );
-  const byProduct = await query(
-    `SELECT "productId"::text AS "productId", "productName", "productSize",
-            SUM(quantity)::int AS "totalQuantity",
-            SUM("totalCost")::float8 AS "totalCost"
-     FROM purchases ${where}
-     GROUP BY "productId", "productName", "productSize"
-     ORDER BY "totalCost" DESC`,
-    values
-  );
-  return {
-    totalCost: rows[0]?.totalCost ?? 0,
-    totalQuantity: rows[0]?.totalQuantity ?? 0,
-    purchaseCount: rows[0]?.purchaseCount ?? 0,
-    byProduct
-  };
-};
-var getProductReport = async (productId) => {
-  const productRows = await query(
-    `SELECT id::text AS "_id", name, "nameEn", "basePrice"::float8 AS "basePrice", "stockQuantity"
-     FROM products WHERE id = $1::uuid`,
-    [productId]
-  );
-  if (productRows.length === 0) return null;
-  const product = productRows[0];
-  const salesRows = await query(
-    `SELECT COALESCE(SUM(oi.qty), 0)::int AS "quantity",
-            COALESCE(SUM(oi."lineTotal"), 0)::float8 AS "revenue"
-     FROM order_items oi
-     JOIN orders o ON o.id = oi."orderId"
-     WHERE oi."productId" = $1::uuid
-       AND o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')`,
-    [productId]
-  );
-  const purchaseRows = await query(
-    `SELECT COALESCE(SUM(quantity), 0)::int AS "quantity",
-            COALESCE(SUM("totalCost"), 0)::float8 AS "cost"
-     FROM purchases WHERE "productId" = $1::uuid`,
-    [productId]
-  );
-  return {
-    product,
-    sales: salesRows[0] ?? { quantity: 0, revenue: 0 },
-    purchases: purchaseRows[0] ?? { quantity: 0, cost: 0 }
-  };
-};
 
 // src/controllers/purchase.controller.ts
 var createPurchase2 = asyncHandler(async (req, res) => {

@@ -3,6 +3,8 @@ import * as analyticsRepo from '../db/analytics';
 import * as ordersRepo from '../db/orders';
 import * as productsRepo from '../db/products';
 import * as reviewsRepo from '../db/reviews';
+import * as purchasesRepo from '../db/purchases';
+import * as inventoryRepo from '../db/inventory';
 import { ApiError } from '../utils/ApiError';
 import { ApiResponse } from '../utils/ApiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -146,8 +148,10 @@ const REVIEW_STATUS_AR: Record<string, string> = {
 export const exportStats = asyncHandler(async (req: Request, res: Response) => {
   const date = String(req.query.date ?? '');
   const period = String(req.query.period ?? 'today');
+  const startDate = String(req.query.startDate ?? '');
+  const endDate = String(req.query.endDate ?? '');
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new ApiError(400, 'A valid date (YYYY-MM-DD) is required');
-  if (!['today', 'week', 'month'].includes(period)) throw new ApiError(400, 'Invalid period');
+  if (!['today', 'week', 'month', 'custom'].includes(period)) throw new ApiError(400, 'Invalid period');
 
   const today = new Date();
   const todayIso = iso(today);
@@ -155,6 +159,26 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
 
   // Same calendar windows as the dashboard so exported figures match the screen.
   const { todayStart, weekStart, monthStart } = periodWindows();
+
+  // Calculate period start/end for filtering
+  let periodStart: Date;
+  let periodEnd: Date;
+  if (period === 'today') {
+    periodStart = todayStart;
+    periodEnd = today;
+  } else if (period === 'week') {
+    periodStart = weekStart;
+    periodEnd = today;
+  } else if (period === 'month') {
+    periodStart = monthStart;
+    periodEnd = today;
+  } else if (period === 'custom' && startDate && endDate) {
+    periodStart = new Date(startDate);
+    periodEnd = new Date(endDate + 'T23:59:59');
+  } else {
+    periodStart = todayStart;
+    periodEnd = today;
+  }
 
   const [
     totals,
@@ -172,6 +196,10 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
     productsPage,
     customers,
     reviewsPage,
+    purchasesPage,
+    purchaseStats,
+    inventoryStats,
+    salesStats,
   ] = await Promise.all([
     analyticsRepo.totals(),
     analyticsRepo.recent(daysAgo(30)),
@@ -188,6 +216,10 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
     productsRepo.adminList(1, 1000, '', '', ''),
     analyticsRepo.customersBreakdown(),
     reviewsRepo.adminList(1, 500, '', '', '', '', '', 'newest', ''),
+    purchasesRepo.listPurchases(1, 1000, periodStart.toISOString(), periodEnd.toISOString()),
+    purchasesRepo.getPurchaseStats(periodStart.toISOString(), periodEnd.toISOString()),
+    inventoryRepo.getInventoryStats(),
+    inventoryRepo.getSalesStats(periodStart.toISOString(), periodEnd.toISOString()),
   ]);
 
   const reviewStats = reviewData as Record<string, unknown>;
@@ -229,11 +261,21 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
     [`طلبات ${periodMap.find((p) => p.key === period)?.label ?? 'اليوم'}`, periodMap.find((p) => p.key === period)?.stats.orders ?? todayStats.orders],
     ['إيرادات اليوم المحدد', dayStatsData.revenue],
     ['طلبات اليوم المحدد', dayStatsData.orders],
+    ['', ''],
+    ['المشتريات (الفترة)', ''],
+    ['إجمالي تكلفة المشتريات', purchaseStats.totalCost],
+    ['إجمالي الكمية المشتراة', purchaseStats.totalQuantity],
+    ['عدد المشتريات', purchaseStats.purchaseCount],
+    ['', ''],
+    ['المخزون', ''],
+    ['إجمالي المخزون', inventoryStats.totalStockQuantity],
+    ['منتجات مخزون منخفض', inventoryStats.lowStockCount],
+    ['منتجات غير متوفرة', inventoryStats.outOfStockCount],
   ];
   const summary = sheetOf(summaryRows);
-  const moneyRows = [1, 2, 3, 4, 5, 14, 22, 24];
+  const moneyRows = [1, 2, 3, 4, 5, 14, 22, 24, 28];
   for (let r = 1; r < summaryRows.length; r++) setFormat(summary, r, 1, moneyRows.includes(r) ? MONEY : RATING);
-  for (const r of [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 20, 21, 23, 25]) setFormat(summary, r, 1, COUNT);
+  for (const r of [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 20, 21, 23, 25, 29, 30, 31, 33, 34, 35]) setFormat(summary, r, 1, COUNT);
   summary['!cols'] = [{ wch: 30 }, { wch: 20 }];
   XLSX.utils.book_append_sheet(wb, summary, 'ملخص لوحة التحكم');
 
@@ -404,11 +446,125 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
   analyticsWs['!cols'] = [{ wch: 24 }, { wch: 14 }, { wch: 18 }];
   XLSX.utils.book_append_sheet(wb, analyticsWs, 'التحليلات');
 
+  // ---- Sheet 9: المشتريات (purchases in period) ----
+  const purchaseRows: (string | number)[][] = [
+    ['معرّف المشتريات', 'التاريخ', 'المنتج', 'النوع/الوزن', 'الكمية', 'سعر الوحدة', 'التكلفة الإجمالية', 'المورد', 'ملاحظات'],
+  ];
+  for (const p of purchasesPage.items) {
+    purchaseRows.push([
+      String(p._id ?? ''),
+      p.purchaseDate ? fmtDate(new Date(String(p.purchaseDate))) : '',
+      String(p.productName ?? ''),
+      String(p.productSize ?? ''),
+      Number(p.quantity) || 0,
+      Number(p.unitCost) || 0,
+      Number(p.totalCost) || 0,
+      String(p.supplier ?? ''),
+      String(p.notes ?? ''),
+    ]);
+  }
+  const purchaseWs = sheetOf(purchaseRows);
+  for (let r = 1; r < purchaseRows.length; r++) {
+    setFormat(purchaseWs, r, 5, MONEY);
+    setFormat(purchaseWs, r, 6, MONEY);
+    setFormat(purchaseWs, r, 4, COUNT);
+  }
+  purchaseWs['!cols'] = [{ wch: 40 }, { wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 24 }];
+  XLSX.utils.book_append_sheet(wb, purchaseWs, 'المشتريات');
+
+  // ---- Sheet 10: ملخص المنتجات (product-level sales + purchases summary) ----
+  const productSummaryRows: (string | number)[][] = [
+    ['المنتج', 'النوع/الوزن', 'الكمية المباعة', 'إيرادات المبيعات', 'الكمية المشتراة', 'تكلفة المشتريات', 'المخزون الحالي'],
+  ];
+  // Merge sales and purchases by product
+  const salesByProduct = new Map<string, { name: string; size: string; qty: number; revenue: number }>();
+  for (const s of salesStats.byProduct) {
+    const key = `${s.productId}:${s.productSize}`;
+    salesByProduct.set(key, {
+      name: s.productName,
+      size: s.productSize,
+      qty: s.totalQuantity,
+      revenue: s.totalRevenue,
+    });
+  }
+  const purchasesByProduct = new Map<string, { name: string; size: string; qty: number; cost: number }>();
+  for (const p of purchaseStats.byProduct) {
+    const key = `${p.productId}:${p.productSize}`;
+    const existing = purchasesByProduct.get(key);
+    if (existing) {
+      existing.qty += p.totalQuantity;
+      existing.cost += p.totalCost;
+    } else {
+      purchasesByProduct.set(key, {
+        name: p.productName,
+        size: p.productSize,
+        qty: p.totalQuantity,
+        cost: p.totalCost,
+      });
+    }
+  }
+  // Combine all products
+  const allProductKeys = new Set([...salesByProduct.keys(), ...purchasesByProduct.keys()]);
+  for (const key of allProductKeys) {
+    const sales = salesByProduct.get(key);
+    const purchases = purchasesByProduct.get(key);
+    productSummaryRows.push([
+      sales?.name ?? purchases?.name ?? '',
+      sales?.size ?? purchases?.size ?? '',
+      sales?.qty ?? 0,
+      sales?.revenue ?? 0,
+      purchases?.qty ?? 0,
+      purchases?.cost ?? 0,
+      '', // Current inventory is shown in dashboard, not calculated here per product
+    ]);
+  }
+  const productSummaryWs = sheetOf(productSummaryRows);
+  for (let r = 1; r < productSummaryRows.length; r++) {
+    setFormat(productSummaryWs, r, 2, COUNT);
+    setFormat(productSummaryWs, r, 3, MONEY);
+    setFormat(productSummaryWs, r, 4, COUNT);
+    setFormat(productSummaryWs, r, 5, MONEY);
+    setFormat(productSummaryWs, r, 6, COUNT);
+  }
+  productSummaryWs['!cols'] = [{ wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }];
+  XLSX.utils.book_append_sheet(wb, productSummaryWs, 'ملخص المنتجات');
+
+  // ---- Sheet 11: ملخص مالي (financial summary) ----
+  const periodLabel = period === 'today' ? 'اليوم' : period === 'week' ? 'هذا الأسبوع' : period === 'month' ? 'هذا الشهر' : 'فترة مخصصة';
+  const periodDateRange = `${iso(periodStart)} → ${iso(periodEnd)}`;
+  const financialRows: (string | number)[][] = [
+    ['المؤشر', 'القيمة'],
+    ['فترة التقرير', `${periodLabel} (${periodDateRange})`],
+    ['', ''],
+    ['المبيعات / الإيرادات', ''],
+    ['إجمالي الإيرادات (الفترة)', salesStats.salesValue],
+    ['عدد الطلبات (الفترة)', salesStats.orderCount],
+    ['إجمالي الوحدات المباعة (الفترة)', salesStats.salesQuantity],
+    ['', ''],
+    ['المشتريات', ''],
+    ['إجمالي تكلفة المشتريات (الفترة)', purchaseStats.totalCost],
+    ['إجمالي الكمية المشتراة (الفترة)', purchaseStats.totalQuantity],
+    ['عدد المشتريات (الفترة)', purchaseStats.purchaseCount],
+    ['', ''],
+    ['المخزون', ''],
+    ['إجمالي المخزون الحالي', inventoryStats.totalStockQuantity],
+    ['المنتجات ذات المخزون المنخفض', inventoryStats.lowStockCount],
+    ['المنتجات غير المتوفرة', inventoryStats.outOfStockCount],
+  ];
+  const financialWs = sheetOf(financialRows);
+  for (let r = 4; r <= 7; r++) setFormat(financialWs, r, 1, MONEY);
+  for (let r = 9; r <= 11; r++) setFormat(financialWs, r, 1, MONEY);
+  for (let r = 13; r <= 15; r++) setFormat(financialWs, r, 1, COUNT);
+  financialWs['!cols'] = [{ wch: 36 }, { wch: 28 }];
+  XLSX.utils.book_append_sheet(wb, financialWs, 'ملخص مالي');
+
   // Meaningful dynamic filename: plain date for Today, date range otherwise.
   const filename =
     period === 'today'
-      ? `dashboard-report-${selectedDate}.xlsx`
-      : `dashboard-report-${iso(period === 'week' ? weekStart : monthStart)}-to-${selectedDate}.xlsx`;
+      ? `freezer-elbalad-sales-purchases-${selectedDate}.xlsx`
+      : period === 'custom' && startDate && endDate
+        ? `freezer-elbalad-sales-purchases-${startDate}-to-${endDate}.xlsx`
+        : `freezer-elbalad-sales-purchases-${iso(period === 'week' ? weekStart : monthStart)}-to-${selectedDate}.xlsx`;
   const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

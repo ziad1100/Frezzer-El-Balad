@@ -79,8 +79,18 @@ export function AdminIndexPage() {
     setResetTyped('');
   };
 
+  const [exportPeriod, setExportPeriod] = useState<PeriodKey | 'custom'>('today');
+  const [exportCustomStart, setExportCustomStart] = useState('');
+  const [exportCustomEnd, setExportCustomEnd] = useState('');
+  const [showExportModal, setShowExportModal] = useState(false);
+
   const exportMutation = useMutation({
-    mutationFn: () => exportDashboard(day, period),
+    mutationFn: () => {
+      if (exportPeriod === 'custom') {
+        return exportDashboard(undefined, 'custom', exportCustomStart, exportCustomEnd);
+      }
+      return exportDashboard(day, exportPeriod);
+    },
     onSuccess: ({ blob, filename }) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -196,7 +206,7 @@ export function AdminIndexPage() {
               size="sm"
               loading={exportMutation.isPending}
               disabled={exportMutation.isPending}
-              onClick={() => exportMutation.mutate()}
+              onClick={() => setShowExportModal(true)}
             >
               <Download className="h-4 w-4" />
               {exportMutation.isPending ? t('admin.exporting') : t('admin.export')}
@@ -688,6 +698,60 @@ export function AdminIndexPage() {
           </Card>
         )}
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <Modal open onClose={() => setShowExportModal(false)}>
+          <div className="w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-night-50">
+              {lang === 'ar' ? 'تصدير التقرير' : 'Export Report'}
+            </h2>
+            <p className="text-sm text-night-400">
+              {lang === 'ar' ? 'اختر الفترة الزمنية للتقرير' : 'Select the reporting period'}
+            </p>
+            <div className="space-y-2">
+              {([
+                { key: 'today' as const, label: lang === 'ar' ? 'اليوم' : 'Today' },
+                { key: 'week' as const, label: lang === 'ar' ? 'هذا الأسبوع' : 'This Week' },
+                { key: 'month' as const, label: lang === 'ar' ? 'هذا الشهر' : 'This Month' },
+                { key: 'custom' as const, label: lang === 'ar' ? 'فترة مخصصة' : 'Custom Date Range' },
+              ]).map((p) => (
+                <button
+                  key={p.key}
+                  onClick={() => setExportPeriod(p.key)}
+                  className={cn(
+                    'w-full rounded-lg border px-4 py-3 text-left text-sm font-semibold transition-colors',
+                    exportPeriod === p.key
+                      ? 'border-brand-500 bg-brand-500/20 text-brand-400'
+                      : 'border-night-700 text-night-300 hover:border-night-500',
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            {exportPeriod === 'custom' && (
+              <div className="flex items-center gap-2">
+                <Input type="date" value={exportCustomStart} onChange={(e) => setExportCustomStart(e.target.value)} className="flex-1" />
+                <span className="text-night-500">—</span>
+                <Input type="date" value={exportCustomEnd} onChange={(e) => setExportCustomEnd(e.target.value)} className="flex-1" />
+              </div>
+            )}
+            <Button
+              onClick={() => {
+                setShowExportModal(false);
+                exportMutation.mutate();
+              }}
+              loading={exportMutation.isPending}
+              disabled={exportPeriod === 'custom' && (!exportCustomStart || !exportCustomEnd)}
+              className="w-full"
+            >
+              <Download className="h-4 w-4" />
+              {lang === 'ar' ? 'تحميل التقرير' : 'Download Report'}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
