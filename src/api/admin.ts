@@ -368,6 +368,13 @@ export interface SalesStats {
   salesValue: number;
   salesQuantity: number;
   orderCount: number;
+  byProduct: Array<{
+    productId: string;
+    productName: string;
+    productSize: string;
+    totalQuantity: number;
+    totalRevenue: number;
+  }>;
 }
 
 export const getInventoryStats = (): Promise<InventoryStats> =>
@@ -381,3 +388,70 @@ export const updateProductStock = (data: { productId: string; sizeId?: string; s
 
 export const setTrackInventory = (data: { productId: string; track: boolean }): Promise<null> =>
   unwrap(api.patch<ApiEnvelope<null>>('/inventory/track', data));
+
+// ── Purchases ─────────────────────────────────────────────────────────────
+
+export interface Purchase {
+  _id: string;
+  productId: string;
+  productName: string;
+  productSize: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  supplier: string;
+  notes: string;
+  purchaseDate: string;
+  createdAt: string;
+  createdBy: { _id: string; fullName: string };
+}
+
+export interface PurchaseStats {
+  totalCost: number;
+  totalQuantity: number;
+  purchaseCount: number;
+  byProduct: Array<{
+    productId: string;
+    productName: string;
+    productSize: string;
+    totalQuantity: number;
+    totalCost: number;
+  }>;
+}
+
+export interface ProductReport {
+  product: { _id: string; name: string; nameEn: string; basePrice: number; stockQuantity: number };
+  sales: { quantity: number; revenue: number };
+  purchases: { quantity: number; cost: number };
+}
+
+export const createPurchase = (data: {
+  productId: string;
+  sizeId?: string;
+  productName: string;
+  productSize?: string;
+  quantity: number;
+  unitCost: number;
+  supplier?: string;
+  notes?: string;
+  purchaseDate?: string;
+}): Promise<Purchase> =>
+  unwrap(api.post<ApiEnvelope<Purchase>>('/purchases', data));
+
+export const listPurchases = (params: {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  productId?: string;
+} = {}): Promise<Paginated<Purchase>> =>
+  unwrap(api.get<ApiEnvelope<Paginated<Purchase>>>('/purchases', { params }));
+
+export const getPurchaseStats = (params: { startDate?: string; endDate?: string } = {}): Promise<PurchaseStats> =>
+  unwrap(api.get<ApiEnvelope<PurchaseStats>>('/purchases/stats', { params }));
+
+export const deletePurchase = (id: string): Promise<null> =>
+  unwrap(api.delete<ApiEnvelope<null>>(`/purchases/${id}`));
+
+export const getProductReport = (productId: string): Promise<ProductReport> =>
+  unwrap(api.get<ApiEnvelope<ProductReport>>('/purchases/report', { params: { productId } }));

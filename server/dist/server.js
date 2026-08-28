@@ -473,7 +473,7 @@ var disconnectCache = async () => {
 };
 
 // src/routes/index.ts
-import { Router as Router28 } from "express";
+import { Router as Router29 } from "express";
 
 // src/routes/auth.routes.ts
 import { Router } from "express";
@@ -4411,7 +4411,23 @@ var getSalesStats = async (startDate, endDate) => {
      ${where}`,
     values
   );
-  return rows[0] ?? { salesValue: 0, salesQuantity: 0, orderCount: 0 };
+  const byProduct = await query(
+    `SELECT oi."productId"::text AS "productId",
+            oi.name AS "productName",
+            oi.size AS "productSize",
+            SUM(oi.qty)::int AS "totalQuantity",
+            SUM(oi."lineTotal")::float8 AS "totalRevenue"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     ${where}
+     GROUP BY oi."productId", oi.name, oi.size
+     ORDER BY "totalRevenue" DESC`,
+    values
+  );
+  return {
+    ...rows[0] ?? { salesValue: 0, salesQuantity: 0, orderCount: 0 },
+    byProduct
+  };
 };
 
 // src/db/notifications.ts
@@ -6896,8 +6912,254 @@ router26.patch("/stock", requirePermission("products", "update"), updateStock2);
 router26.patch("/track", requirePermission("products", "update"), setTrackInventory2);
 var inventory_routes_default = router26;
 
-// src/routes/paymentWebhook.routes.ts
+// src/routes/purchase.routes.ts
 import { Router as Router27 } from "express";
+
+// src/db/purchases.ts
+var toPage8 = (rows, limit) => {
+  const total = rows[0] ? rows[0].__total : 0;
+  const items = rows.map(({ __total, ...rest }) => rest);
+  return { items, total, pages: Math.max(1, Math.ceil(total / limit)) };
+};
+var PURCHASE_COLS = `
+  pu.id::text AS "_id",
+  pu."productId"::text AS "productId",
+  pu."productName",
+  pu."productSize",
+  pu.quantity,
+  pu."unitCost"::float8 AS "unitCost",
+  pu."totalCost"::float8 AS "totalCost",
+  pu.supplier,
+  pu.notes,
+  pu."purchaseDate",
+  pu."createdAt",
+  jsonb_build_object('_id', u.id::text, 'fullName', u."fullName") AS "createdBy"
+`;
+var createPurchase = async (data) => {
+  let purchaseId = "";
+  await withTransaction(async (tx) => {
+    const inserted = await tx.query(
+      `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
+         quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
+       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
+       RETURNING id`,
+      [
+        data.productId,
+        data.sizeId || null,
+        data.productName,
+        data.productSize,
+        data.quantity,
+        data.unitCost,
+        data.totalCost,
+        data.supplier,
+        data.notes,
+        data.purchaseDate,
+        data.createdBy
+      ]
+    );
+    purchaseId = inserted.rows[0].id;
+    if (data.sizeId) {
+      await tx.query(
+        `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
+        [data.quantity, data.sizeId]
+      );
+    } else {
+      await tx.query(
+        `UPDATE products SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
+        [data.quantity, data.productId]
+      );
+    }
+  });
+  const rows = await query(
+    `SELECT ${PURCHASE_COLS}
+     FROM purchases pu
+     LEFT JOIN users u ON u.id = pu."createdBy"
+     WHERE pu.id = $1::uuid`,
+    [purchaseId]
+  );
+  return rows[0];
+};
+var listPurchases = async (page, limit, startDate, endDate, productId) => {
+  const conds = [];
+  const values = [];
+  const nxt = () => values.length;
+  if (startDate) {
+    values.push(startDate);
+    conds.push(`pu."purchaseDate" >= $${nxt()}::timestamptz`);
+  }
+  if (endDate) {
+    values.push(endDate);
+    conds.push(`pu."purchaseDate" <= $${nxt()}::timestamptz`);
+  }
+  if (productId) {
+    values.push(productId);
+    conds.push(`pu."productId" = $${nxt()}::uuid`);
+  }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const rows = await query(
+    `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
+     FROM purchases pu
+     LEFT JOIN users u ON u.id = pu."createdBy"
+     ${where}
+     ORDER BY pu."purchaseDate" DESC, pu.id
+     LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+    [...values, limit, (page - 1) * limit]
+  );
+  return toPage8(rows, limit);
+};
+var deletePurchase = async (id) => {
+  let deleted = false;
+  await withTransaction(async (tx) => {
+    const result = await tx.query(
+      `SELECT "productId", "sizeId", quantity FROM purchases WHERE id = $1::uuid`,
+      [id]
+    );
+    const rows = result.rows;
+    if (rows.length === 0) throw new ApiError(404, "Purchase not found");
+    const purchase = rows[0];
+    if (purchase.sizeId) {
+      await tx.query(
+        `UPDATE product_sizes SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+        [purchase.quantity, purchase.sizeId]
+      );
+    } else {
+      await tx.query(
+        `UPDATE products SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+        [purchase.quantity, purchase.productId]
+      );
+    }
+    const deleteResult = await tx.query(`DELETE FROM purchases WHERE id = $1::uuid`, [id]);
+    deleted = (deleteResult.rowCount ?? 0) > 0;
+  });
+  return deleted;
+};
+var getPurchaseStats = async (startDate, endDate) => {
+  const conds = [];
+  const values = [];
+  const nxt = () => values.length;
+  if (startDate) {
+    values.push(startDate);
+    conds.push(`"purchaseDate" >= $${nxt()}::timestamptz`);
+  }
+  if (endDate) {
+    values.push(endDate);
+    conds.push(`"purchaseDate" <= $${nxt()}::timestamptz`);
+  }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const rows = await query(
+    `SELECT
+       COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
+       COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
+       count(*)::int AS "purchaseCount"
+     FROM purchases ${where}`,
+    values
+  );
+  const byProduct = await query(
+    `SELECT "productId"::text AS "productId", "productName", "productSize",
+            SUM(quantity)::int AS "totalQuantity",
+            SUM("totalCost")::float8 AS "totalCost"
+     FROM purchases ${where}
+     GROUP BY "productId", "productName", "productSize"
+     ORDER BY "totalCost" DESC`,
+    values
+  );
+  return {
+    totalCost: rows[0]?.totalCost ?? 0,
+    totalQuantity: rows[0]?.totalQuantity ?? 0,
+    purchaseCount: rows[0]?.purchaseCount ?? 0,
+    byProduct
+  };
+};
+var getProductReport = async (productId) => {
+  const productRows = await query(
+    `SELECT id::text AS "_id", name, "nameEn", "basePrice"::float8 AS "basePrice", "stockQuantity"
+     FROM products WHERE id = $1::uuid`,
+    [productId]
+  );
+  if (productRows.length === 0) return null;
+  const product = productRows[0];
+  const salesRows = await query(
+    `SELECT COALESCE(SUM(oi.qty), 0)::int AS "quantity",
+            COALESCE(SUM(oi."lineTotal"), 0)::float8 AS "revenue"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     WHERE oi."productId" = $1::uuid
+       AND o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')`,
+    [productId]
+  );
+  const purchaseRows = await query(
+    `SELECT COALESCE(SUM(quantity), 0)::int AS "quantity",
+            COALESCE(SUM("totalCost"), 0)::float8 AS "cost"
+     FROM purchases WHERE "productId" = $1::uuid`,
+    [productId]
+  );
+  return {
+    product,
+    sales: salesRows[0] ?? { quantity: 0, revenue: 0 },
+    purchases: purchaseRows[0] ?? { quantity: 0, cost: 0 }
+  };
+};
+
+// src/controllers/purchase.controller.ts
+var createPurchase2 = asyncHandler(async (req, res) => {
+  const { productId, sizeId, productName, productSize, quantity, unitCost, supplier, notes, purchaseDate } = req.body;
+  if (!productId) throw new ApiError(400, "Product is required");
+  if (!productName) throw new ApiError(400, "Product name is required");
+  if (typeof quantity !== "number" || quantity <= 0) throw new ApiError(400, "Quantity must be greater than 0");
+  if (typeof unitCost !== "number" || unitCost < 0) throw new ApiError(400, "Unit cost must be a non-negative number");
+  const totalCost = quantity * unitCost;
+  const purchase = await createPurchase({
+    productId,
+    sizeId: sizeId || null,
+    productName,
+    productSize: productSize || "",
+    quantity,
+    unitCost,
+    totalCost,
+    supplier: supplier || "",
+    notes: notes || "",
+    purchaseDate: purchaseDate || (/* @__PURE__ */ new Date()).toISOString(),
+    createdBy: req.user.id
+  });
+  res.status(201).json(new ApiResponse(201, purchase, "Purchase recorded successfully"));
+});
+var listPurchases2 = asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const { startDate, endDate, productId } = req.query;
+  const result = await listPurchases(page, limit, startDate, endDate, productId);
+  res.json(new ApiResponse(200, { ...result, page, limit }));
+});
+var getPurchaseStats2 = asyncHandler(async (req, res) => {
+  const { startDate, endDate } = req.query;
+  const stats3 = await getPurchaseStats(startDate, endDate);
+  res.json(new ApiResponse(200, stats3));
+});
+var deletePurchase2 = asyncHandler(async (req, res) => {
+  const deleted = await deletePurchase(req.params.id);
+  if (!deleted) throw new ApiError(404, "Purchase not found");
+  res.json(new ApiResponse(200, null, "Purchase deleted"));
+});
+var getProductReport2 = asyncHandler(async (req, res) => {
+  const { productId } = req.query;
+  if (!productId) throw new ApiError(400, "Product ID is required");
+  const report = await getProductReport(productId);
+  if (!report) throw new ApiError(404, "Product not found");
+  res.json(new ApiResponse(200, report));
+});
+
+// src/routes/purchase.routes.ts
+var router27 = Router27();
+router27.use(requireAuth);
+router27.get("/", requirePermission("orders", "read"), listPurchases2);
+router27.get("/stats", requirePermission("orders", "read"), getPurchaseStats2);
+router27.get("/report", requirePermission("orders", "read"), getProductReport2);
+router27.post("/", requirePermission("orders", "create"), createPurchase2);
+router27.delete("/:id", requirePermission("orders", "delete"), deletePurchase2);
+var purchase_routes_default = router27;
+
+// src/routes/paymentWebhook.routes.ts
+import { Router as Router28 } from "express";
 
 // src/services/payment/paymentAdapter.ts
 var PaymentManager = class {
@@ -7039,41 +7301,42 @@ var handleGenericWebhook = asyncHandler(async (req, res) => {
 });
 
 // src/routes/paymentWebhook.routes.ts
-var router27 = Router27();
-router27.post("/webhook/:provider", handleWebhook);
-router27.post("/webhook", handleGenericWebhook);
-var paymentWebhook_routes_default = router27;
+var router28 = Router28();
+router28.post("/webhook/:provider", handleWebhook);
+router28.post("/webhook", handleGenericWebhook);
+var paymentWebhook_routes_default = router28;
 
 // src/routes/index.ts
-var router28 = Router28();
-router28.use("/auth", auth_routes_default);
-router28.use("/users/me", user_routes_default);
-router28.use("/products", product_routes_default);
-router28.use("/categories", category_routes_default);
-router28.use("/reviews", review_routes_default);
-router28.use("/wishlist", wishlist_routes_default);
-router28.use("/cart", cart_routes_default);
-router28.use("/orders", order_routes_default);
-router28.use("/coupons", coupon_routes_default);
-router28.use("/offers", offer_routes_default);
-router28.use("/banners", banner_routes_default);
-router28.use("/gallery", gallery_routes_default);
-router28.use("/branches", branch_routes_default);
-router28.use("/contacts", contact_routes_default);
-router28.use("/newsletter", newsletter_routes_default);
-router28.use("/settings", setting_routes_default);
-router28.use("/notifications", notification_routes_default);
-router28.use("/analytics", analytics_routes_default);
-router28.use("/upload", upload_routes_default);
-router28.use("/posts", post_routes_default);
-router28.use("/admin/users", adminApiLimiter, adminUser_routes_default);
-router28.use("/system", systemReset_routes_default);
-router28.use("/print", print_routes_default);
-router28.use("/service-tokens", serviceToken_routes_default);
-router28.use("/labels", label_routes_default);
-router28.use("/inventory", inventory_routes_default);
-router28.use("/payments", paymentWebhook_routes_default);
-var routes_default = router28;
+var router29 = Router29();
+router29.use("/auth", auth_routes_default);
+router29.use("/users/me", user_routes_default);
+router29.use("/products", product_routes_default);
+router29.use("/categories", category_routes_default);
+router29.use("/reviews", review_routes_default);
+router29.use("/wishlist", wishlist_routes_default);
+router29.use("/cart", cart_routes_default);
+router29.use("/orders", order_routes_default);
+router29.use("/coupons", coupon_routes_default);
+router29.use("/offers", offer_routes_default);
+router29.use("/banners", banner_routes_default);
+router29.use("/gallery", gallery_routes_default);
+router29.use("/branches", branch_routes_default);
+router29.use("/contacts", contact_routes_default);
+router29.use("/newsletter", newsletter_routes_default);
+router29.use("/settings", setting_routes_default);
+router29.use("/notifications", notification_routes_default);
+router29.use("/analytics", analytics_routes_default);
+router29.use("/upload", upload_routes_default);
+router29.use("/posts", post_routes_default);
+router29.use("/admin/users", adminApiLimiter, adminUser_routes_default);
+router29.use("/system", systemReset_routes_default);
+router29.use("/print", print_routes_default);
+router29.use("/service-tokens", serviceToken_routes_default);
+router29.use("/labels", label_routes_default);
+router29.use("/inventory", inventory_routes_default);
+router29.use("/purchases", purchase_routes_default);
+router29.use("/payments", paymentWebhook_routes_default);
+var routes_default = router29;
 
 // src/app.ts
 var app = express();

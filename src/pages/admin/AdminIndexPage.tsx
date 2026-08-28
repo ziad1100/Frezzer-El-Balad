@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Banknote, CalendarDays, Download, Eraser, Package, RefreshCw, ShoppingBag, Star, TrendingUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, getInventoryStats, getSalesStats, refreshDashboard, systemReset } from '@/api/admin';
+import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, getInventoryStats, getPurchaseStats, getSalesStats, refreshDashboard, systemReset } from '@/api/admin';
 import { getErrorMessage } from '@/lib/api';
 import { Card, CardContent, EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -35,6 +35,7 @@ export function AdminIndexPage() {
   const reviewStats = useQuery({ queryKey: ['admin', 'reviews', 'stats'], queryFn: adminReviewStats });
   const inventoryStats = useQuery({ queryKey: ['admin', 'inventory'], queryFn: getInventoryStats });
   const salesStats = useQuery({ queryKey: ['admin', 'sales'], queryFn: () => getSalesStats() });
+  const purchaseStats = useQuery({ queryKey: ['admin', 'purchases', 'stats'], queryFn: () => getPurchaseStats() });
 
   const [period, setPeriod] = useState<PeriodKey>('today');
   const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
@@ -259,6 +260,28 @@ export function AdminIndexPage() {
               {salesStats.data && (
                 <p className="text-xs text-night-500">
                   {salesStats.data.salesQuantity} {lang === 'ar' ? 'وحدة' : 'units'}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Purchases */}
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-600/15 text-violet-500">
+              <Package className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-sm text-night-400">
+                {lang === 'ar' ? 'المشتريات' : 'Purchases'}
+              </p>
+              <p className="mt-0.5 text-2xl font-extrabold text-night-50">
+                {purchaseStats.data ? formatPrice(purchaseStats.data.totalCost, lang) : '—'}
+              </p>
+              {purchaseStats.data && (
+                <p className="text-xs text-night-500">
+                  {purchaseStats.data.totalQuantity} {lang === 'ar' ? 'وحدة' : 'units'}
                 </p>
               )}
             </div>

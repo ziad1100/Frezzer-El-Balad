@@ -42,6 +42,7 @@ const AdminReviewsPage = lazy(() => import('@/pages/admin/AdminReviewsPage').the
 const AdminGalleryPage = lazy(() => import('@/pages/admin/AdminGalleryPage').then((m) => ({ default: m.AdminGalleryPage })));
 const AdminPrinterPage = lazy(() => import('@/pages/admin/AdminPrinterPage').then((m) => ({ default: m.AdminPrinterPage })));
 const AdminLabelsPage = lazy(() => import('@/pages/admin/AdminLabelsPage').then((m) => ({ default: m.AdminLabelsPage })));
+const AdminPurchasesPage = lazy(() => import('@/pages/admin/AdminPurchasesPage').then((m) => ({ default: m.AdminPurchasesPage })));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -162,6 +163,7 @@ const router = createBrowserRouter([
       { path: 'banners', element: <AdminBannersPage /> },
       { path: 'gallery', element: <AdminGalleryPage /> },
       { path: 'orders', element: <AdminOrdersPage /> },
+      { path: 'purchases', element: <AdminPurchasesPage /> },
       { path: 'reviews', element: <AdminReviewsPage /> },
       { path: 'users', element: <AdminUsersPage /> },
       { path: 'posts', element: <AdminPostsPage /> },

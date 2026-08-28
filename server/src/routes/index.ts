@@ -25,6 +25,7 @@ import printRoutes from './print.routes';
 import serviceTokenRoutes from './serviceToken.routes';
 import labelRoutes from './label.routes';
 import inventoryRoutes from './inventory.routes';
+import purchaseRoutes from './purchase.routes';
 import paymentWebhookRoutes from './paymentWebhook.routes';
 import { adminApiLimiter } from '../middlewares/rateLimiter';
 
@@ -56,6 +57,7 @@ router.use('/print', printRoutes);
 router.use('/service-tokens', serviceTokenRoutes);
 router.use('/labels', labelRoutes);
 router.use('/inventory', inventoryRoutes);
+router.use('/purchases', purchaseRoutes);
 router.use('/payments', paymentWebhookRoutes);
 
 export default router;

@@ -407,6 +407,13 @@ export const getSalesStats = async (
   salesValue: number;
   salesQuantity: number;
   orderCount: number;
+  byProduct: Array<{
+    productId: string;
+    productName: string;
+    productSize: string;
+    totalQuantity: number;
+    totalRevenue: number;
+  }>;
 }> => {
   const conds: string[] = [
     `o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')`,
@@ -440,5 +447,28 @@ export const getSalesStats = async (
     values,
   );
 
-  return rows[0] ?? { salesValue: 0, salesQuantity: 0, orderCount: 0 };
+  const byProduct = await query<{
+    productId: string;
+    productName: string;
+    productSize: string;
+    totalQuantity: number;
+    totalRevenue: number;
+  }>(
+    `SELECT oi."productId"::text AS "productId",
+            oi.name AS "productName",
+            oi.size AS "productSize",
+            SUM(oi.qty)::int AS "totalQuantity",
+            SUM(oi."lineTotal")::float8 AS "totalRevenue"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     ${where}
+     GROUP BY oi."productId", oi.name, oi.size
+     ORDER BY "totalRevenue" DESC`,
+    values,
+  );
+
+  return {
+    ...(rows[0] ?? { salesValue: 0, salesQuantity: 0, orderCount: 0 }),
+    byProduct,
+  };
 };
