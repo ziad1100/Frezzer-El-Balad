@@ -74,19 +74,19 @@ export const createPurchase = async (data: PurchaseInput): Promise<Record<string
       );
       purchaseId = inserted.rows[0].id;
 
-    // Increase inventory stock
-    if (data.sizeId) {
-      await tx.query(
-        `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
-        [data.quantity, data.sizeId],
-      );
-    } else {
-      await tx.query(
-        `UPDATE products SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
-        [data.quantity, data.productId],
-      );
-    }
-  });
+      // Increase inventory stock
+      if (data.sizeId) {
+        await tx.query(
+          `UPDATE product_sizes SET "stockQuantity" = COALESCE("stockQuantity", 0) + $1 WHERE id = $2::uuid`,
+          [data.quantity, data.sizeId],
+        );
+      } else {
+        await tx.query(
+          `UPDATE products SET "stockQuantity" = COALESCE("stockQuantity", 0) + $1 WHERE id = $2::uuid`,
+          [data.quantity, data.productId],
+        );
+      }
+    });
 
   // Return the created purchase
   const rows = await query(
@@ -97,9 +97,20 @@ export const createPurchase = async (data: PurchaseInput): Promise<Record<string
     [purchaseId],
   );
   return rows[0];
-  } catch (err) {
+  } catch (err: unknown) {
+    // Check if it's a known error type
+    const message = err instanceof Error ? err.message : String(err);
+    
     // purchases table may not exist yet in production
-    throw new ApiError(500, 'Purchases system is not available. Please run migration 004.');
+    if (message.includes('relation "purchases" does not exist')) {
+      throw new ApiError(500, 'Purchases table does not exist. Please run migration 004.');
+    }
+    // Foreign key constraint error
+    if (message.includes('foreign key constraint')) {
+      throw new ApiError(400, 'Invalid product or size ID. Please select a valid product.');
+    }
+    // Other database errors
+    throw new ApiError(500, `Failed to create purchase: ${message}`);
   }
 };
 

@@ -69,11 +69,13 @@ export const adminList = asyncHandler(async (req: Request, res: Response) => {
 
 export const adminSearch = asyncHandler(async (req: Request, res: Response) => {
   const q = String(req.query.q || '').trim();
-  if (!q) {
-    res.json(new ApiResponse(200, []));
-    return;
-  }
   try {
+    if (!q) {
+      // Return all available products when no search query
+      const results = await productsRepo.adminSearchAll(50);
+      res.json(new ApiResponse(200, results));
+      return;
+    }
     const results = await productsRepo.adminSearch(q, 20);
     res.json(new ApiResponse(200, results));
   } catch (err) {

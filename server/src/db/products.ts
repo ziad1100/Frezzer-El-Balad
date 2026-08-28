@@ -189,6 +189,33 @@ export const adminSearch = async (q: string, limit: number = 20): Promise<Record
   return rows;
 };
 
+/**
+ * Return all available products (for the ProductSelect dropdown).
+ * Used when no search query is provided.
+ */
+export const adminSearchAll = async (limit: number = 50): Promise<Record<string, unknown>[]> => {
+  const SEARCH_COLS = `
+    p.id::text AS "_id",
+    p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
+    p.images, p."isAvailable", p.tags,
+    CASE WHEN c.id IS NULL THEN NULL
+         ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
+    ${SIZES_JSON} AS "sizes"
+  `;
+
+  const rows = await query(
+    `SELECT ${SEARCH_COLS}
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."isAvailable" = true
+     ORDER BY p."sortOrder", p.rating DESC, p.name
+     LIMIT $1`,
+    [limit],
+  ) as Record<string, unknown>[];
+
+  return rows;
+};
+
 // Best sellers are grouped by section following the admin-controlled category
 // display order (categories."sortOrder" — the same order the menu uses), so the
 // home-page widget and the menu can never disagree. Within each section the
