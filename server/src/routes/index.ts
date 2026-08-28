@@ -28,6 +28,7 @@ import inventoryRoutes from './inventory.routes';
 import purchaseRoutes from './purchase.routes';
 import paymentWebhookRoutes from './paymentWebhook.routes';
 import paymentRoutes from './payment.routes';
+import stockMovementRoutes from './stock-movements.routes';
 import { adminApiLimiter } from '../middlewares/rateLimiter';
 
 const router = Router();
@@ -61,5 +62,6 @@ router.use('/inventory', inventoryRoutes);
 router.use('/purchases', purchaseRoutes);
 router.use('/payments', paymentWebhookRoutes);
 router.use('/payment', paymentRoutes);
+router.use('/stock-movements', stockMovementRoutes);
 
 export default router;

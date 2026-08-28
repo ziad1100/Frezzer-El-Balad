@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Banknote, CalendarDays, Download, Eraser, Package, RefreshCw, ShoppingBag, Star, TrendingUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, getInventoryStats, getPurchaseStats, getSalesStats, refreshDashboard, systemReset } from '@/api/admin';
+import { exportMovementReport, getMovementReport, type MovementReport } from '@/api/stock-movements';
 import { getErrorMessage } from '@/lib/api';
 import { Card, CardContent, EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -83,11 +84,50 @@ export function AdminIndexPage() {
   const [exportCustomStart, setExportCustomStart] = useState('');
   const [exportCustomEnd, setExportCustomEnd] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
+  const [exportType, setExportType] = useState<'summary' | 'movement'>('movement');
+  const [exportPreview, setExportPreview] = useState<MovementReport | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const getExportDates = () => {
+    const now = new Date();
+    if (exportPeriod === 'today') {
+      const d = now.toISOString().slice(0, 10);
+      return { start: d, end: d };
+    }
+    if (exportPeriod === 'week') {
+      const start = new Date(now);
+      start.setDate(now.getDate() - now.getDay());
+      return { start: start.toISOString().slice(0, 10), end: now.toISOString().slice(0, 10) };
+    }
+    if (exportPeriod === 'month') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { start: start.toISOString().slice(0, 10), end: now.toISOString().slice(0, 10) };
+    }
+    return { start: exportCustomStart, end: exportCustomEnd };
+  };
+
+  const loadPreview = async () => {
+    const { start, end } = getExportDates();
+    if (!start || !end) return;
+    setPreviewLoading(true);
+    try {
+      const report = await getMovementReport(start, end);
+      setExportPreview(report);
+    } catch {
+      toast.error(lang === 'ar' ? 'فشل تحميل المعاينة' : 'Failed to load preview');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   const exportMutation = useMutation({
     mutationFn: () => {
+      const { start, end } = getExportDates();
+      if (exportType === 'movement') {
+        return exportMovementReport(start, end, exportPeriod);
+      }
       if (exportPeriod === 'custom') {
-        return exportDashboard(undefined, 'custom', exportCustomStart, exportCustomEnd);
+        return exportDashboard(undefined, 'custom', start, end);
       }
       return exportDashboard(day, exportPeriod);
     },
@@ -701,54 +741,169 @@ export function AdminIndexPage() {
 
       {/* Export Modal */}
       {showExportModal && (
-        <Modal open onClose={() => setShowExportModal(false)}>
-          <div className="w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+        <Modal open onClose={() => { setShowExportModal(false); setExportPreview(null); }} size="lg">
+          <div className="w-full max-w-3xl space-y-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-night-50">
-              {lang === 'ar' ? 'تصدير التقرير' : 'Export Report'}
+              {lang === 'ar' ? 'تصدير تقرير حركة الأصناف' : 'Export Item Movement Report'}
             </h2>
             <p className="text-sm text-night-400">
-              {lang === 'ar' ? 'اختر الفترة الزمنية للتقرير' : 'Select the reporting period'}
+              {lang === 'ar' ? 'تقرير مفصل عن كل منتج: المشتريات والمبيعات والمرتجعات والهدايا والفاقد' : 'Detailed report for every product: purchases, sales, returns, gifts, waste'}
             </p>
-            <div className="space-y-2">
-              {([
-                { key: 'today' as const, label: lang === 'ar' ? 'اليوم' : 'Today' },
-                { key: 'week' as const, label: lang === 'ar' ? 'هذا الأسبوع' : 'This Week' },
-                { key: 'month' as const, label: lang === 'ar' ? 'هذا الشهر' : 'This Month' },
-                { key: 'custom' as const, label: lang === 'ar' ? 'فترة مخصصة' : 'Custom Date Range' },
-              ]).map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => setExportPeriod(p.key)}
-                  className={cn(
-                    'w-full rounded-lg border px-4 py-3 text-left text-sm font-semibold transition-colors',
-                    exportPeriod === p.key
-                      ? 'border-brand-500 bg-brand-500/20 text-brand-400'
-                      : 'border-night-700 text-night-300 hover:border-night-500',
-                  )}
-                >
-                  {p.label}
-                </button>
-              ))}
+
+            {/* Export Type */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setExportType('movement')}
+                className={cn(
+                  'flex-1 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors',
+                  exportType === 'movement'
+                    ? 'border-brand-500 bg-brand-500/20 text-brand-400'
+                    : 'border-night-700 text-night-300 hover:border-night-500',
+                )}
+              >
+                {lang === 'ar' ? 'حركة الأصناف' : 'Item Movement'}
+              </button>
+              <button
+                onClick={() => setExportType('summary')}
+                className={cn(
+                  'flex-1 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors',
+                  exportType === 'summary'
+                    ? 'border-brand-500 bg-brand-500/20 text-brand-400'
+                    : 'border-night-700 text-night-300 hover:border-night-500',
+                )}
+              >
+                {lang === 'ar' ? 'ملخص المبيعات والمشتريات' : 'Sales & Purchases Summary'}
+              </button>
             </div>
+
+            {/* Period Selector */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-night-500">
+                {lang === 'ar' ? 'فترة التقرير' : 'Reporting Period'}
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {([
+                  { key: 'today' as const, label: lang === 'ar' ? 'اليوم' : 'Today' },
+                  { key: 'week' as const, label: lang === 'ar' ? 'هذا الأسبوع' : 'This Week' },
+                  { key: 'month' as const, label: lang === 'ar' ? 'هذا الشهر' : 'This Month' },
+                  { key: 'custom' as const, label: lang === 'ar' ? 'فترة مخصصة' : 'Custom Range' },
+                ]).map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => { setExportPeriod(p.key); setExportPreview(null); }}
+                    className={cn(
+                      'rounded-lg border px-3 py-2 text-sm font-semibold transition-colors',
+                      exportPeriod === p.key
+                        ? 'border-brand-500 bg-brand-500/20 text-brand-400'
+                        : 'border-night-700 text-night-300 hover:border-night-500',
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Date Range */}
             {exportPeriod === 'custom' && (
               <div className="flex items-center gap-2">
-                <Input type="date" value={exportCustomStart} onChange={(e) => setExportCustomStart(e.target.value)} className="flex-1" />
-                <span className="text-night-500">—</span>
-                <Input type="date" value={exportCustomEnd} onChange={(e) => setExportCustomEnd(e.target.value)} className="flex-1" />
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs font-bold text-night-500">
+                    {lang === 'ar' ? 'من تاريخ' : 'Start Date'}
+                  </label>
+                  <Input type="date" value={exportCustomStart} onChange={(e) => { setExportCustomStart(e.target.value); setExportPreview(null); }} className="w-full" />
+                </div>
+                <span className="mt-5 text-night-500">→</span>
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs font-bold text-night-500">
+                    {lang === 'ar' ? 'إلى تاريخ' : 'End Date'}
+                  </label>
+                  <Input type="date" value={exportCustomEnd} onChange={(e) => { setExportCustomEnd(e.target.value); setExportPreview(null); }} className="w-full" />
+                </div>
               </div>
             )}
-            <Button
-              onClick={() => {
-                setShowExportModal(false);
-                exportMutation.mutate();
-              }}
-              loading={exportMutation.isPending}
-              disabled={exportPeriod === 'custom' && (!exportCustomStart || !exportCustomEnd)}
-              className="w-full"
-            >
-              <Download className="h-4 w-4" />
-              {lang === 'ar' ? 'تحميل التقرير' : 'Download Report'}
-            </Button>
+
+            {/* Preview Button */}
+            {exportType === 'movement' && (
+              <Button
+                variant="outline"
+                onClick={loadPreview}
+                loading={previewLoading}
+                disabled={exportPeriod === 'custom' && (!exportCustomStart || !exportCustomEnd)}
+                className="w-full"
+              >
+                {lang === 'ar' ? 'معاينة التقرير' : 'Preview Report'}
+              </Button>
+            )}
+
+            {/* Preview */}
+            {exportPreview && (
+              <div className="max-h-64 overflow-auto rounded-xl border border-night-700 bg-night-900/50 p-4">
+                <p className="mb-2 text-xs font-bold text-night-400">
+                  {lang === 'ar' ? 'ملخص التقرير' : 'Report Summary'}
+                </p>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-lg bg-night-800 p-2">
+                    <p className="text-night-500">{lang === 'ar' ? 'المنتجات' : 'Products'}</p>
+                    <p className="text-lg font-bold text-night-50">{exportPreview.summary.length}</p>
+                  </div>
+                  <div className="rounded-lg bg-night-800 p-2">
+                    <p className="text-night-500">{lang === 'ar' ? 'الحركات' : 'Movements'}</p>
+                    <p className="text-lg font-bold text-night-50">{exportPreview.details.length}</p>
+                  </div>
+                  <div className="rounded-lg bg-night-800 p-2">
+                    <p className="text-night-500">{lang === 'ar' ? 'إجمالي المبيعات' : 'Total Sales'}</p>
+                    <p className="text-lg font-bold text-emerald-400">
+                      {formatPrice(exportPreview.summary.reduce((a, p) => a + p.totalSalesRevenue, 0), lang)}
+                    </p>
+                  </div>
+                </div>
+                {exportPreview.summary.length > 0 && (
+                  <div className="mt-3">
+                    <p className="mb-1 text-xs font-bold text-night-400">
+                      {lang === 'ar' ? 'أعلى المنتجات' : 'Top Products'}
+                    </p>
+                    <div className="space-y-1">
+                      {exportPreview.summary.slice(0, 5).map((item) => (
+                        <div key={`${item.productId}-${item.productSize}`} className="flex items-center justify-between text-xs">
+                          <span className="text-night-300">
+                            {item.productName}
+                            {item.productSize ? ` (${item.productSize})` : ''}
+                          </span>
+                          <span className="text-night-400">
+                            {item.totalSold} {lang === 'ar' ? 'مباع' : 'sold'}
+                            {item.totalSalesRevenue > 0 ? ` · ${formatPrice(item.totalSalesRevenue, lang)}` : ''}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Download Buttons */}
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setShowExportModal(false);
+                  setExportPreview(null);
+                  exportMutation.mutate();
+                }}
+                loading={exportMutation.isPending}
+                disabled={exportPeriod === 'custom' && (!exportCustomStart || !exportCustomEnd)}
+                className="flex-1"
+              >
+                <Download className="h-4 w-4" />
+                {lang === 'ar' ? 'تحميل Excel' : 'Download Excel'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowExportModal(false)}
+              >
+                {t('common.cancel')}
+              </Button>
+            </div>
           </div>
         </Modal>
       )}
