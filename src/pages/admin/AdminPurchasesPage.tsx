@@ -153,6 +153,18 @@ export function AdminPurchasesPage() {
         <CardContent>
           {purchases.isLoading ? (
             <div className="py-8 text-center text-night-500">{lang === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+          ) : purchases.isError ? (
+            <div className="py-8 text-center">
+              <p className="text-sm text-red-400">
+                {lang === 'ar' ? 'تعذر تحميل المشتريات — يرجى المحاولة مرة أخرى' : 'Failed to load purchases — please try again'}
+              </p>
+              <button
+                onClick={() => purchases.refetch()}
+                className="mt-2 text-sm font-semibold text-brand-400 hover:text-brand-300"
+              >
+                {lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}
+              </button>
+            </div>
           ) : !purchases.data?.items.length ? (
             <div className="py-8 text-center text-night-500">
               {lang === 'ar' ? 'لا توجد مشتريات' : 'No purchases found'}
@@ -300,7 +312,15 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
       toast.success(isAr ? 'تم تسجيل المشتريات' : 'Purchase recorded');
       onClose();
     },
-    onError: () => toast.error(isAr ? 'فشل التسجيل' : 'Failed to record purchase'),
+    onError: (error: Error) => {
+      const msg = error?.message || '';
+      const userMsg = msg.includes('Purchases table does not exist')
+        ? (isAr ? 'نظام المشتريات غير متاح — يرجى تطبيق الترحيل' : 'Purchases system not available — please apply migration')
+        : msg.includes('Invalid product')
+          ? (isAr ? 'المنتج غير صالح' : 'Invalid product')
+          : (isAr ? 'فشل تسجيل المشتريات' : 'Failed to record purchase');
+      toast.error(userMsg);
+    },
   });
 
   const handleSubmit = () => {
