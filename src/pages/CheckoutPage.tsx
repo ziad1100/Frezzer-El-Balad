@@ -1,11 +1,11 @@
-﻿import { useMemo, useState, type ReactNode } from 'react';
+﻿import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Lock } from 'lucide-react';
+import { Lock, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { createOrder, getSettings } from '@/api/orders';
 import { validateCoupon } from '@/api/coupons';
@@ -13,6 +13,8 @@ import { clearCoupon, clearCart, selectSubtotal, setCoupon } from '@/store/slice
 import { useAppDispatch, useAppSelector } from '@/hooks';
 import { getErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
+import { ProductSearchDialog } from '@/components/admin/ProductSearchDialog';
+import type { AdminSearchProduct } from '@/api/admin';
 import { Card, CardContent, EmptyState } from '@/components/ui/Card';
 import { FieldError, Input, Label, Textarea } from '@/components/ui/Input';
 import { EGYPTIAN_MOBILE_REGEX } from '@/lib/validation';
@@ -85,6 +87,9 @@ export function CheckoutPage() {
     defaultValues: { customerName: '', phone: '', city: '', street: '', building: '' },
   });
 
+  // Admin product search dialog state
+  const [productSearchOpen, setProductSearchOpen] = useState(false);
+
   // Admin custom price state: map of line index -> custom price value
   const [customPrices, setCustomPrices] = useState<Record<number, number>>({});
   const [customPriceEnabled, setCustomPriceEnabled] = useState<Record<number, boolean>>({});
@@ -110,6 +115,44 @@ export function CheckoutPage() {
       dispatch({ type: 'cart/setCustomPrice', payload: { index, customPrice: num, isCustomPrice: true } });
     }
   };
+
+  // Handler for adding a product from the search dialog
+  const handleSearchProductSelect = (product: AdminSearchProduct, sizeId: string | null, qty: number) => {
+    const size = product.sizes?.find((s) => s._id === sizeId);
+    const unitPrice = size?.price ?? product.basePrice;
+    dispatch({
+      type: 'cart/addLine',
+      payload: {
+        productId: product._id,
+        name: product.name,
+        nameEn: product.nameEn || product.name,
+        image: product.images?.[0] ?? '',
+        slug: product.nameEn?.toLowerCase().replace(/\s+/g, '-') ?? product.name,
+        size: sizeId,
+        sizeName: size ? (i18n.language === 'ar' ? size.name : (size.nameEn || size.name)) : '',
+        extras: [],
+        qty,
+        unitPrice,
+      },
+    });
+    toast.success(
+      i18n.language === 'ar'
+        ? `تمت إضافة ${product.name} للطلب`
+        : `Added ${product.nameEn || product.name} to order`,
+    );
+  };
+
+  // Ctrl+K shortcut to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k' && isAdmin) {
+        e.preventDefault();
+        setProductSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isAdmin]);
 
   const buildOrderPayload = (values: FormValues | AdminFormValues) => {
     const hasAddress = values.city && values.street && values.building;
@@ -193,8 +236,17 @@ export function CheckoutPage() {
             {isAdmin ? (
               /* ── Admin: compact order-for-customer form ── */
               <form onSubmit={adminHandleSubmit((values) => adminOrderMutation.mutate(values))} className="space-y-5">
-                <div className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-4 py-3 text-sm font-semibold text-gold-400">
-                  {i18n.language === 'ar' ? 'إنشاء طلب للعميل' : 'Creating order for customer'}
+                <div className="flex items-center justify-between rounded-lg border border-gold-500/30 bg-gold-500/10 px-4 py-3 text-sm font-semibold text-gold-400">
+                  <span>{i18n.language === 'ar' ? 'إنشاء طلب للعميل' : 'Creating order for customer'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setProductSearchOpen(true)}
+                    className="flex items-center gap-1.5 rounded-lg border border-gold-500/30 bg-gold-500/20 px-3 py-1 text-xs font-bold text-gold-400 transition-colors hover:bg-gold-500/30"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    {i18n.language === 'ar' ? 'بحث سريع عن منتج' : 'Quick Search'}
+                    <span className="ms-1 rounded bg-night-800 px-1.5 py-0.5 text-[10px] text-night-400">Ctrl+K</span>
+                  </button>
                 </div>
 
                 <Section title={i18n.language === 'ar' ? 'معلومات العميل (اختياري)' : 'Customer Info (optional)'}>
@@ -419,6 +471,15 @@ export function CheckoutPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Product Search Dialog (Admin only) */}
+      {isAdmin && (
+        <ProductSearchDialog
+          open={productSearchOpen}
+          onClose={() => setProductSearchOpen(false)}
+          onSelect={handleSearchProductSelect}
+        />
+      )}
     </div>
   );
 }

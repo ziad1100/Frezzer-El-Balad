@@ -42,6 +42,21 @@ export const adminListProducts = (params: ListParams): Promise<Paginated<Product
     }),
   );
 
+export interface AdminSearchProduct {
+  _id: string;
+  name: string;
+  nameEn?: string;
+  basePrice: number;
+  images: string[];
+  isAvailable: boolean;
+  tags: string[];
+  category: { _id: string; name: string; nameEn?: string } | null;
+  sizes: { _id: string; name: string; nameEn?: string; price: number; isAvailable: boolean }[];
+}
+
+export const adminSearchProducts = (q: string): Promise<AdminSearchProduct[]> =>
+  unwrap(api.get<ApiEnvelope<AdminSearchProduct[]>>('/products/admin/search', { params: { q } }));
+
 export const createProduct = (payload: ProductPayload): Promise<Product> =>
   unwrap(api.post<ApiEnvelope<Product>>('/products', payload));
 

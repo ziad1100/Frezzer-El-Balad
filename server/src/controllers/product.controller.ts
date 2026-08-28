@@ -67,6 +67,20 @@ export const adminList = asyncHandler(async (req: Request, res: Response) => {
   }
 });
 
+export const adminSearch = asyncHandler(async (req: Request, res: Response) => {
+  const q = String(req.query.q || '').trim();
+  if (!q) {
+    res.json(new ApiResponse(200, []));
+    return;
+  }
+  try {
+    const results = await productsRepo.adminSearch(q, 20);
+    res.json(new ApiResponse(200, results));
+  } catch (err) {
+    throw apiErrorFromPg(err);
+  }
+});
+
 export const getBestSellers = asyncHandler(async (_req: Request, res: Response) => {
   res.json(new ApiResponse(200, await productsRepo.bestSellers()));
 });

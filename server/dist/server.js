@@ -2051,6 +2051,38 @@ var adminList = async (page, limit, q, availability, category2) => {
   const rows = await query(sql, [...values, limit, (page - 1) * limit]);
   return toPage(rows, limit);
 };
+var adminSearch = async (q, limit = 20) => {
+  const searchCondition = `
+    (p.name ILIKE '%' || $1 || '%'
+     OR p."nameEn" ILIKE '%' || $1 || '%'
+     OR EXISTS (SELECT 1 FROM unnest(p.tags) t WHERE t ILIKE '%' || $1 || '%')
+     OR EXISTS (SELECT 1 FROM categories c WHERE c.id = p."categoryId" AND (c.name ILIKE '%' || $1 || '%' OR c."nameEn" ILIKE '%' || $1 || '%'))
+  )`;
+  const SEARCH_COLS = `
+    p.id::text AS "_id",
+    p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
+    p.images, p."isAvailable", p.tags,
+    CASE WHEN c.id IS NULL THEN NULL
+         ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
+    ${SIZES_JSON} AS "sizes"
+  `;
+  const rows = await query(
+    `SELECT ${SEARCH_COLS}
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE ${searchCondition}
+     ORDER BY
+       CASE WHEN p.name ILIKE $1 || '%' THEN 0
+            WHEN p."nameEn" ILIKE $1 || '%' THEN 1
+            WHEN p.name ILIKE '%' || $1 || '%' THEN 2
+            WHEN p."nameEn" ILIKE '%' || $1 || '%' THEN 3
+            ELSE 4 END,
+       p."sortOrder", p.rating DESC, p."createdAt" DESC
+     LIMIT $2`,
+    [q, limit]
+  );
+  return rows;
+};
 var BEST_SELLER_ORDER = `
   COALESCE(
     (SELECT s."sortOrder" FROM categories sub JOIN categories s ON s.id = sub."parentId" WHERE sub.id = p."categoryId"),
@@ -2251,6 +2283,19 @@ var adminList2 = asyncHandler(async (req, res) => {
       String(req.query.category || "")
     );
     res.json(new ApiResponse(200, { ...result, page, limit }));
+  } catch (err) {
+    throw apiErrorFromPg(err);
+  }
+});
+var adminSearch2 = asyncHandler(async (req, res) => {
+  const q = String(req.query.q || "").trim();
+  if (!q) {
+    res.json(new ApiResponse(200, []));
+    return;
+  }
+  try {
+    const results = await adminSearch(q, 20);
+    res.json(new ApiResponse(200, results));
   } catch (err) {
     throw apiErrorFromPg(err);
   }
@@ -2494,6 +2539,7 @@ var router3 = Router3();
 var querySuffix = (req) => req.url.split("?")[1] ?? "";
 router3.get("/", cached({ resource: "products", ttl: 60, suffix: querySuffix, skip: (req) => Boolean(new URL(req.url, "http://x").searchParams.get("search")) }), listProducts2);
 router3.get("/admin", requireAuth, requirePermission("products", "read"), adminList2);
+router3.get("/admin/search", requireAuth, requirePermission("products", "read"), adminSearch2);
 router3.get("/best-sellers", cached({ resource: "products", ttl: 60, suffix: "best-sellers" }), getBestSellers);
 router3.get("/offers", cached({ resource: "products", ttl: 60, suffix: "offers" }), getOffers);
 router3.get("/:slug", cached({ resource: "products", ttl: 60, suffix: (req) => `slug:${req.params.slug}` }), getProductBySlug);

@@ -147,6 +147,48 @@ export const adminList = async (
   return toPage(rows, limit);
 };
 
+/**
+ * Lightweight product search for admin order creation.
+ * Returns minimal fields needed for search results: id, name, nameEn,
+ * basePrice, images, category, sizes, isAvailable, tags.
+ * Searches across name, nameEn, tags, and category name.
+ */
+export const adminSearch = async (q: string, limit: number = 20): Promise<Record<string, unknown>[]> => {
+  const searchCondition = `
+    (p.name ILIKE '%' || $1 || '%'
+     OR p."nameEn" ILIKE '%' || $1 || '%'
+     OR EXISTS (SELECT 1 FROM unnest(p.tags) t WHERE t ILIKE '%' || $1 || '%')
+     OR EXISTS (SELECT 1 FROM categories c WHERE c.id = p."categoryId" AND (c.name ILIKE '%' || $1 || '%' OR c."nameEn" ILIKE '%' || $1 || '%'))
+  )`;
+
+  const SEARCH_COLS = `
+    p.id::text AS "_id",
+    p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
+    p.images, p."isAvailable", p.tags,
+    CASE WHEN c.id IS NULL THEN NULL
+         ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
+    ${SIZES_JSON} AS "sizes"
+  `;
+
+  const rows = await query(
+    `SELECT ${SEARCH_COLS}
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE ${searchCondition}
+     ORDER BY
+       CASE WHEN p.name ILIKE $1 || '%' THEN 0
+            WHEN p."nameEn" ILIKE $1 || '%' THEN 1
+            WHEN p.name ILIKE '%' || $1 || '%' THEN 2
+            WHEN p."nameEn" ILIKE '%' || $1 || '%' THEN 3
+            ELSE 4 END,
+       p."sortOrder", p.rating DESC, p."createdAt" DESC
+     LIMIT $2`,
+    [q, limit],
+  ) as Record<string, unknown>[];
+
+  return rows;
+};
+
 // Best sellers are grouped by section following the admin-controlled category
 // display order (categories."sortOrder" — the same order the menu uses), so the
 // home-page widget and the menu can never disagree. Within each section the
