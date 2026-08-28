@@ -13,6 +13,9 @@
     "seed": "tsx src/database/seed.ts",
     "worker": "tsx src/workers/index.ts",
     "worker:watch": "tsx watch src/workers/index.ts",
+    "migrate": "tsx src/database/run-migrations.ts",
+    "migrate:status": "tsx src/database/run-migrations.ts --status",
+    "migrate:dry": "tsx src/database/run-migrations.ts --dry-run",
     "test": "vitest run",
     "test:watch": "vitest"
   },
