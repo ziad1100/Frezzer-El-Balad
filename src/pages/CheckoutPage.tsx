@@ -1,11 +1,11 @@
-﻿import { useMemo, useState, useEffect, type ReactNode } from 'react';
+﻿import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Lock, Search } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { createOrder, getSettings } from '@/api/orders';
 import { getPaymentSettings, type PaymentSettings } from '@/api/payment';
@@ -17,8 +17,8 @@ import { clearCoupon, clearCart, selectSubtotal, setCoupon } from '@/store/slice
 import { useAppDispatch, useAppSelector } from '@/hooks';
 import { getErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
-import { ProductSearchDialog } from '@/components/admin/ProductSearchDialog';
-import type { AdminSearchProduct } from '@/api/admin';
+import { ProductSearch, type SearchableProduct } from '@/components/ProductSearch';
+import { adminSearchProducts, type AdminSearchProduct } from '@/api/admin';
 import { Card, CardContent, EmptyState } from '@/components/ui/Card';
 import { FieldError, Input, Label, Textarea } from '@/components/ui/Input';
 import { EGYPTIAN_MOBILE_REGEX } from '@/lib/validation';
@@ -95,8 +95,10 @@ export function CheckoutPage() {
     defaultValues: { customerName: '', phone: '', city: '', street: '', building: '' },
   });
 
-  // Admin product search dialog state
-  const [productSearchOpen, setProductSearchOpen] = useState(false);
+  // Admin inline product search state
+  const [selectedSearchProduct, setSelectedSearchProduct] = useState<AdminSearchProduct | null>(null);
+  const [searchSizeId, setSearchSizeId] = useState<string | null>(null);
+  const [searchQty, setSearchQty] = useState(1);
 
   // Admin custom price state: map of line index -> custom price value
   const [customPrices, setCustomPrices] = useState<Record<number, number>>({});
@@ -124,43 +126,45 @@ export function CheckoutPage() {
     }
   };
 
-  // Handler for adding a product from the search dialog
-  const handleSearchProductSelect = (product: AdminSearchProduct, sizeId: string | null, qty: number) => {
-    const size = product.sizes?.find((s) => s._id === sizeId);
-    const unitPrice = size?.price ?? product.basePrice;
+  // Handler for when a product is picked from the search dropdown
+  const handleSearchProductPicked = (product: SearchableProduct) => {
+    // Cast to AdminSearchProduct — the shapes are compatible
+    const ap = product as unknown as AdminSearchProduct;
+    setSelectedSearchProduct(ap);
+    const firstSize = ap.sizes?.find((s) => s.isAvailable);
+    setSearchSizeId(firstSize?._id ?? null);
+    setSearchQty(1);
+  };
+
+  // Add the searched product to the cart
+  const handleAddSearchedProduct = () => {
+    if (!selectedSearchProduct) return;
+    const size = selectedSearchProduct.sizes?.find((s) => s._id === searchSizeId);
+    const unitPrice = size?.price ?? selectedSearchProduct.basePrice;
     dispatch({
       type: 'cart/addLine',
       payload: {
-        productId: product._id,
-        name: product.name,
-        nameEn: product.nameEn || product.name,
-        image: product.images?.[0] ?? '',
-        slug: product.nameEn?.toLowerCase().replace(/\s+/g, '-') ?? product.name,
-        size: sizeId,
+        productId: selectedSearchProduct._id,
+        name: selectedSearchProduct.name,
+        nameEn: selectedSearchProduct.nameEn || selectedSearchProduct.name,
+        image: selectedSearchProduct.images?.[0] ?? '',
+        slug: selectedSearchProduct.nameEn?.toLowerCase().replace(/\s+/g, '-') ?? selectedSearchProduct.name,
+        size: searchSizeId,
         sizeName: size ? (i18n.language === 'ar' ? size.name : (size.nameEn || size.name)) : '',
         extras: [],
-        qty,
+        qty: searchQty,
         unitPrice,
       },
     });
     toast.success(
       i18n.language === 'ar'
-        ? `تمت إضافة ${product.name} للطلب`
-        : `Added ${product.nameEn || product.name} to order`,
+        ? `تمت إضافة ${selectedSearchProduct.name} للطلب`
+        : `Added ${selectedSearchProduct.nameEn || selectedSearchProduct.name} to order`,
     );
+    setSelectedSearchProduct(null);
+    setSearchSizeId(null);
+    setSearchQty(1);
   };
-
-  // Ctrl+K shortcut to open search
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k' && isAdmin) {
-        e.preventDefault();
-        setProductSearchOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isAdmin]);
 
   const buildOrderPayload = (values: FormValues | AdminFormValues) => {
     const hasAddress = values.city && values.street && values.building;
@@ -259,18 +263,108 @@ export function CheckoutPage() {
             {isAdmin ? (
               /* ── Admin: compact order-for-customer form ── */
               <form onSubmit={adminHandleSubmit((values) => adminOrderMutation.mutate(values))} className="space-y-5">
-                <div className="flex items-center justify-between rounded-lg border border-gold-500/30 bg-gold-500/10 px-4 py-3 text-sm font-semibold text-gold-400">
-                  <span>{i18n.language === 'ar' ? 'إنشاء طلب للعميل' : 'Creating order for customer'}</span>
-                  <button
-                    type="button"
-                    onClick={() => setProductSearchOpen(true)}
-                    className="flex items-center gap-1.5 rounded-lg border border-gold-500/30 bg-gold-500/20 px-3 py-1 text-xs font-bold text-gold-400 transition-colors hover:bg-gold-500/30"
-                  >
-                    <Search className="h-3.5 w-3.5" />
-                    {i18n.language === 'ar' ? 'بحث سريع عن منتج' : 'Quick Search'}
-                    <span className="ms-1 rounded bg-night-800 px-1.5 py-0.5 text-[10px] text-night-400">Ctrl+K</span>
-                  </button>
-                </div>
+                <Section title={i18n.language === 'ar' ? 'بحث سريع عن منتج' : 'Quick Product Search'}>
+                  <ProductSearch
+                    onSelect={handleSearchProductPicked}
+                    searchFn={adminSearchProducts}
+                    placeholder={i18n.language === 'ar' ? 'اكتب اسم المنتج...' : 'Type product name...'}
+                  />
+
+                  {/* Inline size / qty selector after picking a product */}
+                  {selectedSearchProduct && (
+                    <div className="mt-3 rounded-xl border border-night-700 bg-night-900/60 p-4">
+                      <div className="mb-3 flex items-start gap-3">
+                        {selectedSearchProduct.images?.[0] && (
+                          <img
+                            src={selectedSearchProduct.images[0]}
+                            alt={i18n.language === 'ar' ? selectedSearchProduct.name : selectedSearchProduct.nameEn || selectedSearchProduct.name}
+                            className="h-12 w-12 rounded-lg object-cover"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-night-100">
+                            {i18n.language === 'ar' ? selectedSearchProduct.name : selectedSearchProduct.nameEn || selectedSearchProduct.name}
+                          </p>
+                          <p className="text-xs text-brand-400">
+                            {formatPrice(selectedSearchProduct.basePrice, i18n.language)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedSearchProduct(null); setSearchSizeId(null); }}
+                          className="text-night-500 hover:text-night-300"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Size selection */}
+                      {selectedSearchProduct.sizes && selectedSearchProduct.sizes.length > 0 && (
+                        <div className="mb-3">
+                          <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-night-400">
+                            {i18n.language === 'ar' ? 'النوع / الوزن' : 'Variant / Weight'}
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedSearchProduct.sizes.map((size) => (
+                              <button
+                                key={size._id}
+                                type="button"
+                                disabled={!size.isAvailable}
+                                onClick={() => setSearchSizeId(size._id!)}
+                                className={cn(
+                                  'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                                  searchSizeId === size._id
+                                    ? 'border-brand-500 bg-brand-500/20 text-brand-400'
+                                    : size.isAvailable
+                                      ? 'border-night-700 text-night-300 hover:border-night-500'
+                                      : 'border-night-800 text-night-600 opacity-50',
+                                )}
+                              >
+                                {i18n.language === 'ar' ? size.name : (size.nameEn || size.name)}
+                                {' — '}{formatPrice(size.price, i18n.language)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Quantity */}
+                      <div className="mb-3 flex items-center gap-3">
+                        <label className="text-xs font-bold uppercase tracking-wider text-night-400">
+                          {i18n.language === 'ar' ? 'الكمية' : 'Qty'}
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setSearchQty((q) => Math.max(1, q - 1))}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-night-700 text-night-300 hover:border-night-500"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            max="99"
+                            value={searchQty}
+                            onChange={(e) => setSearchQty(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))}
+                            className="w-14 rounded-lg border border-night-700 bg-night-800 px-1 py-1 text-center text-sm text-night-100 focus:border-brand-500 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSearchQty((q) => Math.min(99, q + 1))}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-night-700 text-night-300 hover:border-night-500"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <Button onClick={handleAddSearchedProduct} className="w-full" size="sm">
+                        {i18n.language === 'ar' ? 'إضافة للطلب' : 'Add to Order'}
+                      </Button>
+                    </div>
+                  )}
+                </Section>
 
                 <Section title={i18n.language === 'ar' ? 'معلومات العميل (اختياري)' : 'Customer Info (optional)'}>
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -547,14 +641,7 @@ export function CheckoutPage() {
         </div>
       )}
 
-      {/* Product Search Dialog (Admin only) */}
-      {isAdmin && (
-        <ProductSearchDialog
-          open={productSearchOpen}
-          onClose={() => setProductSearchOpen(false)}
-          onSelect={handleSearchProductSelect}
-        />
-      )}
+
     </div>
   );
 }

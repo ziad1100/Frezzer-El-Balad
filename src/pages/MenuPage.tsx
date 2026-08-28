@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { listCategories, listProducts } from '@/api/products';
 import { ProductCard } from '@/components/product/ProductCard';
+import { ProductSearch, type SearchableProduct } from '@/components/ProductSearch';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import type { Category, Product } from '@/types';
 
@@ -200,6 +200,24 @@ export function MenuPage() {
   const activeSectionId = activeSection?._id ?? activeSub?.parentId ?? '';
   const categoryName = (c: Category): string => (lang === 'ar' ? c.name : c.nameEn || c.name);
 
+  // Search adapter: wraps listProducts to return SearchableProduct[] for the dropdown
+  const searchMenuProducts = useCallback(
+    async (q: string): Promise<SearchableProduct[]> => {
+      const res = await listProducts({ limit: 20, search: q || undefined });
+      return res.items.map((p) => ({
+        _id: p._id,
+        name: p.name,
+        nameEn: p.nameEn,
+        basePrice: p.basePrice,
+        images: p.images,
+        isAvailable: p.isAvailable,
+        category: null,
+        sizes: p.sizes,
+      }));
+    },
+    [],
+  );
+
   // Mobile portrait: one product per row, card ~90% of the viewport width and
   // centered so the qty (+/-) controls never overlap. From sm up the layout
   // goes back to the multi-column grid (2 / 3 / 4 columns).
@@ -219,16 +237,21 @@ export function MenuPage() {
         <div className="container-px">
           <h1 className="text-3xl font-extrabold text-night-50 md:text-4xl">{t('menu.title')}</h1>
           <p className="mt-2 text-night-400">{t('menu.subtitle')}</p>
-          <div className="relative mt-6 max-w-md">
-            <Search className="pointer-events-none absolute start-4 top-1/2 h-5 w-5 -translate-y-1/2 text-night-500" />
-            <Input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
+          <div className="mt-6 max-w-md">
+            <ProductSearch
+              onSelect={(product) => {
+                // Set search to product name so the grid filters to show it
+                const name = lang === 'ar' ? product.name : product.nameEn || product.name;
+                setSearch(name);
                 setPage(1);
               }}
+              onQueryChange={(q) => {
+                // Keep grid filtering in sync as the user types
+                setSearch(q);
+                setPage(1);
+              }}
+              searchFn={searchMenuProducts}
               placeholder={t('menu.searchPlaceholder')}
-              className="ps-11"
             />
           </div>
         </div>
