@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, Eye, Gift, Printer, ChevronDown, FileDown } from 'lucide-react';
+import { Ban, Eye, Gift, Printer, ChevronDown, FileDown, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminCancelOrder, adminListOrders, adminMarkComplimentary, getAdminSettings, updateOrderStatus } from '@/api/admin';
 import { getErrorMessage } from '@/lib/api';
@@ -14,7 +14,7 @@ import type { Order, OrderStatus } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { buildReceiptFromOrder, type ReceiptData } from '@/lib/receiptFormatter';
 import { renderReceiptToCanvas, canvasToDataURL, hasArabic } from '@/lib/receiptImage';
-import { printReceipt } from '@/lib/browserPrint';
+import { printReceipt, checkLocalAgent, printViaLocalAgent } from '@/lib/browserPrint';
 import { markOrderPrinted, createPrintJob, getOrderPrintJobs } from '@/api/print';
 import { PrintInvoiceDialog, type PrinterConfig } from '@/components/admin/PrintInvoiceDialog';
 import { PdfPreviewDialog } from '@/components/admin/PdfPreviewDialog';
@@ -83,10 +83,62 @@ export function AdminOrdersPage() {
     return [];
   }, [settingsQuery.data]);
 
+  // Default printer name for Main Counter quick-print
+  const defaultPrinterName = useMemo(() => {
+    const defaultP = printers.find((p) => p.isDefault) ?? printers[0];
+    return defaultP?.name ?? (lang === 'ar' ? 'الكاونتر' : 'Main Counter');
+  }, [printers, lang]);
+
   // Print dialog state
   const [printDialogOrder, setPrintDialogOrder] = useState<AdminOrder | null>(null);
   const [printDialogReceipt, setPrintDialogReceipt] = useState<ReceiptData | null>(null);
   const [printLoading, setPrintLoading] = useState(false);
+
+  // Quick-print state (Main Counter)
+  const [quickPrintingId, setQuickPrintingId] = useState<string | null>(null);
+
+  /** Main Counter quick-print: directly prints to the local agent, skipping the dialog */
+  const handleQuickPrint = useCallback(async (order: AdminOrder): Promise<void> => {
+    setQuickPrintingId(order._id);
+    try {
+      // Check if local agent is online
+      const agentUrl = await checkLocalAgent();
+      if (!agentUrl) {
+        // Agent offline — fall back to the full print dialog
+        toast.warning(
+          lang === 'ar'
+            ? 'خدمة الطباعة المحلية غير متصلة — افتح نافذة الطباعة'
+            : 'Local print service offline — opening print dialog'
+        );
+        await openPrintDialog(order);
+        return;
+      }
+
+      // Build receipt and send directly to the local agent
+      const receipt = buildReceipt(order, '80');
+      const result = await printViaLocalAgent(receipt, agentUrl);
+
+      if (result.success) {
+        await markOrderPrinted(order._id);
+        void invalidateAll();
+        toast.success(
+          lang === 'ar'
+            ? `✓ تم الطباعة على ${defaultPrinterName}`
+            : `✓ Printed to ${defaultPrinterName}`
+        );
+      } else {
+        toast.error(
+          lang === 'ar'
+            ? `✗ فشلت الطباعة: ${result.error}`
+            : `✗ Print failed: ${result.error}`
+        );
+      }
+    } catch {
+      toast.error(lang === 'ar' ? 'فشلت الطباعة' : 'Print failed');
+    } finally {
+      setQuickPrintingId(null);
+    }
+  }, [lang]);
 
   // PDF preview dialog state
   const [pdfPreviewOrder, setPdfPreviewOrder] = useState<AdminOrder | null>(null);
@@ -374,9 +426,21 @@ export function AdminOrdersPage() {
                     </div>
                   </Td>
                   <Td className="text-end">
-                    <Button variant="ghost" size="icon" onClick={() => { setSelected(o); void fetchPrintJobs(o._id); }} aria-label={t('common.viewAll')}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-emerald-400 hover:bg-emerald-500/10"
+                        title={lang === 'ar' ? `طباعة على ${defaultPrinterName}` : `Quick print to ${defaultPrinterName}`}
+                        loading={quickPrintingId === o._id}
+                        onClick={() => void handleQuickPrint(o)}
+                      >
+                        <Zap className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => { setSelected(o); void fetchPrintJobs(o._id); }} aria-label={t('common.viewAll')}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </Td>
                 </tr>
               ))}
@@ -428,12 +492,21 @@ export function AdminOrdersPage() {
                   ))}
                   <Button
                     size="sm"
+                    variant="primary"
+                    loading={quickPrintingId === selected._id}
+                    onClick={() => void handleQuickPrint(selected)}
+                  >
+                    <Zap className="h-4 w-4" />
+                    {lang === 'ar' ? `طباعة على ${defaultPrinterName}` : `Print to ${defaultPrinterName}`}
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="outline"
                     className="border-blue-500/40 text-blue-400"
                     onClick={() => void openPrintDialog(selected)}
                   >
                     <Printer className="h-4 w-4" />
-                    {lang === 'ar' ? 'طباعة الفاتورة' : 'Print Invoice'}
+                    {lang === 'ar' ? 'خيارات الطباعة' : 'Print Options'}
                   </Button>
                   <Button
                     size="sm"
