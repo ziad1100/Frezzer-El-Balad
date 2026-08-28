@@ -7,7 +7,7 @@ import type { AuthRequest } from '../middlewares/auth';
 
 /** Create a new purchase */
 export const createPurchase = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { productId, sizeId, productName, productSize, quantity, unitCost, supplier, notes, purchaseDate } = req.body;
+  const { productId, sizeId, productName, productSize, quantity, unitCost, supplier, notes, purchaseDate, weightGrams, weightMode, weightDisplay, categoryId } = req.body;
 
   if (!productId) throw new ApiError(400, 'Product is required');
   if (!productName) throw new ApiError(400, 'Product name is required');
@@ -28,6 +28,10 @@ export const createPurchase = asyncHandler(async (req: AuthRequest, res: Respons
     notes: notes || '',
     purchaseDate: purchaseDate || new Date().toISOString(),
     createdBy: req.user!.id,
+    weightGrams: typeof weightGrams === 'number' ? weightGrams : 0,
+    weightMode: weightMode || 'fixed',
+    weightDisplay: weightDisplay || '',
+    categoryId: categoryId || null,
   });
 
   res.status(201).json(new ApiResponse(201, purchase, 'Purchase recorded successfully'));
