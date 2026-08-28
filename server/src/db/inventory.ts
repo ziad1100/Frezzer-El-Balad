@@ -507,23 +507,32 @@ export const getDailyProductMovement = async (
     [startDate, endDate],
   );
 
-  // Purchases by day and product
-  const purchaseRows = await query<{
+  // Purchases by day and product (gracefully handle missing purchases table)
+  let purchaseRows: Array<{
     date: string; productId: string; productName: string; productSize: string;
     purchasedQty: number; purchaseCost: number;
-  }>(
-    `SELECT "purchaseDate"::date::text AS "date",
-            "productId"::text AS "productId",
-            "productName",
-            "productSize",
-            SUM(quantity)::int AS "purchasedQty",
-            SUM("totalCost")::float8 AS "purchaseCost"
-     FROM purchases
-     WHERE "purchaseDate" >= $1::timestamptz AND "purchaseDate" <= $2::timestamptz
-     GROUP BY "purchaseDate"::date, "productId", "productName", "productSize"
-     ORDER BY "purchaseDate"::date, "productName"`,
-    [startDate, endDate],
-  );
+  }> = [];
+  try {
+    purchaseRows = await query<{
+      date: string; productId: string; productName: string; productSize: string;
+      purchasedQty: number; purchaseCost: number;
+    }>(
+      `SELECT "purchaseDate"::date::text AS "date",
+              "productId"::text AS "productId",
+              "productName",
+              "productSize",
+              SUM(quantity)::int AS "purchasedQty",
+              SUM("totalCost")::float8 AS "purchaseCost"
+       FROM purchases
+       WHERE "purchaseDate" >= $1::timestamptz AND "purchaseDate" <= $2::timestamptz
+       GROUP BY "purchaseDate"::date, "productId", "productName", "productSize"
+       ORDER BY "purchaseDate"::date, "productName"`,
+      [startDate, endDate],
+    );
+  } catch {
+    // purchases table may not exist yet in production
+    purchaseRows = [];
+  }
 
   // Merge sales and purchases by date+product
   const merged = new Map<string, {
@@ -561,13 +570,14 @@ export const getDailyProductMovement = async (
 export const getAllProductsWithStock = async (): Promise<Array<{
   productId: string; productName: string; productSize: string; stockQuantity: number;
 }>> => {
-  // Products without sizes
+  // Products without sizes (track inventory at product level)
   const productRows = await query<{
     productId: string; productName: string; productSize: string; stockQuantity: number;
   }>(
-    `SELECT id::text AS "productId", name AS "productName", '' AS "productSize", "stockQuantity"
-     FROM products
-     WHERE "trackInventory" = true AND (sizes IS NULL OR jsonb_array_length(sizes) = 0)`,
+    `SELECT p.id::text AS "productId", p.name AS "productName", '' AS "productSize", p."stockQuantity"
+     FROM products p
+     WHERE p."trackInventory" = true
+       AND NOT EXISTS (SELECT 1 FROM product_sizes ps WHERE ps."productId" = p.id)`,
   );
 
   // Products with sizes

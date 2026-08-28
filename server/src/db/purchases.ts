@@ -46,20 +46,21 @@ const PURCHASE_COLS = `
 export const createPurchase = async (data: PurchaseInput): Promise<Record<string, unknown>> => {
   let purchaseId = '';
 
-  await withTransaction(async (tx) => {
-    // Insert purchase record
-    const inserted = await tx.query<{ id: string }>(
-      `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
-         quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
-       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
-       RETURNING id`,
-      [
-        data.productId, data.sizeId || null, data.productName, data.productSize,
-        data.quantity, data.unitCost, data.totalCost,
-        data.supplier, data.notes, data.purchaseDate, data.createdBy,
-      ],
-    );
-    purchaseId = inserted.rows[0].id;
+  try {
+    await withTransaction(async (tx) => {
+      // Insert purchase record
+      const inserted = await tx.query<{ id: string }>(
+        `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
+           quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
+         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
+         RETURNING id`,
+        [
+          data.productId, data.sizeId || null, data.productName, data.productSize,
+          data.quantity, data.unitCost, data.totalCost,
+          data.supplier, data.notes, data.purchaseDate, data.createdBy,
+        ],
+      );
+      purchaseId = inserted.rows[0].id;
 
     // Increase inventory stock
     if (data.sizeId) {
@@ -84,6 +85,10 @@ export const createPurchase = async (data: PurchaseInput): Promise<Record<string
     [purchaseId],
   );
   return rows[0];
+  } catch (err) {
+    // purchases table may not exist yet in production
+    throw new ApiError(500, 'Purchases system is not available. Please run migration 004.');
+  }
 };
 
 /** List purchases with pagination and optional date range filter. */
@@ -104,15 +109,21 @@ export const listPurchases = async (
 
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 
-  const rows = (await query(
-    `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
-     FROM purchases pu
-     LEFT JOIN users u ON u.id = pu."createdBy"
-     ${where}
-     ORDER BY pu."purchaseDate" DESC, pu.id
-     LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-    [...values, limit, (page - 1) * limit],
-  )) as unknown as Array<Record<string, unknown>>;
+  let rows: Array<Record<string, unknown>> = [];
+  try {
+    rows = (await query(
+      `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
+       FROM purchases pu
+       LEFT JOIN users u ON u.id = pu."createdBy"
+       ${where}
+       ORDER BY pu."purchaseDate" DESC, pu.id
+       LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      [...values, limit, (page - 1) * limit],
+    )) as unknown as Array<Record<string, unknown>>;
+  } catch {
+    // purchases table may not exist yet in production
+    return { items: [], total: 0, pages: 1 };
+  }
 
   return toPage(rows, limit);
 };
@@ -121,6 +132,7 @@ export const listPurchases = async (
 export const deletePurchase = async (id: string): Promise<boolean> => {
   let deleted = false;
 
+  try {
   await withTransaction(async (tx) => {
     // Get the purchase before deleting
     const result = await tx.query(
@@ -151,6 +163,10 @@ export const deletePurchase = async (id: string): Promise<boolean> => {
   });
 
   return deleted;
+  } catch (err) {
+    // purchases table may not exist yet in production
+    throw new ApiError(500, 'Purchases system is not available. Please run migration 004.');
+  }
 };
 
 /** Get purchase statistics for a date range. */
@@ -178,34 +194,51 @@ export const getPurchaseStats = async (
 
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 
-  const rows = await query<{
-    totalCost: number;
-    totalQuantity: number;
-    purchaseCount: number;
-  }>(
-    `SELECT
-       COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
-       COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
-       count(*)::int AS "purchaseCount"
-     FROM purchases ${where}`,
-    values,
-  );
+  let rows: Array<{ totalCost: number; totalQuantity: number; purchaseCount: number }> = [];
+  try {
+    rows = await query<{
+      totalCost: number;
+      totalQuantity: number;
+      purchaseCount: number;
+    }>(
+      `SELECT
+         COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
+         COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
+         count(*)::int AS "purchaseCount"
+       FROM purchases ${where}`,
+      values,
+    );
+  } catch {
+    // purchases table may not exist yet in production
+    return { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] };
+  }
 
-  const byProduct = await query<{
+  let byProduct: Array<{
     productId: string;
     productName: string;
     productSize: string;
     totalQuantity: number;
     totalCost: number;
-  }>(
-    `SELECT "productId"::text AS "productId", "productName", "productSize",
-            SUM(quantity)::int AS "totalQuantity",
-            SUM("totalCost")::float8 AS "totalCost"
-     FROM purchases ${where}
-     GROUP BY "productId", "productName", "productSize"
-     ORDER BY "totalCost" DESC`,
-    values,
-  );
+  }> = [];
+  try {
+    byProduct = await query<{
+      productId: string;
+      productName: string;
+      productSize: string;
+      totalQuantity: number;
+      totalCost: number;
+    }>(
+      `SELECT "productId"::text AS "productId", "productName", "productSize",
+              SUM(quantity)::int AS "totalQuantity",
+              SUM("totalCost")::float8 AS "totalCost"
+       FROM purchases ${where}
+       GROUP BY "productId", "productName", "productSize"
+       ORDER BY "totalCost" DESC`,
+      values,
+    );
+  } catch {
+    byProduct = [];
+  }
 
   return {
     totalCost: rows[0]?.totalCost ?? 0,

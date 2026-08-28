@@ -62,11 +62,13 @@ export function AdminPurchasesPage() {
   const purchases = useQuery({
     queryKey: ['admin', 'purchases', { page, ...dateRange }],
     queryFn: () => listPurchases({ page, limit: 15, ...dateRange }),
+    placeholderData: { items: [], total: 0, pages: 1, page: 1, limit: 15 },
   });
 
   const stats = useQuery({
     queryKey: ['admin', 'purchases', 'stats', dateRange],
     queryFn: () => getPurchaseStats(dateRange),
+    placeholderData: { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] },
   });
 
   const deleteMutation = useMutation({

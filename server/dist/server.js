@@ -4445,19 +4445,24 @@ var getDailyProductMovement = async (startDate, endDate) => {
      ORDER BY o."createdAt"::date, oi.name`,
     [startDate, endDate]
   );
-  const purchaseRows = await query(
-    `SELECT "purchaseDate"::date::text AS "date",
-            "productId"::text AS "productId",
-            "productName",
-            "productSize",
-            SUM(quantity)::int AS "purchasedQty",
-            SUM("totalCost")::float8 AS "purchaseCost"
-     FROM purchases
-     WHERE "purchaseDate" >= $1::timestamptz AND "purchaseDate" <= $2::timestamptz
-     GROUP BY "purchaseDate"::date, "productId", "productName", "productSize"
-     ORDER BY "purchaseDate"::date, "productName"`,
-    [startDate, endDate]
-  );
+  let purchaseRows = [];
+  try {
+    purchaseRows = await query(
+      `SELECT "purchaseDate"::date::text AS "date",
+              "productId"::text AS "productId",
+              "productName",
+              "productSize",
+              SUM(quantity)::int AS "purchasedQty",
+              SUM("totalCost")::float8 AS "purchaseCost"
+       FROM purchases
+       WHERE "purchaseDate" >= $1::timestamptz AND "purchaseDate" <= $2::timestamptz
+       GROUP BY "purchaseDate"::date, "productId", "productName", "productSize"
+       ORDER BY "purchaseDate"::date, "productName"`,
+      [startDate, endDate]
+    );
+  } catch {
+    purchaseRows = [];
+  }
   const merged = /* @__PURE__ */ new Map();
   for (const s of salesRows) {
     const key = `${s.date}:${s.productId}:${s.productSize}`;
@@ -4495,9 +4500,10 @@ var getDailyProductMovement = async (startDate, endDate) => {
 };
 var getAllProductsWithStock = async () => {
   const productRows = await query(
-    `SELECT id::text AS "productId", name AS "productName", '' AS "productSize", "stockQuantity"
-     FROM products
-     WHERE "trackInventory" = true AND (sizes IS NULL OR jsonb_array_length(sizes) = 0)`
+    `SELECT p.id::text AS "productId", p.name AS "productName", '' AS "productSize", p."stockQuantity"
+     FROM products p
+     WHERE p."trackInventory" = true
+       AND NOT EXISTS (SELECT 1 FROM product_sizes ps WHERE ps."productId" = p.id)`
   );
   const sizeRows = await query(
     `SELECT p.id::text AS "productId", p.name AS "productName",
@@ -5830,47 +5836,51 @@ var PURCHASE_COLS = `
 `;
 var createPurchase = async (data) => {
   let purchaseId = "";
-  await withTransaction(async (tx) => {
-    const inserted = await tx.query(
-      `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
-         quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
-       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
-       RETURNING id`,
-      [
-        data.productId,
-        data.sizeId || null,
-        data.productName,
-        data.productSize,
-        data.quantity,
-        data.unitCost,
-        data.totalCost,
-        data.supplier,
-        data.notes,
-        data.purchaseDate,
-        data.createdBy
-      ]
-    );
-    purchaseId = inserted.rows[0].id;
-    if (data.sizeId) {
-      await tx.query(
-        `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
-        [data.quantity, data.sizeId]
+  try {
+    await withTransaction(async (tx) => {
+      const inserted = await tx.query(
+        `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
+           quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
+         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
+         RETURNING id`,
+        [
+          data.productId,
+          data.sizeId || null,
+          data.productName,
+          data.productSize,
+          data.quantity,
+          data.unitCost,
+          data.totalCost,
+          data.supplier,
+          data.notes,
+          data.purchaseDate,
+          data.createdBy
+        ]
       );
-    } else {
-      await tx.query(
-        `UPDATE products SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
-        [data.quantity, data.productId]
-      );
-    }
-  });
-  const rows = await query(
-    `SELECT ${PURCHASE_COLS}
+      purchaseId = inserted.rows[0].id;
+      if (data.sizeId) {
+        await tx.query(
+          `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
+          [data.quantity, data.sizeId]
+        );
+      } else {
+        await tx.query(
+          `UPDATE products SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
+          [data.quantity, data.productId]
+        );
+      }
+    });
+    const rows = await query(
+      `SELECT ${PURCHASE_COLS}
      FROM purchases pu
      LEFT JOIN users u ON u.id = pu."createdBy"
      WHERE pu.id = $1::uuid`,
-    [purchaseId]
-  );
-  return rows[0];
+      [purchaseId]
+    );
+    return rows[0];
+  } catch (err) {
+    throw new ApiError(500, "Purchases system is not available. Please run migration 004.");
+  }
 };
 var listPurchases = async (page, limit, startDate, endDate, productId) => {
   const conds = [];
@@ -5889,42 +5899,51 @@ var listPurchases = async (page, limit, startDate, endDate, productId) => {
     conds.push(`pu."productId" = $${nxt()}::uuid`);
   }
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-  const rows = await query(
-    `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
-     FROM purchases pu
-     LEFT JOIN users u ON u.id = pu."createdBy"
-     ${where}
-     ORDER BY pu."purchaseDate" DESC, pu.id
-     LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-    [...values, limit, (page - 1) * limit]
-  );
+  let rows = [];
+  try {
+    rows = await query(
+      `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
+       FROM purchases pu
+       LEFT JOIN users u ON u.id = pu."createdBy"
+       ${where}
+       ORDER BY pu."purchaseDate" DESC, pu.id
+       LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      [...values, limit, (page - 1) * limit]
+    );
+  } catch {
+    return { items: [], total: 0, pages: 1 };
+  }
   return toPage7(rows, limit);
 };
 var deletePurchase = async (id) => {
   let deleted = false;
-  await withTransaction(async (tx) => {
-    const result = await tx.query(
-      `SELECT "productId", "sizeId", quantity FROM purchases WHERE id = $1::uuid`,
-      [id]
-    );
-    const rows = result.rows;
-    if (rows.length === 0) throw new ApiError(404, "Purchase not found");
-    const purchase = rows[0];
-    if (purchase.sizeId) {
-      await tx.query(
-        `UPDATE product_sizes SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
-        [purchase.quantity, purchase.sizeId]
+  try {
+    await withTransaction(async (tx) => {
+      const result = await tx.query(
+        `SELECT "productId", "sizeId", quantity FROM purchases WHERE id = $1::uuid`,
+        [id]
       );
-    } else {
-      await tx.query(
-        `UPDATE products SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
-        [purchase.quantity, purchase.productId]
-      );
-    }
-    const deleteResult = await tx.query(`DELETE FROM purchases WHERE id = $1::uuid`, [id]);
-    deleted = (deleteResult.rowCount ?? 0) > 0;
-  });
-  return deleted;
+      const rows = result.rows;
+      if (rows.length === 0) throw new ApiError(404, "Purchase not found");
+      const purchase = rows[0];
+      if (purchase.sizeId) {
+        await tx.query(
+          `UPDATE product_sizes SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+          [purchase.quantity, purchase.sizeId]
+        );
+      } else {
+        await tx.query(
+          `UPDATE products SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+          [purchase.quantity, purchase.productId]
+        );
+      }
+      const deleteResult = await tx.query(`DELETE FROM purchases WHERE id = $1::uuid`, [id]);
+      deleted = (deleteResult.rowCount ?? 0) > 0;
+    });
+    return deleted;
+  } catch (err) {
+    throw new ApiError(500, "Purchases system is not available. Please run migration 004.");
+  }
 };
 var getPurchaseStats = async (startDate, endDate) => {
   const conds = [];
@@ -5939,23 +5958,33 @@ var getPurchaseStats = async (startDate, endDate) => {
     conds.push(`"purchaseDate" <= $${nxt()}::timestamptz`);
   }
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-  const rows = await query(
-    `SELECT
-       COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
-       COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
-       count(*)::int AS "purchaseCount"
-     FROM purchases ${where}`,
-    values
-  );
-  const byProduct = await query(
-    `SELECT "productId"::text AS "productId", "productName", "productSize",
-            SUM(quantity)::int AS "totalQuantity",
-            SUM("totalCost")::float8 AS "totalCost"
-     FROM purchases ${where}
-     GROUP BY "productId", "productName", "productSize"
-     ORDER BY "totalCost" DESC`,
-    values
-  );
+  let rows = [];
+  try {
+    rows = await query(
+      `SELECT
+         COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
+         COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
+         count(*)::int AS "purchaseCount"
+       FROM purchases ${where}`,
+      values
+    );
+  } catch {
+    return { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] };
+  }
+  let byProduct = [];
+  try {
+    byProduct = await query(
+      `SELECT "productId"::text AS "productId", "productName", "productSize",
+              SUM(quantity)::int AS "totalQuantity",
+              SUM("totalCost")::float8 AS "totalCost"
+       FROM purchases ${where}
+       GROUP BY "productId", "productName", "productSize"
+       ORDER BY "totalCost" DESC`,
+      values
+    );
+  } catch {
+    byProduct = [];
+  }
   return {
     totalCost: rows[0]?.totalCost ?? 0,
     totalQuantity: rows[0]?.totalQuantity ?? 0,
