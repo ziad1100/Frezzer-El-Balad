@@ -483,6 +483,7 @@
     },
     "periodTitle": "Period breakdown",
     "unitsTrend": "Units sold — last {{days}} days",
+    "unitsThisMonth": "Units sold — this month",
     "unitsToday": "Units sold — today",
     "statusTitle": "Orders by status",
     "topProducts": "Top products",

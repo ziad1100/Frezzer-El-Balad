@@ -483,6 +483,7 @@
     },
     "periodTitle": "تحليل الفترة",
     "unitsTrend": "الوحدات المباعة — آخر {{days}} يوم",
+    "unitsThisMonth": "الوحدات المباعة — هذا الشهر",
     "unitsToday": "الوحدات المباعة — اليوم",
     "statusTitle": "الطلبات حسب الحالة",
     "topProducts": "الأكثر مبيعًا",

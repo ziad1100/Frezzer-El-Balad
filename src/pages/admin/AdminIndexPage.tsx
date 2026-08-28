@@ -164,7 +164,14 @@ export function AdminIndexPage() {
   ];
 
   const dailyStats = dashboard.data?.dailyStats ?? [];
-  const unitsWindow = period === 'today' ? dailyStats.slice(-1) : period === 'month' ? dailyStats : dailyStats.slice(-7);
+  // Filter dailyStats to the actual calendar period for accurate display
+  const now = new Date();
+  const periodStart = period === 'today'
+    ? new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 10)
+    : period === 'month'
+      ? new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+      : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString().slice(0, 10);
+  const unitsWindow = dailyStats.filter((d) => d.date >= periodStart);
   const periodTop = metrics?.topProducts ?? [];
 
   return (
@@ -491,7 +498,7 @@ export function AdminIndexPage() {
           <Card>
             <CardContent className="p-5">
               <h3 className="mb-4 text-sm font-bold text-night-200">
-                {period === 'today' ? t('admin.unitsToday') : t('admin.unitsTrend', { days: period === 'month' ? 30 : 7 })}
+                {period === 'today' ? t('admin.unitsToday') : period === 'month' ? t('admin.unitsThisMonth') : t('admin.unitsTrend', { days: 7 })}
               </h3>
               {unitsWindow.length > 0 ? (
                 <div className="flex h-40 items-end gap-2">

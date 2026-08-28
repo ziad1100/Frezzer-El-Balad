@@ -5739,7 +5739,11 @@ var periodWindows = (now = /* @__PURE__ */ new Date()) => {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   return { todayStart, weekStart, monthStart };
 };
-var daysAgo = (days) => new Date(Date.now() - days * 864e5);
+var daysAgo = (days) => {
+  const d = /* @__PURE__ */ new Date();
+  d.setDate(d.getDate() - days);
+  return d;
+};
 var iso = (d) => d.toISOString().slice(0, 10);
 var dashboard = asyncHandler(async (_req, res) => {
   const { todayStart, weekStart, monthStart } = periodWindows();

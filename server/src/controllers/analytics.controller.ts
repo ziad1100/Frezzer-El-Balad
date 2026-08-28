@@ -19,7 +19,11 @@ export const periodWindows = (now = new Date()): { todayStart: Date; weekStart: 
   return { todayStart, weekStart, monthStart };
 };
 
-const daysAgo = (days: number) => new Date(Date.now() - days * 86400000);
+const daysAgo = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d;
+};
 const iso = (d: Date): string => d.toISOString().slice(0, 10);
 
 export const dashboard = asyncHandler(async (_req: Request, res: Response) => {
