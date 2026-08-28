@@ -462,3 +462,15 @@ export const deletePurchase = (id: string): Promise<null> =>
 
 export const getProductReport = (productId: string): Promise<ProductReport> =>
   unwrap(api.get<ApiEnvelope<ProductReport>>('/purchases/report', { params: { productId } }));
+
+export interface PurchasesHealth {
+  status: string;
+  tableExists: boolean;
+  totalRows?: number;
+  columns?: string[];
+  appliedMigrations?: string[];
+  productHasStockColumn?: boolean;
+}
+
+export const getPurchasesHealth = (): Promise<PurchasesHealth> =>
+  unwrap(api.get<ApiEnvelope<PurchasesHealth>>('/purchases/_health'));

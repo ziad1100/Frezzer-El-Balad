@@ -9,6 +9,8 @@ import type { AuthRequest } from '../middlewares/auth';
 export const createPurchase = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { productId, sizeId, productName, productSize, quantity, unitCost, supplier, notes, purchaseDate, weightGrams, weightMode, weightDisplay, categoryId } = req.body;
 
+  console.log('[purchases] CREATE request:', { productId, productName, quantity, unitCost, weightMode, userId: req.user?.id });
+
   if (!productId) throw new ApiError(400, 'Product is required');
   if (!productName) throw new ApiError(400, 'Product name is required');
   if (typeof quantity !== 'number' || quantity <= 0) throw new ApiError(400, 'Quantity must be greater than 0');
@@ -34,6 +36,7 @@ export const createPurchase = asyncHandler(async (req: AuthRequest, res: Respons
     categoryId: categoryId || null,
   });
 
+  console.log('[purchases] CREATE success:', { id: purchase._id, productId, totalCost });
   res.status(201).json(new ApiResponse(201, purchase, 'Purchase recorded successfully'));
 });
 
@@ -43,7 +46,9 @@ export const listPurchases = asyncHandler(async (req: Request, res: Response) =>
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
   const { startDate, endDate, productId } = req.query as { startDate?: string; endDate?: string; productId?: string };
 
+  console.log('[purchases] LIST request:', { page, limit, startDate, endDate, productId });
   const result = await purchasesRepo.listPurchases(page, limit, startDate, endDate, productId);
+  console.log('[purchases] LIST result:', { total: result.total, itemCount: result.items.length });
   res.json(new ApiResponse(200, { ...result, page, limit }));
 });
 

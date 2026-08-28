@@ -313,12 +313,20 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
       onClose();
     },
     onError: (error: Error) => {
-      const msg = error?.message || '';
-      const userMsg = msg.includes('Purchases table does not exist')
+      // Extract actual backend error message from Axios response
+      let backendMsg = '';
+      try {
+        const axiosData = (error as any)?.response?.data;
+        backendMsg = axiosData?.message || error?.message || '';
+      } catch { backendMsg = error?.message || ''; }
+      console.error('[purchases] CREATE error:', backendMsg, error);
+      const userMsg = backendMsg.includes('Purchases table does not exist')
         ? (isAr ? 'نظام المشتريات غير متاح — يرجى تطبيق الترحيل' : 'Purchases system not available — please apply migration')
-        : msg.includes('Invalid product')
-          ? (isAr ? 'المنتج غير صالح' : 'Invalid product')
-          : (isAr ? 'فشل تسجيل المشتريات' : 'Failed to record purchase');
+        : backendMsg.includes('Invalid product')
+          ? (isAr ? 'المنتج غير صالح — تأكد من اختيار منتج صحيح' : 'Invalid product — please select a valid product')
+          : backendMsg.includes('foreign key')
+            ? (isAr ? 'خطأ في ربط البيانات — تأكد من صحة المنتج' : 'Data linkage error — check product selection')
+            : (isAr ? `فشل تسجيل المشتريات: ${backendMsg || 'خطأ غير معروف'}` : `Failed to record purchase: ${backendMsg || 'Unknown error'}`);
       toast.error(userMsg);
     },
   });
