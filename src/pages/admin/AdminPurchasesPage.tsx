@@ -20,21 +20,64 @@ import { cn, formatPrice } from '@/lib/utils';
 
 type DateFilter = 'today' | 'week' | 'month' | 'custom';
 
+/**
+ * Convert a Date to a local YYYY-MM-DD string.
+ * This avoids timezone shifts that occur when using toISOString() directly.
+ */
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Compute startDate / endDate for every filter using the SAME UTC
+ * conversion that the Custom filter already uses:
+ *
+ *   startDate  = new Date("YYYY-MM-DD").toISOString()        → UTC midnight
+ *   endDate    = new Date("YYYY-MM-DDT23:59:59").toISOString() → UTC end-of-day
+ *
+ * Because purchases are stored with
+ *   purchaseDate = new Date("YYYY-MM-DD").toISOString()
+ * the queries and the stored values always share the same UTC baseline.
+ */
 function getDateRange(filter: DateFilter, customStart?: string, customEnd?: string): { startDate?: string; endDate?: string } {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   switch (filter) {
-    case 'today':
-      return { startDate: today.toISOString(), endDate: now.toISOString() };
+    case 'today': {
+      const ds = toLocalDateString(today);
+      return {
+        startDate: new Date(ds).toISOString(),
+        endDate: new Date(ds + 'T23:59:59').toISOString(),
+      };
+    }
     case 'week': {
-      const weekAgo = new Date(today);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return { startDate: weekAgo.toISOString(), endDate: now.toISOString() };
+      // Start of current week = Sunday (day 0)
+      const dayOfWeek = today.getDay();
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() - dayOfWeek);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      const startStr = toLocalDateString(weekStart);
+      const endStr = toLocalDateString(weekEnd);
+      return {
+        startDate: new Date(startStr).toISOString(),
+        endDate: new Date(endStr + 'T23:59:59').toISOString(),
+      };
     }
     case 'month': {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { startDate: monthStart.toISOString(), endDate: now.toISOString() };
+      // Last day of month: day 0 of next month
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const startStr = toLocalDateString(monthStart);
+      const endStr = toLocalDateString(monthEnd);
+      return {
+        startDate: new Date(startStr).toISOString(),
+        endDate: new Date(endStr + 'T23:59:59').toISOString(),
+      };
     }
     case 'custom':
       return {
@@ -181,6 +224,7 @@ export function AdminPurchasesPage() {
                     <Th>{lang === 'ar' ? 'سعر الوحدة' : 'Unit Cost'}</Th>
                     <Th>{lang === 'ar' ? 'الإجمالي' : 'Total'}</Th>
                     <Th>{lang === 'ar' ? 'المورد' : 'Supplier'}</Th>
+                    <Th>{lang === 'ar' ? 'ملاحظات' : 'Notes'}</Th>
                     <Th></Th>
                   </tr>
                 </thead>
@@ -198,6 +242,7 @@ export function AdminPurchasesPage() {
                       <Td>{formatPrice(p.unitCost, lang)}</Td>
                       <Td className="font-bold text-night-50">{formatPrice(p.totalCost, lang)}</Td>
                       <Td className="text-night-400">{p.supplier || '—'}</Td>
+                      <Td className="text-xs text-night-400 max-w-[120px] truncate" title={p.notes || ''}>{p.notes || '—'}</Td>
                       <Td>
                         <button
                           onClick={() => {

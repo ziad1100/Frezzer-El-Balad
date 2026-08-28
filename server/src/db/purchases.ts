@@ -255,14 +255,8 @@ export const listPurchases = async (
     COALESCE(pu."weightMode", 'fixed') AS "weightMode",
     COALESCE(pu."weightDisplay", '') AS "weightDisplay"`;
 
-  try {
-    const result = await queryPurchases(extendedCols, where, values, limit, offset);
-    return toPage(result.rows, limit);
-  } catch {
-    // purchases table may not exist yet in production
-    console.error('[purchases] listPurchases failed — purchases table may not exist');
-    return { items: [], total: 0, pages: 1 };
-  }
+  const result = await queryPurchases(extendedCols, where, values, limit, offset);
+  return toPage(result.rows, limit);
 };
 
 /** Delete a purchase and decrease inventory stock. */
@@ -336,24 +330,18 @@ export const getPurchaseStats = async (
 
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 
-  let rows: Array<{ totalCost: number; totalQuantity: number; purchaseCount: number }> = [];
-  try {
-    rows = await query<{
-      totalCost: number;
-      totalQuantity: number;
-      purchaseCount: number;
-    }>(
-      `SELECT
-         COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
-         COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
-         count(*)::int AS "purchaseCount"
-       FROM purchases ${where}`,
-      values,
-    );
-  } catch {
-    console.error('[purchases] getPurchaseStats main query failed');
-    return { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] };
-  }
+  const rows = await query<{
+    totalCost: number;
+    totalQuantity: number;
+    purchaseCount: number;
+  }>(
+    `SELECT
+       COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
+       COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
+       count(*)::int AS "purchaseCount"
+     FROM purchases ${where}`,
+    values,
+  );
 
   let byProduct: Array<{
     productId: string;
@@ -378,7 +366,8 @@ export const getPurchaseStats = async (
        ORDER BY "totalCost" DESC`,
       values,
     );
-  } catch {
+  } catch (err) {
+    console.error('[purchases] getPurchaseStats byProduct query failed:', err);
     byProduct = [];
   }
 
