@@ -473,7 +473,7 @@ var disconnectCache = async () => {
 };
 
 // src/routes/index.ts
-import { Router as Router29 } from "express";
+import { Router as Router32 } from "express";
 
 // src/routes/auth.routes.ts
 import { Router } from "express";
@@ -899,6 +899,15 @@ var PAYMENT_METHODS = {
   CASH: "cash",
   CARD: "card",
   VODAFONE_CASH: "vodafone_cash"
+};
+var PAYMENT_STATUS = {
+  PENDING: "pending",
+  PROCESSING: "processing",
+  PAID: "paid",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+  EXPIRED: "expired",
+  REFUNDED: "refunded"
 };
 var COUPON_TYPES = {
   PERCENT: "percent",
@@ -2089,6 +2098,26 @@ var adminSearch = async (q, limit = 20) => {
   );
   return rows;
 };
+var adminSearchAll = async (limit = 50) => {
+  const SEARCH_COLS = `
+    p.id::text AS "_id",
+    p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
+    p.images, p."isAvailable", p.tags,
+    CASE WHEN c.id IS NULL THEN NULL
+         ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
+    ${SIZES_JSON} AS "sizes"
+  `;
+  const rows = await query(
+    `SELECT ${SEARCH_COLS}
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."isAvailable" = true
+     ORDER BY p."sortOrder", p.rating DESC, p.name
+     LIMIT $1`,
+    [limit]
+  );
+  return rows;
+};
 var BEST_SELLER_ORDER = `
   COALESCE(
     (SELECT s."sortOrder" FROM categories sub JOIN categories s ON s.id = sub."parentId" WHERE sub.id = p."categoryId"),
@@ -2302,11 +2331,12 @@ var adminList2 = asyncHandler(async (req, res) => {
 });
 var adminSearch2 = asyncHandler(async (req, res) => {
   const q = String(req.query.q || "").trim();
-  if (!q) {
-    res.json(new ApiResponse(200, []));
-    return;
-  }
   try {
+    if (!q) {
+      const results2 = await adminSearchAll(50);
+      res.json(new ApiResponse(200, results2));
+      return;
+    }
     const results = await adminSearch(q, 20);
     res.json(new ApiResponse(200, results));
   } catch (err) {
@@ -3880,6 +3910,7 @@ var placeOrder = async (input) => {
       finalTotal = Math.max(0, input.subtotal + input.deliveryFee - finalDiscount);
     }
     const initialStatus = input.initialStatus || "pending";
+    const initialPaymentStatus = input.initialPaymentStatus || "pending";
     const inserted = await tx.query(
       `INSERT INTO orders ("orderNo", "userId", "status", subtotal, "deliveryFee", discount,
          "couponCode", total, "paymentMethod", "paymentStatus", "paymentReference",
@@ -3897,7 +3928,7 @@ var placeOrder = async (input) => {
         couponCode,
         finalTotal,
         input.paymentMethod,
-        "pending",
+        initialPaymentStatus,
         input.paymentReference,
         input.paymentAmount,
         input.deliveryAddress,
@@ -4789,6 +4820,10 @@ var createOrder = asyncHandler(async (req, res) => {
   }
   const total = Math.max(0, subtotal + deliveryFee - discount);
   const method = Object.values(PAYMENT_METHODS).includes(paymentMethod) ? paymentMethod : PAYMENT_METHODS.CASH;
+  let initialPaymentStatus = "pending";
+  if (method === "vodafone_cash" || method === "bank_transfer" || method === "instapay") {
+    initialPaymentStatus = "pending_verification";
+  }
   const initialStatus = isAdmin ? ORDER_STATUS.CONFIRMED : ORDER_STATUS.PENDING;
   let order = null;
   const statusHistory = [{ status: initialStatus, changedBy: userId, at: /* @__PURE__ */ new Date() }];
@@ -4812,7 +4847,8 @@ var createOrder = asyncHandler(async (req, res) => {
         customerName: req.body.customerName || "\u0639\u0645\u064A\u0644",
         notes: notes ?? "",
         statusHistory,
-        initialStatus
+        initialStatus,
+        initialPaymentStatus
       });
       break;
     } catch (err) {
@@ -5834,11 +5870,70 @@ var PURCHASE_COLS = `
   pu."createdAt",
   jsonb_build_object('_id', u.id::text, 'fullName', u."fullName") AS "createdBy"
 `;
+async function queryPurchases(selectCols, whereClause, whereParams, limit, offset) {
+  const allParams = [...whereParams, limit, offset];
+  const limitIdx = whereParams.length + 1;
+  const offsetIdx = whereParams.length + 2;
+  try {
+    const rows = await query(
+      `SELECT count(*) OVER()::int AS __total, ${selectCols}
+       FROM purchases pu
+       LEFT JOIN users u ON u.id = pu."createdBy"
+       ${whereClause}
+       ORDER BY pu."purchaseDate" DESC, pu.id
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      allParams
+    );
+    return { rows, usedExtended: true };
+  } catch (err) {
+    try {
+      const rows = await query(
+        `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
+         FROM purchases pu
+         LEFT JOIN users u ON u.id = pu."createdBy"
+         ${whereClause}
+         ORDER BY pu."purchaseDate" DESC, pu.id
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        allParams
+      );
+      return { rows, usedExtended: false };
+    } catch (innerErr) {
+      console.error("[purchases] queryPurchases fallback also failed:", innerErr);
+      throw innerErr;
+    }
+  }
+}
 var createPurchase = async (data) => {
   let purchaseId = "";
   try {
-    await withTransaction(async (tx) => {
-      const inserted = await tx.query(
+    try {
+      const inserted = await query(
+        `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
+           "weightGrams", "weightMode", "weightDisplay", "categoryId",
+           quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
+         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::uuid)
+         RETURNING id`,
+        [
+          data.productId,
+          data.sizeId || null,
+          data.productName,
+          data.productSize,
+          data.weightGrams ?? 0,
+          data.weightMode ?? "fixed",
+          data.weightDisplay ?? "",
+          data.categoryId || null,
+          data.quantity,
+          data.unitCost,
+          data.totalCost,
+          data.supplier,
+          data.notes,
+          data.purchaseDate,
+          data.createdBy
+        ]
+      );
+      purchaseId = inserted[0].id;
+    } catch {
+      const inserted = await query(
         `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
            quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
          VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
@@ -5857,30 +5952,76 @@ var createPurchase = async (data) => {
           data.createdBy
         ]
       );
-      purchaseId = inserted.rows[0].id;
-      if (data.sizeId) {
-        await tx.query(
-          `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
-          [data.quantity, data.sizeId]
-        );
-      } else {
-        await tx.query(
-          `UPDATE products SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
-          [data.quantity, data.productId]
-        );
-      }
-    });
-    const rows = await query(
-      `SELECT ${PURCHASE_COLS}
-     FROM purchases pu
-     LEFT JOIN users u ON u.id = pu."createdBy"
-     WHERE pu.id = $1::uuid`,
+      purchaseId = inserted[0].id;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[purchases] Phase 1 INSERT failed:", message);
+    if (message.includes('relation "purchases" does not exist')) {
+      throw new ApiError(500, "Purchases table does not exist. Please run migration 004.");
+    }
+    if (message.includes("foreign key constraint")) {
+      throw new ApiError(400, "Invalid product or size ID. Please select a valid product.");
+    }
+    if (message.includes("duplicate key")) {
+      throw new ApiError(409, "This purchase already exists.");
+    }
+    throw new ApiError(500, `Failed to create purchase: ${message}`);
+  }
+  try {
+    if (data.sizeId) {
+      await query(
+        `UPDATE product_sizes SET "stockQuantity" = COALESCE("stockQuantity", 0) + $1 WHERE id = $2::uuid`,
+        [data.quantity, data.sizeId]
+      );
+    } else {
+      await query(
+        `UPDATE products SET "stockQuantity" = COALESCE("stockQuantity", 0) + $1 WHERE id = $2::uuid`,
+        [data.quantity, data.productId]
+      );
+    }
+  } catch {
+    console.error("[purchases] inventory update failed (purchase was still saved), purchaseId:", purchaseId);
+  }
+  try {
+    const extendedRows = await query(
+      `SELECT ${PURCHASE_COLS},
+              COALESCE(pu."weightGrams", 0) AS "weightGrams",
+              COALESCE(pu."weightMode", 'fixed') AS "weightMode",
+              COALESCE(pu."weightDisplay", '') AS "weightDisplay"
+       FROM purchases pu
+       LEFT JOIN users u ON u.id = pu."createdBy"
+       WHERE pu.id = $1::uuid
+       LIMIT 1`,
       [purchaseId]
     );
-    return rows[0];
-  } catch (err) {
-    throw new ApiError(500, "Purchases system is not available. Please run migration 004.");
+    if (extendedRows.length > 0) return extendedRows[0];
+  } catch {
   }
+  try {
+    const baseRows = await query(
+      `SELECT ${PURCHASE_COLS}
+       FROM purchases pu
+       LEFT JOIN users u ON u.id = pu."createdBy"
+       WHERE pu.id = $1::uuid
+       LIMIT 1`,
+      [purchaseId]
+    );
+    if (baseRows.length > 0) return baseRows[0];
+  } catch {
+  }
+  return {
+    _id: purchaseId,
+    productId: data.productId,
+    productName: data.productName,
+    productSize: data.productSize,
+    quantity: data.quantity,
+    unitCost: data.unitCost,
+    totalCost: data.totalCost,
+    supplier: data.supplier,
+    notes: data.notes,
+    purchaseDate: data.purchaseDate
+  };
 };
 var listPurchases = async (page, limit, startDate, endDate, productId) => {
   const conds = [];
@@ -5899,21 +6040,17 @@ var listPurchases = async (page, limit, startDate, endDate, productId) => {
     conds.push(`pu."productId" = $${nxt()}::uuid`);
   }
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-  let rows = [];
+  const offset = (page - 1) * limit;
+  const extendedCols = PURCHASE_COLS + `, COALESCE(pu."weightGrams", 0) AS "weightGrams",
+    COALESCE(pu."weightMode", 'fixed') AS "weightMode",
+    COALESCE(pu."weightDisplay", '') AS "weightDisplay"`;
   try {
-    rows = await query(
-      `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
-       FROM purchases pu
-       LEFT JOIN users u ON u.id = pu."createdBy"
-       ${where}
-       ORDER BY pu."purchaseDate" DESC, pu.id
-       LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-      [...values, limit, (page - 1) * limit]
-    );
+    const result = await queryPurchases(extendedCols, where, values, limit, offset);
+    return toPage7(result.rows, limit);
   } catch {
+    console.error("[purchases] listPurchases failed \u2014 purchases table may not exist");
     return { items: [], total: 0, pages: 1 };
   }
-  return toPage7(rows, limit);
 };
 var deletePurchase = async (id) => {
   let deleted = false;
@@ -5926,23 +6063,29 @@ var deletePurchase = async (id) => {
       const rows = result.rows;
       if (rows.length === 0) throw new ApiError(404, "Purchase not found");
       const purchase = rows[0];
-      if (purchase.sizeId) {
-        await tx.query(
-          `UPDATE product_sizes SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
-          [purchase.quantity, purchase.sizeId]
-        );
-      } else {
-        await tx.query(
-          `UPDATE products SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
-          [purchase.quantity, purchase.productId]
-        );
+      try {
+        if (purchase.sizeId) {
+          await tx.query(
+            `UPDATE product_sizes SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+            [purchase.quantity, purchase.sizeId]
+          );
+        } else {
+          await tx.query(
+            `UPDATE products SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+            [purchase.quantity, purchase.productId]
+          );
+        }
+      } catch {
+        console.error("[purchases] inventory decrease failed during delete (purchase still deleted)");
       }
       const deleteResult = await tx.query(`DELETE FROM purchases WHERE id = $1::uuid`, [id]);
       deleted = (deleteResult.rowCount ?? 0) > 0;
     });
     return deleted;
   } catch (err) {
-    throw new ApiError(500, "Purchases system is not available. Please run migration 004.");
+    if (err instanceof ApiError) throw err;
+    console.error("[purchases] deletePurchase failed:", err);
+    throw new ApiError(500, "Failed to delete purchase");
   }
 };
 var getPurchaseStats = async (startDate, endDate) => {
@@ -5969,6 +6112,7 @@ var getPurchaseStats = async (startDate, endDate) => {
       values
     );
   } catch {
+    console.error("[purchases] getPurchaseStats main query failed");
     return { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] };
   }
   let byProduct = [];
@@ -5994,7 +6138,7 @@ var getPurchaseStats = async (startDate, endDate) => {
 };
 var getProductReport = async (productId) => {
   const productRows = await query(
-    `SELECT id::text AS "_id", name, "nameEn", "basePrice"::float8 AS "basePrice", "stockQuantity"
+    `SELECT id::text AS "_id", name, "nameEn", "basePrice"::float8 AS "basePrice", COALESCE("stockQuantity", 0) AS "stockQuantity"
      FROM products WHERE id = $1::uuid`,
     [productId]
   );
@@ -6009,12 +6153,16 @@ var getProductReport = async (productId) => {
        AND o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')`,
     [productId]
   );
-  const purchaseRows = await query(
-    `SELECT COALESCE(SUM(quantity), 0)::int AS "quantity",
-            COALESCE(SUM("totalCost"), 0)::float8 AS "cost"
-     FROM purchases WHERE "productId" = $1::uuid`,
-    [productId]
-  );
+  let purchaseRows = [{ quantity: 0, cost: 0 }];
+  try {
+    purchaseRows = await query(
+      `SELECT COALESCE(SUM(quantity), 0)::int AS "quantity",
+              COALESCE(SUM("totalCost"), 0)::float8 AS "cost"
+       FROM purchases WHERE "productId" = $1::uuid`,
+      [productId]
+    );
+  } catch {
+  }
   return {
     product,
     sales: salesRows[0] ?? { quantity: 0, revenue: 0 },
@@ -6154,6 +6302,10 @@ var exportStats = asyncHandler(async (req, res) => {
     periodStart = todayStart;
     periodEnd = today;
   }
+  const safe = (p, fallback) => p.catch((err) => {
+    console.error("[export] query failed:", err?.message ?? err);
+    return fallback;
+  });
   const [
     totals2,
     recent2,
@@ -6177,27 +6329,27 @@ var exportStats = asyncHandler(async (req, res) => {
     dailyMovement,
     allProductsWithStock
   ] = await Promise.all([
-    totals(),
-    recent(daysAgo(30)),
-    statusBreakdown(),
-    topProducts(),
-    periodStats(todayStart),
-    periodStats(weekStart),
-    periodStats(monthStart),
-    trend(daysAgo(30)),
-    dayStats(selectedDate),
-    categorySales(),
-    adminStats(),
-    adminList5(1, 500, "", ""),
-    adminList(1, 1e3, "", "", ""),
-    customersBreakdown(),
-    adminList3(1, 500, "", "", "", "", "", "newest", ""),
-    listPurchases(1, 1e3, periodStart.toISOString(), periodEnd.toISOString()),
-    getPurchaseStats(periodStart.toISOString(), periodEnd.toISOString()),
-    getInventoryStats(),
-    getSalesStats(periodStart.toISOString(), periodEnd.toISOString()),
-    getDailyProductMovement(periodStart.toISOString(), periodEnd.toISOString()),
-    getAllProductsWithStock()
+    safe(totals(), { revenue: 0, netRevenue: 0, grossRevenue: 0, discounts: 0, deliveryFees: 0, orders: 0, customers: 0, products: 0, completedOrders: 0, cancelledOrders: 0, refundedOrders: 0, complimentaryOrders: 0 }),
+    safe(recent(daysAgo(30)), { revenue: 0, orders: 0, customers: 0 }),
+    safe(statusBreakdown(), []),
+    safe(topProducts(), []),
+    safe(periodStats(todayStart), { revenue: 0, orders: 0, unitsSold: 0, customers: 0, topProducts: [] }),
+    safe(periodStats(weekStart), { revenue: 0, orders: 0, unitsSold: 0, customers: 0, topProducts: [] }),
+    safe(periodStats(monthStart), { revenue: 0, orders: 0, unitsSold: 0, customers: 0, topProducts: [] }),
+    safe(trend(daysAgo(30)), []),
+    safe(dayStats(selectedDate), { revenue: 0, orders: 0, completed: 0, cancelled: 0, refunded: 0, complimentary: 0, grossRevenue: 0, discounts: 0, deliveryFees: 0 }),
+    safe(categorySales(), []),
+    safe(adminStats(), { total: 0, average: 0, today: 0, pending: 0, fiveStar: 0, oneStar: 0, restaurantAverage: 0, restaurantTotal: 0 }),
+    safe(adminList5(1, 500, "", ""), { items: [], total: 0, pages: 1 }),
+    safe(adminList(1, 1e3, "", "", ""), { items: [], total: 0, pages: 1 }),
+    safe(customersBreakdown(), []),
+    safe(adminList3(1, 500, "", "", "", "", "", "newest", ""), { items: [], total: 0, pages: 1 }),
+    safe(listPurchases(1, 1e3, periodStart.toISOString(), periodEnd.toISOString()), { items: [], total: 0, pages: 1 }),
+    safe(getPurchaseStats(periodStart.toISOString(), periodEnd.toISOString()), { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] }),
+    safe(getInventoryStats(), { totalProducts: 0, trackableProducts: 0, totalStockQuantity: 0, lowStockCount: 0, outOfStockCount: 0, lowStockProducts: [], outOfStockProducts: [] }),
+    safe(getSalesStats(periodStart.toISOString(), periodEnd.toISOString()), { salesValue: 0, salesQuantity: 0, orderCount: 0, byProduct: [] }),
+    safe(getDailyProductMovement(periodStart.toISOString(), periodEnd.toISOString()), []),
+    safe(getAllProductsWithStock(), [])
   ]);
   const reviewStats = reviewData;
   const periodMap = [
@@ -7391,7 +7543,8 @@ import { Router as Router27 } from "express";
 
 // src/controllers/purchase.controller.ts
 var createPurchase2 = asyncHandler(async (req, res) => {
-  const { productId, sizeId, productName, productSize, quantity, unitCost, supplier, notes, purchaseDate } = req.body;
+  const { productId, sizeId, productName, productSize, quantity, unitCost, supplier, notes, purchaseDate, weightGrams, weightMode, weightDisplay, categoryId } = req.body;
+  console.log("[purchases] CREATE request:", { productId, productName, quantity, unitCost, weightMode, userId: req.user?.id });
   if (!productId) throw new ApiError(400, "Product is required");
   if (!productName) throw new ApiError(400, "Product name is required");
   if (typeof quantity !== "number" || quantity <= 0) throw new ApiError(400, "Quantity must be greater than 0");
@@ -7408,15 +7561,22 @@ var createPurchase2 = asyncHandler(async (req, res) => {
     supplier: supplier || "",
     notes: notes || "",
     purchaseDate: purchaseDate || (/* @__PURE__ */ new Date()).toISOString(),
-    createdBy: req.user.id
+    createdBy: req.user.id,
+    weightGrams: typeof weightGrams === "number" ? weightGrams : 0,
+    weightMode: weightMode || "fixed",
+    weightDisplay: weightDisplay || "",
+    categoryId: categoryId || null
   });
+  console.log("[purchases] CREATE success:", { id: purchase._id, productId, totalCost });
   res.status(201).json(new ApiResponse(201, purchase, "Purchase recorded successfully"));
 });
 var listPurchases2 = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
   const { startDate, endDate, productId } = req.query;
+  console.log("[purchases] LIST request:", { page, limit, startDate, endDate, productId });
   const result = await listPurchases(page, limit, startDate, endDate, productId);
+  console.log("[purchases] LIST result:", { total: result.total, itemCount: result.items.length });
   res.json(new ApiResponse(200, { ...result, page, limit }));
 });
 var getPurchaseStats2 = asyncHandler(async (req, res) => {
@@ -7447,8 +7607,75 @@ router27.post("/", requirePermission("orders", "create"), createPurchase2);
 router27.delete("/:id", requirePermission("orders", "delete"), deletePurchase2);
 var purchase_routes_default = router27;
 
-// src/routes/paymentWebhook.routes.ts
+// src/routes/purchase-health.routes.ts
 import { Router as Router28 } from "express";
+var router28 = Router28();
+router28.use(requireAuth);
+router28.get("/_health", asyncHandler(async (_req, res) => {
+  const checks = {};
+  try {
+    const tableCheck = await query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'purchases'
+      ) AS "exists"`
+    );
+    checks.tableExists = tableCheck[0]?.exists ?? false;
+  } catch (err) {
+    checks.tableExists = false;
+    checks.tableError = err instanceof Error ? err.message : String(err);
+  }
+  if (checks.tableExists) {
+    try {
+      const countResult = await query('SELECT count(*)::text AS "count" FROM purchases');
+      checks.totalRows = Number(countResult[0]?.count ?? 0);
+    } catch {
+      checks.totalRows = "error";
+    }
+  }
+  if (checks.tableExists) {
+    try {
+      const cols = await query(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = 'purchases'
+         ORDER BY ordinal_position`
+      );
+      checks.columns = cols.map((c) => c.column_name);
+    } catch {
+      checks.columns = "error";
+    }
+  }
+  try {
+    const migrations = await query(
+      `SELECT name FROM schema_migrations WHERE name LIKE '%purchase%' ORDER BY name`
+    );
+    checks.appliedMigrations = migrations.map((m) => m.name);
+  } catch {
+    checks.appliedMigrations = "error";
+  }
+  try {
+    const stockCol = await query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'products' AND column_name = 'stockQuantity'
+      ) AS "exists"`
+    );
+    checks.productHasStockColumn = stockCol[0]?.exists ?? false;
+  } catch {
+    checks.productHasStockColumn = "error";
+  }
+  const allOk = checks.tableExists === true;
+  res.status(allOk ? 200 : 503).json(
+    new ApiResponse(allOk ? 200 : 503, {
+      status: allOk ? "ok" : "degraded",
+      ...checks
+    })
+  );
+}));
+var purchase_health_routes_default = router28;
+
+// src/routes/paymentWebhook.routes.ts
+import { Router as Router29 } from "express";
 
 // src/services/payment/paymentAdapter.ts
 var PaymentManager = class {
@@ -7590,42 +7817,771 @@ var handleGenericWebhook = asyncHandler(async (req, res) => {
 });
 
 // src/routes/paymentWebhook.routes.ts
-var router28 = Router28();
-router28.post("/webhook/:provider", handleWebhook);
-router28.post("/webhook", handleGenericWebhook);
-var paymentWebhook_routes_default = router28;
+var router29 = Router29();
+router29.post("/webhook/:provider", handleWebhook);
+router29.post("/webhook", handleGenericWebhook);
+var paymentWebhook_routes_default = router29;
+
+// src/routes/payment.routes.ts
+import { Router as Router30 } from "express";
+
+// src/db/payment-transactions.ts
+async function createTransaction(input) {
+  const rows = await query(
+    `INSERT INTO payment_transactions
+      ("orderId", "paymentMethod", provider, amount, currency, status,
+       "transactionReference", "providerTransactionId",
+       "senderPhone", "senderName", "proofUrl", "proofType",
+       "cardLast4", "cardBrand", metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+     RETURNING *`,
+    [
+      input.orderId,
+      input.paymentMethod,
+      input.provider ?? "manual",
+      input.amount,
+      input.currency ?? "EGP",
+      input.status ?? "pending",
+      input.transactionReference ?? "",
+      input.providerTransactionId ?? "",
+      input.senderPhone ?? "",
+      input.senderName ?? "",
+      input.proofUrl ?? "",
+      input.proofType ?? "",
+      input.cardLast4 ?? "",
+      input.cardBrand ?? "",
+      JSON.stringify(input.metadata ?? {})
+    ]
+  );
+  return rows[0];
+}
+async function getTransactionById(id) {
+  const rows = await query(
+    "SELECT * FROM payment_transactions WHERE id = $1",
+    [id]
+  );
+  return rows[0] ?? null;
+}
+async function getTransactionsByOrder(orderId) {
+  const rows = await query(
+    'SELECT * FROM payment_transactions WHERE "orderId" = $1 ORDER BY "createdAt" DESC',
+    [orderId]
+  );
+  return rows;
+}
+async function getPendingVerification(limit = 50, offset = 0) {
+  const countRows = await query(
+    `SELECT COUNT(*) as count FROM payment_transactions WHERE status = 'pending_verification'`
+  );
+  const total = parseInt(countRows[0]?.count ?? "0", 10);
+  const items = await query(
+    `SELECT pt.*, o."orderNo", o."customerName", o.phone
+     FROM payment_transactions pt
+     JOIN orders o ON o.id = pt."orderId"
+     WHERE pt.status = 'pending_verification'
+     ORDER BY pt."createdAt" ASC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  );
+  return { items, total };
+}
+async function approveTransaction(id, verifiedBy) {
+  const rows = await query(
+    `UPDATE payment_transactions
+     SET status = 'paid', "verifiedBy" = $2, "verifiedAt" = now()
+     WHERE id = $1 AND status = 'pending_verification'
+     RETURNING *`,
+    [id, verifiedBy]
+  );
+  return rows[0] ?? null;
+}
+async function rejectTransaction(id, verifiedBy, reason) {
+  const rows = await query(
+    `UPDATE payment_transactions
+     SET status = 'rejected', "verifiedBy" = $2, "rejectionReason" = $3, "verifiedAt" = now()
+     WHERE id = $1 AND status = 'pending_verification'
+     RETURNING *`,
+    [id, verifiedBy, reason]
+  );
+  return rows[0] ?? null;
+}
+async function updateOrderPaymentStatus(orderId, paymentStatus, transactionReference) {
+  await query(
+    `UPDATE orders
+     SET "paymentStatus" = $2,
+         "paymentReference" = COALESCE(NULLIF($3, ''), "paymentReference"),
+         "paidAt" = CASE WHEN $2 = 'paid' THEN now() ELSE "paidAt" END
+     WHERE id = $1`,
+    [orderId, paymentStatus, transactionReference ?? ""]
+  );
+}
+async function findDuplicateTransaction(orderId, transactionReference) {
+  if (!transactionReference) return null;
+  const rows = await query(
+    `SELECT * FROM payment_transactions
+     WHERE "orderId" = $1 AND "transactionReference" = $2
+     LIMIT 1`,
+    [orderId, transactionReference]
+  );
+  return rows[0] ?? null;
+}
+
+// src/controllers/payment.controller.ts
+var submitManualPayment = asyncHandler(async (req, res) => {
+  const {
+    orderId,
+    paymentMethod,
+    transactionReference,
+    senderPhone,
+    senderName,
+    proofUrl,
+    proofType
+  } = req.body;
+  if (!orderId) throw new ApiError(400, "Order ID is required");
+  if (!paymentMethod) throw new ApiError(400, "Payment method is required");
+  const order = await getById6(orderId);
+  if (!order) throw new ApiError(404, "Order not found");
+  const userId = req.user.id;
+  const isAdmin = req.user.role === ROLES.ADMIN || req.user.role === ROLES.MANAGER || req.user.role === ROLES.EMPLOYEE;
+  const orderUserId = typeof order.user === "string" ? order.user : order.user?._id;
+  if (!isAdmin && orderUserId !== userId) {
+    throw new ApiError(403, "You can only submit payment for your own orders");
+  }
+  const validManualMethods = ["vodafone_cash", "bank_transfer", "instapay"];
+  if (!validManualMethods.includes(paymentMethod)) {
+    throw new ApiError(400, "Invalid manual payment method");
+  }
+  if (transactionReference) {
+    const duplicate = await findDuplicateTransaction(orderId, transactionReference);
+    if (duplicate) {
+      throw new ApiError(409, "This transaction reference has already been submitted");
+    }
+  }
+  if (paymentMethod === "vodafone_cash") {
+    if (!senderPhone) throw new ApiError(400, "Phone number used for transfer is required");
+    if (!transactionReference) throw new ApiError(400, "Transaction number is required");
+  }
+  const transaction = await createTransaction({
+    orderId,
+    paymentMethod,
+    provider: "manual",
+    amount: Number(order.total),
+    status: "pending_verification",
+    transactionReference: transactionReference ?? "",
+    senderPhone: senderPhone ?? "",
+    senderName: senderName ?? "",
+    proofUrl: proofUrl ?? "",
+    proofType: proofType ?? "",
+    metadata: {
+      submittedBy: userId,
+      orderNo: order.orderNo
+    }
+  });
+  await updateOrderPaymentStatus(orderId, "pending_verification");
+  await query(
+    `UPDATE orders SET "paymentDetails" = $2 WHERE id = $1`,
+    [orderId, JSON.stringify({
+      method: paymentMethod,
+      transactionId: transaction.id,
+      reference: transactionReference ?? "",
+      senderPhone: senderPhone ?? "",
+      submittedAt: (/* @__PURE__ */ new Date()).toISOString()
+    })]
+  );
+  res.status(201).json(new ApiResponse(201, transaction, "Payment submitted for verification"));
+});
+var listPendingPayments = asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+  const result = await getPendingVerification(limit, offset);
+  res.json(new ApiResponse(200, {
+    items: result.items,
+    total: result.total,
+    page,
+    pages: Math.ceil(result.total / limit)
+  }));
+});
+var getTransaction = asyncHandler(async (req, res) => {
+  const transaction = await getTransactionById(req.params.id);
+  if (!transaction) throw new ApiError(404, "Transaction not found");
+  const order = await getById6(transaction.orderId);
+  res.json(new ApiResponse(200, {
+    ...transaction,
+    order: order ? {
+      orderNo: order.orderNo,
+      customerName: order.customerName,
+      phone: order.phone,
+      total: order.total
+    } : null
+  }));
+});
+var approvePayment = asyncHandler(async (req, res) => {
+  const transaction = await getTransactionById(req.params.id);
+  if (!transaction) throw new ApiError(404, "Transaction not found");
+  if (transaction.status !== "pending_verification") {
+    throw new ApiError(400, "This transaction is not pending verification");
+  }
+  const approved = await approveTransaction(req.params.id, req.user.id);
+  if (!approved) throw new ApiError(400, "Failed to approve transaction");
+  await updateOrderPaymentStatus(
+    transaction.orderId,
+    PAYMENT_STATUS.PAID,
+    transaction.transactionReference
+  );
+  res.json(new ApiResponse(200, approved, "Payment approved"));
+});
+var rejectPayment = asyncHandler(async (req, res) => {
+  const { reason } = req.body;
+  if (!reason) throw new ApiError(400, "Rejection reason is required");
+  const transaction = await getTransactionById(req.params.id);
+  if (!transaction) throw new ApiError(404, "Transaction not found");
+  if (transaction.status !== "pending_verification") {
+    throw new ApiError(400, "This transaction is not pending verification");
+  }
+  const rejected = await rejectTransaction(req.params.id, req.user.id, reason);
+  if (!rejected) throw new ApiError(400, "Failed to reject transaction");
+  await updateOrderPaymentStatus(transaction.orderId, "rejected");
+  res.json(new ApiResponse(200, rejected, "Payment rejected"));
+});
+var getOrderPayments = asyncHandler(async (req, res) => {
+  const transactions = await getTransactionsByOrder(req.params.orderId);
+  res.json(new ApiResponse(200, transactions));
+});
+var getPaymentSettings = asyncHandler(async (_req, res) => {
+  const result = await query(
+    `SELECT value FROM settings WHERE key = 'paymentSettings'`
+  );
+  const defaultSettings = {
+    vodafoneCash: {
+      enabled: true,
+      walletNumber: "",
+      instructions: {
+        ar: "\u0642\u0645 \u0628\u0627\u0644\u062A\u062D\u0648\u064A\u0644 \u0625\u0644\u0649 \u0631\u0642\u0645 \u0627\u0644\u0645\u062D\u0641\u0638\u0629 \u0627\u0644\u062A\u0627\u0644\u064A\u060C \u062B\u0645 \u0623\u062F\u062E\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062A\u062D\u0648\u064A\u0644",
+        en: "Transfer to the following wallet number, then enter transfer details"
+      }
+    },
+    bankTransfer: {
+      enabled: false,
+      bankName: "",
+      accountNumber: "",
+      accountName: "",
+      instructions: { ar: "", en: "" }
+    },
+    instapay: {
+      enabled: false,
+      accountName: "",
+      instructions: { ar: "", en: "" }
+    },
+    card: {
+      enabled: false,
+      provider: "none"
+    },
+    cashOnDelivery: {
+      enabled: true
+    }
+  };
+  const settings = result[0]?.value ?? defaultSettings;
+  res.json(new ApiResponse(200, settings));
+});
+var updatePaymentSettings = asyncHandler(async (req, res) => {
+  const settings = req.body;
+  if (!settings || typeof settings !== "object") {
+    throw new ApiError(400, "Invalid settings");
+  }
+  const safeSettings = {
+    vodafoneCash: {
+      enabled: Boolean(settings.vodafoneCash?.enabled),
+      walletNumber: String(settings.vodafoneCash?.walletNumber ?? ""),
+      instructions: settings.vodafoneCash?.instructions ?? { ar: "", en: "" }
+    },
+    bankTransfer: {
+      enabled: Boolean(settings.bankTransfer?.enabled),
+      bankName: String(settings.bankTransfer?.bankName ?? ""),
+      accountNumber: String(settings.bankTransfer?.accountNumber ?? ""),
+      accountName: String(settings.bankTransfer?.accountName ?? ""),
+      instructions: settings.bankTransfer?.instructions ?? { ar: "", en: "" }
+    },
+    instapay: {
+      enabled: Boolean(settings.instapay?.enabled),
+      accountName: String(settings.instapay?.accountName ?? ""),
+      instructions: settings.instapay?.instructions ?? { ar: "", en: "" }
+    },
+    card: {
+      enabled: Boolean(settings.card?.enabled),
+      provider: String(settings.card?.provider ?? "none")
+    },
+    cashOnDelivery: {
+      enabled: Boolean(settings.cashOnDelivery?.enabled ?? true)
+    }
+  };
+  await query(
+    `INSERT INTO settings (key, value) VALUES ('paymentSettings', $1)
+     ON CONFLICT (key) DO UPDATE SET value = $1`,
+    [JSON.stringify(safeSettings)]
+  );
+  res.json(new ApiResponse(200, safeSettings, "Payment settings updated"));
+});
+
+// src/routes/payment.routes.ts
+var router30 = Router30();
+router30.use(requireAuth);
+router30.post("/submit", submitManualPayment);
+router30.get("/order/:orderId", getOrderPayments);
+router30.get("/settings", getPaymentSettings);
+router30.get(
+  "/admin/pending",
+  requirePermission("orders", "read"),
+  listPendingPayments
+);
+router30.get(
+  "/admin/:id",
+  requirePermission("orders", "read"),
+  getTransaction
+);
+router30.post(
+  "/admin/:id/approve",
+  requirePermission("orders", "update"),
+  approvePayment
+);
+router30.post(
+  "/admin/:id/reject",
+  requirePermission("orders", "update"),
+  rejectPayment
+);
+router30.get(
+  "/admin/settings",
+  requirePermission("settings", "read"),
+  getPaymentSettings
+);
+router30.patch(
+  "/admin/settings",
+  requirePermission("settings", "update"),
+  updatePaymentSettings
+);
+var payment_routes_default = router30;
+
+// src/routes/stock-movements.routes.ts
+import { Router as Router31 } from "express";
+
+// src/db/stock-movements.ts
+async function recordMovement(input) {
+  try {
+    const rows = await query(
+      `INSERT INTO stock_movements (
+        "productId", "sizeId", "productName", "productSize", "categoryId",
+        "movementType", quantity,
+        "unitSellingPrice", "totalSellingPrice",
+        "unitPurchasePrice", "totalPurchasePrice",
+        "referenceType", "referenceId",
+        "orderNo", "customerName", "paymentMethod", "supplier",
+        reason, notes, "movementDate", "createdBy"
+      ) VALUES (
+        $1::uuid, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+      ) RETURNING *`,
+      [
+        input.productId,
+        input.sizeId || null,
+        input.productName,
+        input.productSize || "",
+        input.categoryId || null,
+        input.movementType,
+        input.quantity,
+        input.unitSellingPrice ?? null,
+        input.totalSellingPrice ?? null,
+        input.unitPurchasePrice ?? null,
+        input.totalPurchasePrice ?? null,
+        input.referenceType || "",
+        input.referenceId || "",
+        input.orderNo || "",
+        input.customerName || "",
+        input.paymentMethod || "",
+        input.supplier || "",
+        input.reason || "",
+        input.notes || "",
+        input.movementDate || (/* @__PURE__ */ new Date()).toISOString(),
+        input.createdBy || null
+      ]
+    );
+    return rows[0];
+  } catch {
+    return null;
+  }
+}
+async function getMovementReport(startDate, endDate) {
+  let movementRows = [];
+  try {
+    movementRows = await query(
+      `SELECT
+        sm."productId"::text AS "productId",
+        sm."productName",
+        sm."productSize",
+        sm."categoryId"::text AS "categoryId",
+        COALESCE(c.name, '') AS "categoryName",
+        sm."movementType",
+        sm.quantity,
+        sm."unitSellingPrice"::float8 AS "unitSellingPrice",
+        sm."totalSellingPrice"::float8 AS "totalSellingPrice",
+        sm."unitPurchasePrice"::float8 AS "unitPurchasePrice",
+        sm."totalPurchasePrice"::float8 AS "totalPurchasePrice",
+        sm."paymentMethod",
+        sm."orderNo",
+        sm."customerName",
+        sm.supplier,
+        sm.reason,
+        sm.notes,
+        sm."movementDate"::text AS "movementDate"
+      FROM stock_movements sm
+      LEFT JOIN categories c ON c.id = sm."categoryId"
+      WHERE sm."movementDate" >= $1::timestamptz
+        AND sm."movementDate" <= $2::timestamptz
+      ORDER BY sm."movementDate", sm."productName"`,
+      [startDate, endDate]
+    );
+  } catch {
+    movementRows = [];
+  }
+  const summaryMap = /* @__PURE__ */ new Map();
+  for (const m of movementRows) {
+    const key = `${m.productId}:${m.productSize}`;
+    let item2 = summaryMap.get(key);
+    if (!item2) {
+      item2 = {
+        productId: m.productId,
+        productName: m.productName,
+        productSize: m.productSize,
+        categoryId: m.categoryId,
+        categoryName: m.categoryName,
+        totalPurchased: 0,
+        totalSold: 0,
+        totalReturned: 0,
+        totalGifted: 0,
+        totalWasted: 0,
+        totalDamaged: 0,
+        totalAdjusted: 0,
+        totalPurchaseCost: 0,
+        totalSalesRevenue: 0,
+        currentStock: 0
+      };
+      summaryMap.set(key, item2);
+    }
+    const absQty = Math.abs(m.quantity);
+    switch (m.movementType) {
+      case "sale":
+        item2.totalSold += absQty;
+        item2.totalSalesRevenue += m.totalSellingPrice ?? 0;
+        break;
+      case "purchase":
+        item2.totalPurchased += absQty;
+        item2.totalPurchaseCost += m.totalPurchasePrice ?? 0;
+        break;
+      case "gift":
+        item2.totalGifted += absQty;
+        break;
+      case "return":
+        item2.totalReturned += absQty;
+        break;
+      case "waste":
+        item2.totalWasted += absQty;
+        break;
+      case "damage":
+        item2.totalDamaged += absQty;
+        break;
+      case "stock_adjustment":
+        item2.totalAdjusted += m.quantity;
+        break;
+    }
+  }
+  let stockRows = [];
+  try {
+    stockRows = await query(
+      `SELECT
+        p.id::text AS "productId",
+        p.name AS "productName",
+        COALESCE(ps.name, '') AS "productSize",
+        COALESCE(ps."stockQuantity", p."stockQuantity", 0)::int AS "stockQuantity"
+      FROM products p
+      LEFT JOIN product_sizes ps ON ps."productId" = p.id
+      WHERE p."isAvailable" = true
+      ORDER BY p.name, ps."sortOrder"`
+    );
+  } catch {
+    stockRows = [];
+  }
+  for (const stock of stockRows) {
+    const key = `${stock.productId}:${stock.productSize}`;
+    const item2 = summaryMap.get(key);
+    if (item2) {
+      item2.currentStock = stock.stockQuantity;
+    }
+  }
+  const details = movementRows.map((m) => {
+    const date = new Date(m.movementDate);
+    return {
+      date: date.toISOString().slice(0, 10),
+      time: date.toTimeString().slice(0, 5),
+      productName: m.productName,
+      productSize: m.productSize,
+      categoryName: m.categoryName,
+      movementType: m.movementType,
+      quantity: m.quantity,
+      unitPurchasePrice: m.unitPurchasePrice,
+      totalPurchasePrice: m.totalPurchasePrice,
+      unitSellingPrice: m.unitSellingPrice,
+      totalSellingPrice: m.totalSellingPrice,
+      paymentMethod: m.paymentMethod,
+      orderNo: m.orderNo,
+      customerName: m.customerName,
+      supplier: m.supplier,
+      reason: m.reason,
+      notes: m.notes
+    };
+  });
+  return {
+    summary: Array.from(summaryMap.values()),
+    details
+  };
+}
+
+// src/controllers/stock-movements.controller.ts
+import * as XLSX2 from "xlsx";
+var recordMovement2 = asyncHandler(async (req, res) => {
+  const {
+    productId,
+    sizeId,
+    productName,
+    productSize,
+    categoryId,
+    movementType,
+    quantity,
+    reason,
+    notes,
+    supplier
+  } = req.body;
+  if (!productId) throw new ApiError(400, "Product ID is required");
+  if (!productName) throw new ApiError(400, "Product name is required");
+  if (!movementType) throw new ApiError(400, "Movement type is required");
+  if (typeof quantity !== "number" || quantity === 0) throw new ApiError(400, "Quantity must be a non-zero number");
+  const validTypes = ["sale", "purchase", "gift", "return", "waste", "damage", "stock_adjustment", "other"];
+  if (!validTypes.includes(movementType)) {
+    throw new ApiError(400, `Invalid movement type. Must be one of: ${validTypes.join(", ")}`);
+  }
+  const movement = await recordMovement({
+    productId,
+    sizeId: sizeId || null,
+    productName,
+    productSize: productSize || "",
+    categoryId: categoryId || null,
+    movementType,
+    quantity,
+    reason: reason || "",
+    notes: notes || "",
+    supplier: supplier || "",
+    createdBy: req.user.id
+  });
+  if (!movement) {
+    throw new ApiError(500, "Stock movements table is not available. Please run migration 007.");
+  }
+  res.status(201).json(new ApiResponse(201, movement, "Movement recorded"));
+});
+var getMovementReport2 = asyncHandler(async (req, res) => {
+  const startDate = String(req.query.startDate ?? "");
+  const endDate = String(req.query.endDate ?? "");
+  if (!startDate || !endDate) {
+    throw new ApiError(400, "startDate and endDate are required");
+  }
+  const start2 = new Date(startDate);
+  const end = /* @__PURE__ */ new Date(endDate + "T23:59:59");
+  if (isNaN(start2.getTime()) || isNaN(end.getTime())) {
+    throw new ApiError(400, "Invalid date format");
+  }
+  const report = await getMovementReport(
+    start2.toISOString(),
+    end.toISOString()
+  );
+  res.json(new ApiResponse(200, report));
+});
+var exportMovementReport = asyncHandler(async (req, res) => {
+  const startDate = String(req.query.startDate ?? "");
+  const endDate = String(req.query.endDate ?? "");
+  const period = String(req.query.period ?? "month");
+  if (!startDate || !endDate) {
+    throw new ApiError(400, "startDate and endDate are required");
+  }
+  const start2 = new Date(startDate);
+  const end = /* @__PURE__ */ new Date(endDate + "T23:59:59");
+  if (isNaN(start2.getTime()) || isNaN(end.getTime())) {
+    throw new ApiError(400, "Invalid date format");
+  }
+  const report = await getMovementReport(
+    start2.toISOString(),
+    end.toISOString()
+  );
+  const msPerDay = 864e5;
+  const calendarDays = Math.round((end.getTime() - start2.getTime()) / msPerDay) + 1;
+  const wb = XLSX2.utils.book_new();
+  wb.Workbook = { Views: [{ RTL: true }] };
+  const MONEY2 = '#,##0.00" \u062C.\u0645"';
+  const COUNT2 = "#,##0";
+  const movementTypeAr = {
+    sale: "\u0628\u064A\u0639",
+    purchase: "\u0634\u0631\u0627\u0621",
+    gift: "\u0647\u062F\u064A\u0629",
+    return: "\u0645\u0631\u062A\u062C\u0639",
+    waste: "\u0641\u0627\u0642\u062F",
+    damage: "\u062A\u0627\u0644\u0641",
+    stock_adjustment: "\u062A\u0633\u0648\u064A\u0629 \u0645\u062E\u0632\u0648\u0646",
+    other: "\u0623\u062E\u0631\u0649"
+  };
+  const periodLabel = period === "today" ? "\u0627\u0644\u064A\u0648\u0645" : period === "week" ? "\u0647\u0630\u0627 \u0627\u0644\u0623\u0633\u0628\u0648\u0639" : period === "month" ? "\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631" : "\u0641\u062A\u0631\u0629 \u0645\u062E\u0635\u0635\u0629";
+  const summaryRows = [
+    ["\u062A\u0642\u0631\u064A\u0631 \u062D\u0631\u0643\u0629 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u2014 FREEZER EL BALAD"],
+    [""],
+    ["\u0641\u062A\u0631\u0629 \u0627\u0644\u062A\u0642\u0631\u064A\u0631", `${periodLabel}: ${startDate} \u2192 ${endDate}`],
+    ["\u0639\u062F\u062F \u0627\u0644\u0623\u064A\u0627\u0645", calendarDays],
+    ["\u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0625\u0646\u0634\u0627\u0621", (/* @__PURE__ */ new Date()).toISOString().slice(0, 16).replace("T", " ")],
+    [""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", report.summary.reduce((a, p) => a + p.totalPurchased, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A", report.summary.reduce((a, p) => a + p.totalSold, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0647\u062F\u0627\u064A\u0627", report.summary.reduce((a, p) => a + p.totalGifted, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u0631\u062A\u062C\u0639\u0627\u062A", report.summary.reduce((a, p) => a + p.totalReturned, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0641\u0627\u0642\u062F", report.summary.reduce((a, p) => a + p.totalWasted, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u062A\u0627\u0644\u0641", report.summary.reduce((a, p) => a + p.totalDamaged, 0)],
+    [""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", report.summary.reduce((a, p) => a + p.totalPurchaseCost, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A", report.summary.reduce((a, p) => a + p.totalSalesRevenue, 0)]
+  ];
+  const summaryWs = XLSX2.utils.aoa_to_sheet(summaryRows);
+  summaryWs["!cols"] = [{ wch: 30 }, { wch: 30 }];
+  XLSX2.utils.book_append_sheet(wb, summaryWs, "\u0645\u0644\u062E\u0635 \u0627\u0644\u062A\u0642\u0631\u064A\u0631");
+  const productSummaryRows = [
+    ["\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0641\u0626\u0629", "\u062A\u0645 \u0627\u0644\u0634\u0631\u0627\u0621", "\u062A\u0645 \u0627\u0644\u0628\u064A\u0639", "\u0647\u062F\u0627\u064A\u0627", "\u0645\u0631\u062A\u062C\u0639", "\u0641\u0627\u0642\u062F", "\u062A\u0627\u0644\u0641", "\u062A\u0633\u0648\u064A\u0629", "\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0634\u0631\u0627\u0621", "\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u0628\u064A\u0639", "\u0627\u0644\u0645\u062E\u0632\u0648\u0646 \u0627\u0644\u062D\u0627\u0644\u064A"]
+  ];
+  for (const item2 of report.summary) {
+    productSummaryRows.push([
+      item2.productName,
+      item2.productSize || "\u2014",
+      item2.categoryName || "\u2014",
+      item2.totalPurchased,
+      item2.totalSold,
+      item2.totalGifted,
+      item2.totalReturned,
+      item2.totalWasted,
+      item2.totalDamaged,
+      item2.totalAdjusted,
+      item2.totalPurchaseCost,
+      item2.totalSalesRevenue,
+      item2.currentStock
+    ]);
+  }
+  const productSummaryWs = XLSX2.utils.aoa_to_sheet(productSummaryRows);
+  for (let r = 1; r < productSummaryRows.length; r++) {
+    for (const c of [3, 4, 5, 6, 7, 8, 9, 12]) {
+      const cell = productSummaryWs[XLSX2.utils.encode_cell({ r, c })];
+      if (cell && cell.t === "n") cell.z = COUNT2;
+    }
+    for (const c of [10, 11]) {
+      const cell = productSummaryWs[XLSX2.utils.encode_cell({ r, c })];
+      if (cell && cell.t === "n") cell.z = MONEY2;
+    }
+  }
+  productSummaryWs["!cols"] = [{ wch: 20 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+  XLSX2.utils.book_append_sheet(wb, productSummaryWs, "\u0645\u0644\u062E\u0635 \u0627\u0644\u0623\u0635\u0646\u0627\u0641");
+  const detailRows = [
+    ["\u0627\u0644\u062A\u0627\u0631\u064A\u062E", "\u0627\u0644\u0648\u0642\u062A", "\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0641\u0626\u0629", "\u0646\u0648\u0639 \u0627\u0644\u062D\u0631\u0643\u0629", "\u0627\u0644\u0643\u0645\u064A\u0629", "\u0633\u0639\u0631 \u0627\u0644\u0634\u0631\u0627\u0621", "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0634\u0631\u0627\u0621", "\u0633\u0639\u0631 \u0627\u0644\u0628\u064A\u0639", "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0628\u064A\u0639", "\u0637\u0631\u064A\u0642\u0629 \u0627\u0644\u062F\u0641\u0639", "\u0631\u0642\u0645 \u0627\u0644\u0637\u0644\u0628", "\u0627\u0644\u0639\u0645\u064A\u0644", "\u0627\u0644\u0645\u0648\u0631\u062F", "\u0627\u0644\u0633\u0628\u0628", "\u0645\u0644\u0627\u062D\u0638\u0627\u062A"]
+  ];
+  for (const d of report.details) {
+    detailRows.push([
+      d.date,
+      d.time,
+      d.productName,
+      d.productSize || "\u2014",
+      d.categoryName || "\u2014",
+      movementTypeAr[d.movementType] ?? d.movementType,
+      d.quantity,
+      d.unitPurchasePrice ?? "\u2014",
+      d.totalPurchasePrice ?? "\u2014",
+      d.unitSellingPrice ?? "\u2014",
+      d.totalSellingPrice ?? "\u2014",
+      d.paymentMethod || "\u2014",
+      d.orderNo || "\u2014",
+      d.customerName || "\u2014",
+      d.supplier || "\u2014",
+      d.reason || "\u2014",
+      d.notes || "\u2014"
+    ]);
+  }
+  const detailWs = XLSX2.utils.aoa_to_sheet(detailRows);
+  detailWs["!cols"] = [
+    { wch: 12 },
+    { wch: 8 },
+    { wch: 20 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 8 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 18 },
+    { wch: 16 },
+    { wch: 20 },
+    { wch: 20 }
+  ];
+  XLSX2.utils.book_append_sheet(wb, detailWs, "\u062D\u0631\u0643\u0629 \u0627\u0644\u0623\u0635\u0646\u0627\u0641");
+  const filename = `freezer-elbalad-movement-report-${startDate}-to-${endDate}.xlsx`;
+  const buffer = XLSX2.write(wb, { type: "buffer", bookType: "xlsx" });
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(buffer);
+});
+
+// src/routes/stock-movements.routes.ts
+var router31 = Router31();
+router31.use(requireAuth, requireRole("admin"));
+router31.post("/record", recordMovement2);
+router31.get("/report", getMovementReport2);
+router31.get("/export", exportMovementReport);
+var stock_movements_routes_default = router31;
 
 // src/routes/index.ts
-var router29 = Router29();
-router29.use("/auth", auth_routes_default);
-router29.use("/users/me", user_routes_default);
-router29.use("/products", product_routes_default);
-router29.use("/categories", category_routes_default);
-router29.use("/reviews", review_routes_default);
-router29.use("/wishlist", wishlist_routes_default);
-router29.use("/cart", cart_routes_default);
-router29.use("/orders", order_routes_default);
-router29.use("/coupons", coupon_routes_default);
-router29.use("/offers", offer_routes_default);
-router29.use("/banners", banner_routes_default);
-router29.use("/gallery", gallery_routes_default);
-router29.use("/branches", branch_routes_default);
-router29.use("/contacts", contact_routes_default);
-router29.use("/newsletter", newsletter_routes_default);
-router29.use("/settings", setting_routes_default);
-router29.use("/notifications", notification_routes_default);
-router29.use("/analytics", analytics_routes_default);
-router29.use("/upload", upload_routes_default);
-router29.use("/posts", post_routes_default);
-router29.use("/admin/users", adminApiLimiter, adminUser_routes_default);
-router29.use("/system", systemReset_routes_default);
-router29.use("/print", print_routes_default);
-router29.use("/service-tokens", serviceToken_routes_default);
-router29.use("/labels", label_routes_default);
-router29.use("/inventory", inventory_routes_default);
-router29.use("/purchases", purchase_routes_default);
-router29.use("/payments", paymentWebhook_routes_default);
-var routes_default = router29;
+var router32 = Router32();
+router32.use("/auth", auth_routes_default);
+router32.use("/users/me", user_routes_default);
+router32.use("/products", product_routes_default);
+router32.use("/categories", category_routes_default);
+router32.use("/reviews", review_routes_default);
+router32.use("/wishlist", wishlist_routes_default);
+router32.use("/cart", cart_routes_default);
+router32.use("/orders", order_routes_default);
+router32.use("/coupons", coupon_routes_default);
+router32.use("/offers", offer_routes_default);
+router32.use("/banners", banner_routes_default);
+router32.use("/gallery", gallery_routes_default);
+router32.use("/branches", branch_routes_default);
+router32.use("/contacts", contact_routes_default);
+router32.use("/newsletter", newsletter_routes_default);
+router32.use("/settings", setting_routes_default);
+router32.use("/notifications", notification_routes_default);
+router32.use("/analytics", analytics_routes_default);
+router32.use("/upload", upload_routes_default);
+router32.use("/posts", post_routes_default);
+router32.use("/admin/users", adminApiLimiter, adminUser_routes_default);
+router32.use("/system", systemReset_routes_default);
+router32.use("/print", print_routes_default);
+router32.use("/service-tokens", serviceToken_routes_default);
+router32.use("/labels", label_routes_default);
+router32.use("/inventory", inventory_routes_default);
+router32.use("/purchases", purchase_routes_default);
+router32.use("/purchases", purchase_health_routes_default);
+router32.use("/payments", paymentWebhook_routes_default);
+router32.use("/payment", payment_routes_default);
+router32.use("/stock-movements", stock_movements_routes_default);
+var routes_default = router32;
 
 // src/app.ts
 var app = express();

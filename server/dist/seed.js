@@ -452,8 +452,9 @@ var create3 = async (data) => {
     const inserted = await tx.query(
       `INSERT INTO products (name, "nameEn", slug, description, "descriptionEn", "basePrice", images,
         ingredients, "ingredientsEn", tags, "categoryId", "isAvailable", "isBestSeller", "isOffer",
-        discount, "preparationTime", calories, "sortOrder")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid,$12,$13,$14,$15,$16,$17,$18)
+        discount, "preparationTime", calories, "sortOrder",
+        "trackInventory", "stockQuantity", "lowStockThreshold")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING id`,
       [
         data.name,
@@ -473,7 +474,10 @@ var create3 = async (data) => {
         Number(data.discount) || 0,
         Number(data.preparationTime) || 20,
         Number(data.calories) || 0,
-        Number(data.sortOrder) || 0
+        Number(data.sortOrder) || 0,
+        data.trackInventory ?? false,
+        Number(data.stockQuantity) || 0,
+        Number(data.lowStockThreshold) || 5
       ]
     );
     id = inserted.rows[0].id;

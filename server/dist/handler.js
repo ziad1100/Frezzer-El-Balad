@@ -442,7 +442,7 @@ var resourceKeys = (resource) => [
 var ttlFor = (resource) => TTL_SECONDS[resource];
 
 // server/src/routes/index.ts
-import { Router as Router27 } from "express";
+import { Router as Router32 } from "express";
 
 // server/src/routes/auth.routes.ts
 import { Router } from "express";
@@ -868,6 +868,15 @@ var PAYMENT_METHODS = {
   CASH: "cash",
   CARD: "card",
   VODAFONE_CASH: "vodafone_cash"
+};
+var PAYMENT_STATUS = {
+  PENDING: "pending",
+  PROCESSING: "processing",
+  PAID: "paid",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+  EXPIRED: "expired",
+  REFUNDED: "refunded"
 };
 var COUPON_TYPES = {
   PERCENT: "percent",
@@ -1372,6 +1381,9 @@ var item = z4.object({
   extras: z4.array(extra).max(30).optional(),
   qty: z4.coerce.number().int("Quantity must be a whole number").min(1, "Quantity must be at least 1").max(99, "Quantity must be at most 99")
 });
+var adminItem = item.extend({
+  customPrice: z4.coerce.number().min(0, "Custom price must be a non-negative number").optional()
+});
 var addressSchema = z4.object({
   label: z4.string().trim().max(50).optional(),
   city: z4.string().trim().min(1, "City is required").max(100),
@@ -1381,7 +1393,7 @@ var addressSchema = z4.object({
 });
 var phoneRegex = /^01[0125]\d{8}$/;
 var createAdminOrderSchema = z4.object({
-  items: z4.array(item).min(1, "At least one item is required").max(100),
+  items: z4.array(adminItem).min(1, "At least one item is required").max(100),
   couponCode: z4.string().trim().max(40).optional(),
   phone: z4.string().trim().regex(phoneRegex).optional(),
   customerName: z4.string().trim().max(80).optional(),
@@ -1458,7 +1470,10 @@ var productCreateSchema = z6.object({
   calories: z6.coerce.number().min(0).max(1e4).optional(),
   isAvailable: z6.boolean().optional(),
   isBestSeller: z6.boolean().optional(),
-  isOffer: z6.boolean().optional()
+  isOffer: z6.boolean().optional(),
+  trackInventory: z6.boolean().optional(),
+  stockQuantity: z6.coerce.number().int().min(0).optional(),
+  lowStockThreshold: z6.coerce.number().int().min(0).optional()
 });
 var sizeUpdate = z6.object({
   name: z6.string().trim().min(1, "Size name is required").max(50),
@@ -1490,7 +1505,10 @@ var productUpdateSchema = z6.object({
   isAvailable: z6.boolean().optional(),
   isBestSeller: z6.boolean().optional(),
   isOffer: z6.boolean().optional(),
-  labelIds: z6.array(z6.string()).optional()
+  labelIds: z6.array(z6.string()).optional(),
+  trackInventory: z6.boolean().optional(),
+  stockQuantity: z6.coerce.number().int().min(0).optional(),
+  lowStockThreshold: z6.coerce.number().int().min(0).optional()
 });
 
 // server/src/schemas/category.ts
@@ -2017,6 +2035,58 @@ var adminList = async (page, limit, q, availability, category2) => {
   const rows = await query(sql, [...values, limit, (page - 1) * limit]);
   return toPage(rows, limit);
 };
+var adminSearch = async (q, limit = 20) => {
+  const searchCondition = `
+    (p.name ILIKE '%' || $1 || '%'
+     OR p."nameEn" ILIKE '%' || $1 || '%'
+     OR EXISTS (SELECT 1 FROM unnest(p.tags) t WHERE t ILIKE '%' || $1 || '%')
+     OR EXISTS (SELECT 1 FROM categories c WHERE c.id = p."categoryId" AND (c.name ILIKE '%' || $1 || '%' OR c."nameEn" ILIKE '%' || $1 || '%'))
+  )`;
+  const SEARCH_COLS = `
+    p.id::text AS "_id",
+    p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
+    p.images, p."isAvailable", p.tags,
+    CASE WHEN c.id IS NULL THEN NULL
+         ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
+    ${SIZES_JSON} AS "sizes"
+  `;
+  const rows = await query(
+    `SELECT ${SEARCH_COLS}
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE ${searchCondition}
+     ORDER BY
+       CASE WHEN p.name ILIKE $1 || '%' THEN 0
+            WHEN p."nameEn" ILIKE $1 || '%' THEN 1
+            WHEN p.name ILIKE '%' || $1 || '%' THEN 2
+            WHEN p."nameEn" ILIKE '%' || $1 || '%' THEN 3
+            ELSE 4 END,
+       p."sortOrder", p.rating DESC, p."createdAt" DESC
+     LIMIT $2`,
+    [q, limit]
+  );
+  return rows;
+};
+var adminSearchAll = async (limit = 50) => {
+  const SEARCH_COLS = `
+    p.id::text AS "_id",
+    p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
+    p.images, p."isAvailable", p.tags,
+    CASE WHEN c.id IS NULL THEN NULL
+         ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
+    ${SIZES_JSON} AS "sizes"
+  `;
+  const rows = await query(
+    `SELECT ${SEARCH_COLS}
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."isAvailable" = true
+     ORDER BY p."sortOrder", p.rating DESC, p.name
+     LIMIT $1`,
+    [limit]
+  );
+  return rows;
+};
 var BEST_SELLER_ORDER = `
   COALESCE(
     (SELECT s."sortOrder" FROM categories sub JOIN categories s ON s.id = sub."parentId" WHERE sub.id = p."categoryId"),
@@ -2065,8 +2135,9 @@ var create2 = async (data) => {
     const inserted = await tx.query(
       `INSERT INTO products (name, "nameEn", slug, description, "descriptionEn", "basePrice", images,
         ingredients, "ingredientsEn", tags, "categoryId", "isAvailable", "isBestSeller", "isOffer",
-        discount, "preparationTime", calories, "sortOrder")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid,$12,$13,$14,$15,$16,$17,$18)
+        discount, "preparationTime", calories, "sortOrder",
+        "trackInventory", "stockQuantity", "lowStockThreshold")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING id`,
       [
         data.name,
@@ -2086,7 +2157,10 @@ var create2 = async (data) => {
         Number(data.discount) || 0,
         Number(data.preparationTime) || 20,
         Number(data.calories) || 0,
-        Number(data.sortOrder) || 0
+        Number(data.sortOrder) || 0,
+        data.trackInventory ?? false,
+        Number(data.stockQuantity) || 0,
+        Number(data.lowStockThreshold) || 5
       ]
     );
     id = inserted.rows[0].id;
@@ -2128,6 +2202,9 @@ var update2 = async (id, data) => {
     if (data.discount !== void 0) push("discount", Number(data.discount));
     if (data.preparationTime !== void 0) push("preparationTime", Number(data.preparationTime));
     if (data.calories !== void 0) push("calories", Number(data.calories));
+    if (data.trackInventory !== void 0) push("trackInventory", data.trackInventory);
+    if (data.stockQuantity !== void 0) push("stockQuantity", Number(data.stockQuantity));
+    if (data.lowStockThreshold !== void 0) push("lowStockThreshold", Number(data.lowStockThreshold));
     if (sets.length) {
       const result = await tx.query(`UPDATE products SET ${sets.join(", ")} WHERE id = $1 RETURNING id`, values);
       updated = result.rowCount !== null && result.rowCount > 0;
@@ -2217,6 +2294,20 @@ var adminList2 = asyncHandler(async (req, res) => {
       String(req.query.category || "")
     );
     res.json(new ApiResponse(200, { ...result, page, limit }));
+  } catch (err) {
+    throw apiErrorFromPg(err);
+  }
+});
+var adminSearch2 = asyncHandler(async (req, res) => {
+  const q = String(req.query.q || "").trim();
+  try {
+    if (!q) {
+      const results2 = await adminSearchAll(50);
+      res.json(new ApiResponse(200, results2));
+      return;
+    }
+    const results = await adminSearch(q, 20);
+    res.json(new ApiResponse(200, results));
   } catch (err) {
     throw apiErrorFromPg(err);
   }
@@ -2460,6 +2551,7 @@ var router3 = Router3();
 var querySuffix = (req) => req.url.split("?")[1] ?? "";
 router3.get("/", cached({ resource: "products", ttl: 60, suffix: querySuffix, skip: (req) => Boolean(new URL(req.url, "http://x").searchParams.get("search")) }), listProducts2);
 router3.get("/admin", requireAuth, requirePermission("products", "read"), adminList2);
+router3.get("/admin/search", requireAuth, requirePermission("products", "read"), adminSearch2);
 router3.get("/best-sellers", cached({ resource: "products", ttl: 60, suffix: "best-sellers" }), getBestSellers);
 router3.get("/offers", cached({ resource: "products", ttl: 60, suffix: "offers" }), getOffers);
 router3.get("/:slug", cached({ resource: "products", ttl: 60, suffix: (req) => `slug:${req.params.slug}` }), getProductBySlug);
@@ -3550,7 +3642,8 @@ var ITEMS_JSON = `
       'size', oi.size, 'extras', oi.extras,
       'qty', oi.qty,
       'unitPrice', oi."unitPrice"::float8,
-      'lineTotal', oi."lineTotal"::float8)
+      'lineTotal', oi."lineTotal"::float8,
+      'isCustomPrice', oi."isCustomPrice")
     ORDER BY oi."sortOrder"), '[]'::jsonb)
    FROM order_items oi
    LEFT JOIN products p ON p.id = oi."productId"
@@ -3786,6 +3879,7 @@ var placeOrder = async (input) => {
       finalTotal = Math.max(0, input.subtotal + input.deliveryFee - finalDiscount);
     }
     const initialStatus = input.initialStatus || "pending";
+    const initialPaymentStatus = input.initialPaymentStatus || "pending";
     const inserted = await tx.query(
       `INSERT INTO orders ("orderNo", "userId", "status", subtotal, "deliveryFee", discount,
          "couponCode", total, "paymentMethod", "paymentStatus", "paymentReference",
@@ -3803,7 +3897,7 @@ var placeOrder = async (input) => {
         couponCode,
         finalTotal,
         input.paymentMethod,
-        "pending",
+        initialPaymentStatus,
         input.paymentReference,
         input.paymentAmount,
         input.deliveryAddress,
@@ -3817,9 +3911,9 @@ var placeOrder = async (input) => {
     for (const [i, item2] of input.items.entries()) {
       await tx.query(
         `INSERT INTO order_items ("orderId", "productId", "sortOrder", name, size, extras,
-           qty, "unitPrice", "lineTotal")
-         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, $7, $8, $9)`,
-        [orderId, item2.productId, i, item2.name, item2.size, JSON.stringify(item2.extras), item2.qty, item2.unitPrice, item2.lineTotal]
+           qty, "unitPrice", "lineTotal", "isCustomPrice")
+         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, $7, $8, $9, $10)`,
+        [orderId, item2.productId, i, item2.name, item2.size, JSON.stringify(item2.extras), item2.qty, item2.unitPrice, item2.lineTotal, item2.isCustomPrice ?? false]
       );
     }
     if (couponId) {
@@ -4025,6 +4119,400 @@ var customersBreakdown = async () => {
      ORDER BY "totalSpent" DESC, u."createdAt" DESC
      LIMIT 500`
   );
+};
+
+// server/src/db/inventory.ts
+var getStock = async (productId, sizeId) => {
+  if (sizeId) {
+    const rows2 = await query(
+      `SELECT ps."stockQuantity", ps."lowStockThreshold", p."trackInventory"
+       FROM product_sizes ps
+       JOIN products p ON p.id = ps."productId"
+       WHERE ps.id = $1::uuid AND ps."productId" = $2::uuid`,
+      [sizeId, productId]
+    );
+    return rows2[0] ?? null;
+  }
+  const rows = await query(
+    `SELECT "stockQuantity", "lowStockThreshold", "trackInventory"
+     FROM products WHERE id = $1::uuid`,
+    [productId]
+  );
+  return rows[0] ?? null;
+};
+var updateStock = async (productId, stockQuantity, sizeId) => {
+  if (sizeId) {
+    await query(
+      `UPDATE product_sizes SET "stockQuantity" = $1 WHERE id = $2::uuid AND "productId" = $3::uuid`,
+      [stockQuantity, sizeId, productId]
+    );
+  } else {
+    await query(
+      `UPDATE products SET "stockQuantity" = $1 WHERE id = $2::uuid`,
+      [stockQuantity, productId]
+    );
+  }
+};
+var setTrackInventory = async (productId, track) => {
+  await query(
+    `UPDATE products SET "trackInventory" = $1 WHERE id = $2::uuid`,
+    [track, productId]
+  );
+};
+var deductStock = async (orderId, orderItems) => {
+  let deductedCount = 0;
+  await withTransaction(async (tx) => {
+    for (const item2 of orderItems) {
+      const existing = await tx.query(
+        `SELECT id FROM stock_deductions WHERE "orderItemId" = $1::uuid AND type = 'deduct'`,
+        [item2.id]
+      );
+      if (existing.rows.length > 0) continue;
+      let sizeId = null;
+      if (item2.sizeName) {
+        const sizeRow = await tx.query(
+          `SELECT id FROM product_sizes WHERE "productId" = $1::uuid AND name = $2 LIMIT 1`,
+          [item2.productId, item2.sizeName]
+        );
+        sizeId = sizeRow.rows[0]?.id ?? null;
+      }
+      const stockInfo = await getStockForDeduction(tx, item2.productId, sizeId);
+      if (!stockInfo?.trackInventory) continue;
+      if (stockInfo.stockQuantity < item2.qty) {
+        throw new ApiError(
+          400,
+          `Insufficient stock for product. Available: ${stockInfo.stockQuantity}, Requested: ${item2.qty}`
+        );
+      }
+      if (sizeId) {
+        await tx.query(
+          `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" - $1 WHERE id = $2::uuid`,
+          [item2.qty, sizeId]
+        );
+      } else {
+        await tx.query(
+          `UPDATE products SET "stockQuantity" = "stockQuantity" - $1 WHERE id = $2::uuid`,
+          [item2.qty, item2.productId]
+        );
+      }
+      await tx.query(
+        `INSERT INTO stock_deductions ("orderId", "orderItemId", "productId", "sizeId", quantity, type)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, 'deduct')
+         ON CONFLICT ("orderItemId", type) DO NOTHING`,
+        [orderId, item2.id, item2.productId, sizeId, item2.qty]
+      );
+      deductedCount++;
+    }
+  });
+  return deductedCount;
+};
+var restoreStock = async (orderId, orderItems) => {
+  let restoredCount = 0;
+  await withTransaction(async (tx) => {
+    for (const item2 of orderItems) {
+      const existing = await tx.query(
+        `SELECT id FROM stock_deductions WHERE "orderItemId" = $1::uuid AND type = 'restore'`,
+        [item2.id]
+      );
+      if (existing.rows.length > 0) continue;
+      const deduction = await tx.query(
+        `SELECT quantity FROM stock_deductions WHERE "orderItemId" = $1::uuid AND type = 'deduct'`,
+        [item2.id]
+      );
+      if (deduction.rows.length === 0) continue;
+      let sizeId = null;
+      if (item2.sizeName) {
+        const sizeRow = await tx.query(
+          `SELECT id FROM product_sizes WHERE "productId" = $1::uuid AND name = $2 LIMIT 1`,
+          [item2.productId, item2.sizeName]
+        );
+        sizeId = sizeRow.rows[0]?.id ?? null;
+      }
+      const restoreQty = deduction.rows[0].quantity;
+      if (sizeId) {
+        await tx.query(
+          `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
+          [restoreQty, sizeId]
+        );
+      } else {
+        await tx.query(
+          `UPDATE products SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
+          [restoreQty, item2.productId]
+        );
+      }
+      await tx.query(
+        `INSERT INTO stock_deductions ("orderId", "orderItemId", "productId", "sizeId", quantity, type)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, 'restore')
+         ON CONFLICT ("orderItemId", type) DO NOTHING`,
+        [orderId, item2.id, item2.productId, sizeId, restoreQty]
+      );
+      restoredCount++;
+    }
+  });
+  return restoredCount;
+};
+var getStockForDeduction = async (tx, productId, sizeId) => {
+  if (sizeId) {
+    const result2 = await tx.query(
+      `SELECT ps."stockQuantity", p."trackInventory"
+       FROM product_sizes ps
+       JOIN products p ON p.id = ps."productId"
+       WHERE ps.id = $1::uuid`,
+      [sizeId]
+    );
+    const row2 = result2.rows[0];
+    return row2 ?? null;
+  }
+  const result = await tx.query(
+    `SELECT "stockQuantity", "trackInventory" FROM products WHERE id = $1::uuid`,
+    [productId]
+  );
+  const row = result.rows[0];
+  return row ?? null;
+};
+var getInventoryStats = async () => {
+  const productStats = await query(
+    `SELECT
+       count(*)::int AS "total",
+       count(*) FILTER (WHERE "trackInventory" = true)::int AS "trackable",
+       COALESCE(sum("stockQuantity") FILTER (WHERE "trackInventory" = true), 0)::int AS "totalStock"
+     FROM products`
+  );
+  const sizeStats = await query(
+    `SELECT COALESCE(sum(ps."stockQuantity"), 0)::int AS "totalStock"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     WHERE p."trackInventory" = true`
+  );
+  const lowStockProducts = await query(
+    `SELECT p.id::text AS "_id", p.name, p."nameEn", p."stockQuantity",
+            p."lowStockThreshold",
+            COALESCE(c.name, '') AS "category"
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."trackInventory" = true
+       AND p."stockQuantity" > 0
+       AND p."stockQuantity" <= p."lowStockThreshold"`
+  );
+  const outOfStockProducts = await query(
+    `SELECT p.id::text AS "_id", p.name, p."nameEn", p."stockQuantity",
+            COALESCE(c.name, '') AS "category"
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."trackInventory" = true AND p."stockQuantity" = 0`
+  );
+  const lowStockSizes = await query(
+    `SELECT ps."productId", ps.name, ps."nameEn", ps."stockQuantity", ps."lowStockThreshold",
+            p.name AS "productName", p."nameEn" AS "productNameEn",
+            COALESCE(c.name, '') AS "category"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."trackInventory" = true
+       AND ps."stockQuantity" > 0
+       AND ps."stockQuantity" <= ps."lowStockThreshold"`
+  );
+  const outOfStockSizes = await query(
+    `SELECT ps."productId", ps.name, ps."nameEn", ps."stockQuantity",
+            p.name AS "productName", p."nameEn" AS "productNameEn",
+            COALESCE(c.name, '') AS "category"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."trackInventory" = true AND ps."stockQuantity" = 0`
+  );
+  const totalStock = (productStats[0]?.totalStock ?? 0) + (sizeStats[0]?.totalStock ?? 0);
+  const lowStockMap = /* @__PURE__ */ new Map();
+  for (const row of lowStockProducts) {
+    lowStockMap.set(row._id, {
+      _id: row._id,
+      name: row.name,
+      nameEn: row.nameEn,
+      stockQuantity: row.stockQuantity,
+      lowStockThreshold: row.lowStockThreshold,
+      category: row.category,
+      sizes: []
+    });
+  }
+  for (const row of lowStockSizes) {
+    const existing = lowStockMap.get(row.productId);
+    if (existing) {
+      existing.sizes.push({ name: row.name, nameEn: row.nameEn, stockQuantity: row.stockQuantity });
+    } else {
+      lowStockMap.set(row.productId, {
+        _id: row.productId,
+        name: row.productName,
+        nameEn: row.productNameEn,
+        stockQuantity: 0,
+        lowStockThreshold: row.lowStockThreshold,
+        category: row.category,
+        sizes: [{ name: row.name, nameEn: row.nameEn, stockQuantity: row.stockQuantity }]
+      });
+    }
+  }
+  const outOfStockMap = /* @__PURE__ */ new Map();
+  for (const row of outOfStockProducts) {
+    outOfStockMap.set(row._id, {
+      _id: row._id,
+      name: row.name,
+      nameEn: row.nameEn,
+      stockQuantity: 0,
+      category: row.category,
+      sizes: []
+    });
+  }
+  for (const row of outOfStockSizes) {
+    const existing = outOfStockMap.get(row.productId);
+    if (existing) {
+      existing.sizes.push({ name: row.name, nameEn: row.nameEn, stockQuantity: 0 });
+    } else {
+      outOfStockMap.set(row.productId, {
+        _id: row.productId,
+        name: row.productName,
+        nameEn: row.productNameEn,
+        stockQuantity: 0,
+        category: row.category,
+        sizes: [{ name: row.name, nameEn: row.nameEn, stockQuantity: 0 }]
+      });
+    }
+  }
+  return {
+    totalProducts: productStats[0]?.total ?? 0,
+    trackableProducts: productStats[0]?.trackable ?? 0,
+    totalStockQuantity: totalStock,
+    lowStockCount: lowStockMap.size,
+    outOfStockCount: outOfStockMap.size,
+    lowStockProducts: Array.from(lowStockMap.values()),
+    outOfStockProducts: Array.from(outOfStockMap.values())
+  };
+};
+var getSalesStats = async (startDate, endDate) => {
+  const conds = [
+    `o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')`
+  ];
+  const values = [];
+  const nxt = () => values.length;
+  if (startDate) {
+    values.push(startDate);
+    conds.push(`o."createdAt" >= $${nxt()}::timestamptz`);
+  }
+  if (endDate) {
+    values.push(endDate);
+    conds.push(`o."createdAt" <= $${nxt()}::timestamptz`);
+  }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const rows = await query(
+    `SELECT
+       COALESCE(SUM(oi."lineTotal"), 0)::float8 AS "salesValue",
+       COALESCE(SUM(oi.qty), 0)::int AS "salesQuantity",
+       (SELECT count(DISTINCT o.id)::int FROM orders o ${where}) AS "orderCount"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     ${where}`,
+    values
+  );
+  const byProduct = await query(
+    `SELECT oi."productId"::text AS "productId",
+            oi.name AS "productName",
+            oi.size AS "productSize",
+            SUM(oi.qty)::int AS "totalQuantity",
+            SUM(oi."lineTotal")::float8 AS "totalRevenue"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     ${where}
+     GROUP BY oi."productId", oi.name, oi.size
+     ORDER BY "totalRevenue" DESC`,
+    values
+  );
+  return {
+    ...rows[0] ?? { salesValue: 0, salesQuantity: 0, orderCount: 0 },
+    byProduct
+  };
+};
+var getDailyProductMovement = async (startDate, endDate) => {
+  const salesRows = await query(
+    `SELECT o."createdAt"::date::text AS "date",
+            oi."productId"::text AS "productId",
+            oi.name AS "productName",
+            oi.size AS "productSize",
+            SUM(oi.qty)::int AS "soldQty",
+            SUM(oi."lineTotal")::float8 AS "salesRevenue"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     WHERE o."createdAt" >= $1::timestamptz AND o."createdAt" <= $2::timestamptz
+       AND o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')
+     GROUP BY o."createdAt"::date, oi."productId", oi.name, oi.size
+     ORDER BY o."createdAt"::date, oi.name`,
+    [startDate, endDate]
+  );
+  let purchaseRows = [];
+  try {
+    purchaseRows = await query(
+      `SELECT "purchaseDate"::date::text AS "date",
+              "productId"::text AS "productId",
+              "productName",
+              "productSize",
+              SUM(quantity)::int AS "purchasedQty",
+              SUM("totalCost")::float8 AS "purchaseCost"
+       FROM purchases
+       WHERE "purchaseDate" >= $1::timestamptz AND "purchaseDate" <= $2::timestamptz
+       GROUP BY "purchaseDate"::date, "productId", "productName", "productSize"
+       ORDER BY "purchaseDate"::date, "productName"`,
+      [startDate, endDate]
+    );
+  } catch {
+    purchaseRows = [];
+  }
+  const merged = /* @__PURE__ */ new Map();
+  for (const s of salesRows) {
+    const key = `${s.date}:${s.productId}:${s.productSize}`;
+    merged.set(key, {
+      date: s.date,
+      productId: s.productId,
+      productName: s.productName,
+      productSize: s.productSize,
+      soldQty: s.soldQty,
+      salesRevenue: s.salesRevenue,
+      purchasedQty: 0,
+      purchaseCost: 0
+    });
+  }
+  for (const p of purchaseRows) {
+    const key = `${p.date}:${p.productId}:${p.productSize}`;
+    const existing = merged.get(key);
+    if (existing) {
+      existing.purchasedQty = p.purchasedQty;
+      existing.purchaseCost = p.purchaseCost;
+    } else {
+      merged.set(key, {
+        date: p.date,
+        productId: p.productId,
+        productName: p.productName,
+        productSize: p.productSize,
+        soldQty: 0,
+        salesRevenue: 0,
+        purchasedQty: p.purchasedQty,
+        purchaseCost: p.purchaseCost
+      });
+    }
+  }
+  return Array.from(merged.values()).sort((a, b) => a.date.localeCompare(b.date) || a.productName.localeCompare(b.productName));
+};
+var getAllProductsWithStock = async () => {
+  const productRows = await query(
+    `SELECT p.id::text AS "productId", p.name AS "productName", '' AS "productSize", p."stockQuantity"
+     FROM products p
+     WHERE p."trackInventory" = true
+       AND NOT EXISTS (SELECT 1 FROM product_sizes ps WHERE ps."productId" = p.id)`
+  );
+  const sizeRows = await query(
+    `SELECT p.id::text AS "productId", p.name AS "productName",
+            ps.name AS "productSize", ps."stockQuantity"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     WHERE p."trackInventory" = true`
+  );
+  return [...productRows, ...sizeRows];
 };
 
 // server/src/db/notifications.ts
@@ -4249,7 +4737,7 @@ var createOrder = asyncHandler(async (req, res) => {
     if (!product) throw new ApiError(404, "Product not found in order");
     const sizes = product.sizes ?? [];
     const size2 = sizes.find((s) => String(s._id) === String(item2.size));
-    const unitPrice = size2?.price ?? product.basePrice ?? 0;
+    const normalUnitPrice = size2?.price ?? product.basePrice ?? 0;
     const extras = (item2.extras ?? []).map((e) => {
       const dbExtra = (product.extras ?? []).find(
         (p) => p.name === e.name || p.nameEn === e.name
@@ -4260,7 +4748,17 @@ var createOrder = asyncHandler(async (req, res) => {
       return { name: dbExtra.name, price: dbExtra.price };
     });
     const extrasTotal = extras.reduce((acc, e) => acc + (Number(e.price) || 0), 0);
-    const lineTotal = (unitPrice + extrasTotal) * Math.max(1, item2.qty);
+    let isCustomPrice = false;
+    let unitPrice;
+    if (isAdmin && typeof item2.customPrice === "number" && Number.isFinite(item2.customPrice) && item2.customPrice >= 0) {
+      unitPrice = item2.customPrice;
+      isCustomPrice = true;
+    } else if (isAdmin && item2.customPrice !== void 0) {
+      throw new ApiError(400, "Invalid custom price value");
+    } else {
+      unitPrice = normalUnitPrice + extrasTotal;
+    }
+    const lineTotal = unitPrice * Math.max(1, item2.qty);
     subtotal += lineTotal;
     return {
       productId: product._id,
@@ -4268,8 +4766,9 @@ var createOrder = asyncHandler(async (req, res) => {
       size: size2?.name ?? "",
       extras,
       qty: Math.max(1, item2.qty),
-      unitPrice: unitPrice + extrasTotal,
-      lineTotal
+      unitPrice,
+      lineTotal,
+      isCustomPrice
     };
   });
   const settings = await getSettingsMap();
@@ -4290,6 +4789,10 @@ var createOrder = asyncHandler(async (req, res) => {
   }
   const total = Math.max(0, subtotal + deliveryFee - discount);
   const method = Object.values(PAYMENT_METHODS).includes(paymentMethod) ? paymentMethod : PAYMENT_METHODS.CASH;
+  let initialPaymentStatus = "pending";
+  if (method === "vodafone_cash" || method === "bank_transfer" || method === "instapay") {
+    initialPaymentStatus = "pending_verification";
+  }
   const initialStatus = isAdmin ? ORDER_STATUS.CONFIRMED : ORDER_STATUS.PENDING;
   let order = null;
   const statusHistory = [{ status: initialStatus, changedBy: userId, at: /* @__PURE__ */ new Date() }];
@@ -4313,7 +4816,8 @@ var createOrder = asyncHandler(async (req, res) => {
         customerName: req.body.customerName || "\u0639\u0645\u064A\u0644",
         notes: notes ?? "",
         statusHistory,
-        initialStatus
+        initialStatus,
+        initialPaymentStatus
       });
       break;
     } catch (err) {
@@ -4324,6 +4828,19 @@ var createOrder = asyncHandler(async (req, res) => {
     }
   }
   if (!order) throw new ApiError(500, "Could not create order");
+  if (isAdmin) {
+    const orderItemsForStock = orderItems.map((item2, i) => ({
+      id: order.items[i]?._id ?? "",
+      productId: item2.productId,
+      sizeName: item2.size,
+      qty: item2.qty
+    }));
+    try {
+      await deductStock(order._id, orderItemsForStock);
+    } catch (stockErr) {
+      console.error("[inventory] stock deduction failed for order", order.orderNo, stockErr);
+    }
+  }
   const senderEmail = (await getById(userId))?.email ?? "";
   void enqueueOrderConfirmation(senderEmail, order.orderNo ?? "", order.total ?? total).catch(() => void 0);
   await bumpDailyStats((/* @__PURE__ */ new Date()).toISOString().slice(0, 10), order.total ?? total);
@@ -4355,6 +4872,27 @@ var updateStatus2 = asyncHandler(async (req, res) => {
     [{ status, changedBy: req.user.id, at: /* @__PURE__ */ new Date() }]
   );
   if (!order) throw new ApiError(404, "Order not found");
+  const items = order.items ?? [];
+  const stockItems = items.map((item2) => ({
+    id: item2._id,
+    productId: item2.product,
+    sizeName: item2.size ?? "",
+    qty: item2.qty
+  }));
+  if (status === ORDER_STATUS.CONFIRMED && current.status !== ORDER_STATUS.CONFIRMED) {
+    try {
+      await deductStock(req.params.id, stockItems);
+    } catch (err) {
+      console.error("[inventory] stock deduction failed for order", order.orderNo, err);
+    }
+  }
+  if ([ORDER_STATUS.CANCELLED, ORDER_STATUS.REFUNDED, ORDER_STATUS.DELIVERY_FAILED].includes(status)) {
+    try {
+      await restoreStock(req.params.id, stockItems);
+    } catch (err) {
+      console.error("[inventory] stock restoration failed for order", order.orderNo, err);
+    }
+  }
   const [labelAr, labelEn] = ORDER_STATUS_LABELS[status] ?? [status, status];
   await sendToUsers({
     userIds: [order.user],
@@ -5281,6 +5819,326 @@ var notification_routes_default = router17;
 // server/src/routes/analytics.routes.ts
 import { Router as Router18 } from "express";
 
+// server/src/db/purchases.ts
+var toPage7 = (rows, limit) => {
+  const total = rows[0] ? rows[0].__total : 0;
+  const items = rows.map(({ __total, ...rest }) => rest);
+  return { items, total, pages: Math.max(1, Math.ceil(total / limit)) };
+};
+var PURCHASE_COLS = `
+  pu.id::text AS "_id",
+  pu."productId"::text AS "productId",
+  pu."productName",
+  pu."productSize",
+  pu.quantity,
+  pu."unitCost"::float8 AS "unitCost",
+  pu."totalCost"::float8 AS "totalCost",
+  pu.supplier,
+  pu.notes,
+  pu."purchaseDate",
+  pu."createdAt",
+  jsonb_build_object('_id', u.id::text, 'fullName', u."fullName") AS "createdBy"
+`;
+async function queryPurchases(selectCols, whereClause, whereParams, limit, offset) {
+  const allParams = [...whereParams, limit, offset];
+  const limitIdx = whereParams.length + 1;
+  const offsetIdx = whereParams.length + 2;
+  try {
+    const rows = await query(
+      `SELECT count(*) OVER()::int AS __total, ${selectCols}
+       FROM purchases pu
+       LEFT JOIN users u ON u.id = pu."createdBy"
+       ${whereClause}
+       ORDER BY pu."purchaseDate" DESC, pu.id
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      allParams
+    );
+    return { rows, usedExtended: true };
+  } catch (err) {
+    try {
+      const rows = await query(
+        `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
+         FROM purchases pu
+         LEFT JOIN users u ON u.id = pu."createdBy"
+         ${whereClause}
+         ORDER BY pu."purchaseDate" DESC, pu.id
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        allParams
+      );
+      return { rows, usedExtended: false };
+    } catch (innerErr) {
+      console.error("[purchases] queryPurchases fallback also failed:", innerErr);
+      throw innerErr;
+    }
+  }
+}
+var createPurchase = async (data) => {
+  let purchaseId = "";
+  try {
+    try {
+      const inserted = await query(
+        `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
+           "weightGrams", "weightMode", "weightDisplay", "categoryId",
+           quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
+         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::uuid)
+         RETURNING id`,
+        [
+          data.productId,
+          data.sizeId || null,
+          data.productName,
+          data.productSize,
+          data.weightGrams ?? 0,
+          data.weightMode ?? "fixed",
+          data.weightDisplay ?? "",
+          data.categoryId || null,
+          data.quantity,
+          data.unitCost,
+          data.totalCost,
+          data.supplier,
+          data.notes,
+          data.purchaseDate,
+          data.createdBy
+        ]
+      );
+      purchaseId = inserted[0].id;
+    } catch {
+      const inserted = await query(
+        `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
+           quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
+         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
+         RETURNING id`,
+        [
+          data.productId,
+          data.sizeId || null,
+          data.productName,
+          data.productSize,
+          data.quantity,
+          data.unitCost,
+          data.totalCost,
+          data.supplier,
+          data.notes,
+          data.purchaseDate,
+          data.createdBy
+        ]
+      );
+      purchaseId = inserted[0].id;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[purchases] Phase 1 INSERT failed:", message);
+    if (message.includes('relation "purchases" does not exist')) {
+      throw new ApiError(500, "Purchases table does not exist. Please run migration 004.");
+    }
+    if (message.includes("foreign key constraint")) {
+      throw new ApiError(400, "Invalid product or size ID. Please select a valid product.");
+    }
+    if (message.includes("duplicate key")) {
+      throw new ApiError(409, "This purchase already exists.");
+    }
+    throw new ApiError(500, `Failed to create purchase: ${message}`);
+  }
+  try {
+    if (data.sizeId) {
+      await query(
+        `UPDATE product_sizes SET "stockQuantity" = COALESCE("stockQuantity", 0) + $1 WHERE id = $2::uuid`,
+        [data.quantity, data.sizeId]
+      );
+    } else {
+      await query(
+        `UPDATE products SET "stockQuantity" = COALESCE("stockQuantity", 0) + $1 WHERE id = $2::uuid`,
+        [data.quantity, data.productId]
+      );
+    }
+  } catch {
+    console.error("[purchases] inventory update failed (purchase was still saved), purchaseId:", purchaseId);
+  }
+  try {
+    const extendedRows = await query(
+      `SELECT ${PURCHASE_COLS},
+              COALESCE(pu."weightGrams", 0) AS "weightGrams",
+              COALESCE(pu."weightMode", 'fixed') AS "weightMode",
+              COALESCE(pu."weightDisplay", '') AS "weightDisplay"
+       FROM purchases pu
+       LEFT JOIN users u ON u.id = pu."createdBy"
+       WHERE pu.id = $1::uuid
+       LIMIT 1`,
+      [purchaseId]
+    );
+    if (extendedRows.length > 0) return extendedRows[0];
+  } catch {
+  }
+  try {
+    const baseRows = await query(
+      `SELECT ${PURCHASE_COLS}
+       FROM purchases pu
+       LEFT JOIN users u ON u.id = pu."createdBy"
+       WHERE pu.id = $1::uuid
+       LIMIT 1`,
+      [purchaseId]
+    );
+    if (baseRows.length > 0) return baseRows[0];
+  } catch {
+  }
+  return {
+    _id: purchaseId,
+    productId: data.productId,
+    productName: data.productName,
+    productSize: data.productSize,
+    quantity: data.quantity,
+    unitCost: data.unitCost,
+    totalCost: data.totalCost,
+    supplier: data.supplier,
+    notes: data.notes,
+    purchaseDate: data.purchaseDate
+  };
+};
+var listPurchases = async (page, limit, startDate, endDate, productId) => {
+  const conds = [];
+  const values = [];
+  const nxt = () => values.length;
+  if (startDate) {
+    values.push(startDate);
+    conds.push(`pu."purchaseDate" >= $${nxt()}::timestamptz`);
+  }
+  if (endDate) {
+    values.push(endDate);
+    conds.push(`pu."purchaseDate" <= $${nxt()}::timestamptz`);
+  }
+  if (productId) {
+    values.push(productId);
+    conds.push(`pu."productId" = $${nxt()}::uuid`);
+  }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const offset = (page - 1) * limit;
+  const extendedCols = PURCHASE_COLS + `, COALESCE(pu."weightGrams", 0) AS "weightGrams",
+    COALESCE(pu."weightMode", 'fixed') AS "weightMode",
+    COALESCE(pu."weightDisplay", '') AS "weightDisplay"`;
+  try {
+    const result = await queryPurchases(extendedCols, where, values, limit, offset);
+    return toPage7(result.rows, limit);
+  } catch {
+    console.error("[purchases] listPurchases failed \u2014 purchases table may not exist");
+    return { items: [], total: 0, pages: 1 };
+  }
+};
+var deletePurchase = async (id) => {
+  let deleted = false;
+  try {
+    await withTransaction(async (tx) => {
+      const result = await tx.query(
+        `SELECT "productId", "sizeId", quantity FROM purchases WHERE id = $1::uuid`,
+        [id]
+      );
+      const rows = result.rows;
+      if (rows.length === 0) throw new ApiError(404, "Purchase not found");
+      const purchase = rows[0];
+      try {
+        if (purchase.sizeId) {
+          await tx.query(
+            `UPDATE product_sizes SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+            [purchase.quantity, purchase.sizeId]
+          );
+        } else {
+          await tx.query(
+            `UPDATE products SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+            [purchase.quantity, purchase.productId]
+          );
+        }
+      } catch {
+        console.error("[purchases] inventory decrease failed during delete (purchase still deleted)");
+      }
+      const deleteResult = await tx.query(`DELETE FROM purchases WHERE id = $1::uuid`, [id]);
+      deleted = (deleteResult.rowCount ?? 0) > 0;
+    });
+    return deleted;
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    console.error("[purchases] deletePurchase failed:", err);
+    throw new ApiError(500, "Failed to delete purchase");
+  }
+};
+var getPurchaseStats = async (startDate, endDate) => {
+  const conds = [];
+  const values = [];
+  const nxt = () => values.length;
+  if (startDate) {
+    values.push(startDate);
+    conds.push(`"purchaseDate" >= $${nxt()}::timestamptz`);
+  }
+  if (endDate) {
+    values.push(endDate);
+    conds.push(`"purchaseDate" <= $${nxt()}::timestamptz`);
+  }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  let rows = [];
+  try {
+    rows = await query(
+      `SELECT
+         COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
+         COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
+         count(*)::int AS "purchaseCount"
+       FROM purchases ${where}`,
+      values
+    );
+  } catch {
+    console.error("[purchases] getPurchaseStats main query failed");
+    return { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] };
+  }
+  let byProduct = [];
+  try {
+    byProduct = await query(
+      `SELECT "productId"::text AS "productId", "productName", "productSize",
+              SUM(quantity)::int AS "totalQuantity",
+              SUM("totalCost")::float8 AS "totalCost"
+       FROM purchases ${where}
+       GROUP BY "productId", "productName", "productSize"
+       ORDER BY "totalCost" DESC`,
+      values
+    );
+  } catch {
+    byProduct = [];
+  }
+  return {
+    totalCost: rows[0]?.totalCost ?? 0,
+    totalQuantity: rows[0]?.totalQuantity ?? 0,
+    purchaseCount: rows[0]?.purchaseCount ?? 0,
+    byProduct
+  };
+};
+var getProductReport = async (productId) => {
+  const productRows = await query(
+    `SELECT id::text AS "_id", name, "nameEn", "basePrice"::float8 AS "basePrice", COALESCE("stockQuantity", 0) AS "stockQuantity"
+     FROM products WHERE id = $1::uuid`,
+    [productId]
+  );
+  if (productRows.length === 0) return null;
+  const product = productRows[0];
+  const salesRows = await query(
+    `SELECT COALESCE(SUM(oi.qty), 0)::int AS "quantity",
+            COALESCE(SUM(oi."lineTotal"), 0)::float8 AS "revenue"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     WHERE oi."productId" = $1::uuid
+       AND o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')`,
+    [productId]
+  );
+  let purchaseRows = [{ quantity: 0, cost: 0 }];
+  try {
+    purchaseRows = await query(
+      `SELECT COALESCE(SUM(quantity), 0)::int AS "quantity",
+              COALESCE(SUM("totalCost"), 0)::float8 AS "cost"
+       FROM purchases WHERE "productId" = $1::uuid`,
+      [productId]
+    );
+  } catch {
+  }
+  return {
+    product,
+    sales: salesRows[0] ?? { quantity: 0, revenue: 0 },
+    purchases: purchaseRows[0] ?? { quantity: 0, cost: 0 }
+  };
+};
+
 // server/src/controllers/analytics.controller.ts
 import * as XLSX from "xlsx";
 var periodWindows = (now = /* @__PURE__ */ new Date()) => {
@@ -5291,7 +6149,11 @@ var periodWindows = (now = /* @__PURE__ */ new Date()) => {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   return { todayStart, weekStart, monthStart };
 };
-var daysAgo = (days) => new Date(Date.now() - days * 864e5);
+var daysAgo = (days) => {
+  const d = /* @__PURE__ */ new Date();
+  d.setDate(d.getDate() - days);
+  return d;
+};
 var iso = (d) => d.toISOString().slice(0, 10);
 var dashboard = asyncHandler(async (_req, res) => {
   const { todayStart, weekStart, monthStart } = periodWindows();
@@ -5383,12 +6245,36 @@ var REVIEW_STATUS_AR = {
 var exportStats = asyncHandler(async (req, res) => {
   const date = String(req.query.date ?? "");
   const period = String(req.query.period ?? "today");
+  const startDate = String(req.query.startDate ?? "");
+  const endDate = String(req.query.endDate ?? "");
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new ApiError(400, "A valid date (YYYY-MM-DD) is required");
-  if (!["today", "week", "month"].includes(period)) throw new ApiError(400, "Invalid period");
+  if (!["today", "week", "month", "custom"].includes(period)) throw new ApiError(400, "Invalid period");
   const today = /* @__PURE__ */ new Date();
   const todayIso = iso(today);
   const selectedDate = date && date <= todayIso ? date : todayIso;
   const { todayStart, weekStart, monthStart } = periodWindows();
+  let periodStart;
+  let periodEnd;
+  if (period === "today") {
+    periodStart = todayStart;
+    periodEnd = today;
+  } else if (period === "week") {
+    periodStart = weekStart;
+    periodEnd = today;
+  } else if (period === "month") {
+    periodStart = monthStart;
+    periodEnd = today;
+  } else if (period === "custom" && startDate && endDate) {
+    periodStart = new Date(startDate);
+    periodEnd = /* @__PURE__ */ new Date(endDate + "T23:59:59");
+  } else {
+    periodStart = todayStart;
+    periodEnd = today;
+  }
+  const safe = (p, fallback) => p.catch((err) => {
+    console.error("[export] query failed:", err?.message ?? err);
+    return fallback;
+  });
   const [
     totals2,
     recent2,
@@ -5404,23 +6290,35 @@ var exportStats = asyncHandler(async (req, res) => {
     ordersPage,
     productsPage,
     customers,
-    reviewsPage
+    reviewsPage,
+    purchasesPage,
+    purchaseStats,
+    inventoryStats,
+    salesStats,
+    dailyMovement,
+    allProductsWithStock
   ] = await Promise.all([
-    totals(),
-    recent(daysAgo(30)),
-    statusBreakdown(),
-    topProducts(),
-    periodStats(todayStart),
-    periodStats(weekStart),
-    periodStats(monthStart),
-    trend(daysAgo(30)),
-    dayStats(selectedDate),
-    categorySales(),
-    adminStats(),
-    adminList5(1, 500, "", ""),
-    adminList(1, 1e3, "", "", ""),
-    customersBreakdown(),
-    adminList3(1, 500, "", "", "", "", "", "newest", "")
+    safe(totals(), { revenue: 0, netRevenue: 0, grossRevenue: 0, discounts: 0, deliveryFees: 0, orders: 0, customers: 0, products: 0, completedOrders: 0, cancelledOrders: 0, refundedOrders: 0, complimentaryOrders: 0 }),
+    safe(recent(daysAgo(30)), { revenue: 0, orders: 0, customers: 0 }),
+    safe(statusBreakdown(), []),
+    safe(topProducts(), []),
+    safe(periodStats(todayStart), { revenue: 0, orders: 0, unitsSold: 0, customers: 0, topProducts: [] }),
+    safe(periodStats(weekStart), { revenue: 0, orders: 0, unitsSold: 0, customers: 0, topProducts: [] }),
+    safe(periodStats(monthStart), { revenue: 0, orders: 0, unitsSold: 0, customers: 0, topProducts: [] }),
+    safe(trend(daysAgo(30)), []),
+    safe(dayStats(selectedDate), { revenue: 0, orders: 0, completed: 0, cancelled: 0, refunded: 0, complimentary: 0, grossRevenue: 0, discounts: 0, deliveryFees: 0 }),
+    safe(categorySales(), []),
+    safe(adminStats(), { total: 0, average: 0, today: 0, pending: 0, fiveStar: 0, oneStar: 0, restaurantAverage: 0, restaurantTotal: 0 }),
+    safe(adminList5(1, 500, "", ""), { items: [], total: 0, pages: 1 }),
+    safe(adminList(1, 1e3, "", "", ""), { items: [], total: 0, pages: 1 }),
+    safe(customersBreakdown(), []),
+    safe(adminList3(1, 500, "", "", "", "", "", "newest", ""), { items: [], total: 0, pages: 1 }),
+    safe(listPurchases(1, 1e3, periodStart.toISOString(), periodEnd.toISOString()), { items: [], total: 0, pages: 1 }),
+    safe(getPurchaseStats(periodStart.toISOString(), periodEnd.toISOString()), { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] }),
+    safe(getInventoryStats(), { totalProducts: 0, trackableProducts: 0, totalStockQuantity: 0, lowStockCount: 0, outOfStockCount: 0, lowStockProducts: [], outOfStockProducts: [] }),
+    safe(getSalesStats(periodStart.toISOString(), periodEnd.toISOString()), { salesValue: 0, salesQuantity: 0, orderCount: 0, byProduct: [] }),
+    safe(getDailyProductMovement(periodStart.toISOString(), periodEnd.toISOString()), []),
+    safe(getAllProductsWithStock(), [])
   ]);
   const reviewStats = reviewData;
   const periodMap = [
@@ -5456,12 +6354,22 @@ var exportStats = asyncHandler(async (req, res) => {
     [`\u0625\u064A\u0631\u0627\u062F\u0627\u062A ${periodMap.find((p) => p.key === period)?.label ?? "\u0627\u0644\u064A\u0648\u0645"}`, periodMap.find((p) => p.key === period)?.stats.revenue ?? todayStats.revenue],
     [`\u0637\u0644\u0628\u0627\u062A ${periodMap.find((p) => p.key === period)?.label ?? "\u0627\u0644\u064A\u0648\u0645"}`, periodMap.find((p) => p.key === period)?.stats.orders ?? todayStats.orders],
     ["\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u064A\u0648\u0645 \u0627\u0644\u0645\u062D\u062F\u062F", dayStatsData.revenue],
-    ["\u0637\u0644\u0628\u0627\u062A \u0627\u0644\u064A\u0648\u0645 \u0627\u0644\u0645\u062D\u062F\u062F", dayStatsData.orders]
+    ["\u0637\u0644\u0628\u0627\u062A \u0627\u0644\u064A\u0648\u0645 \u0627\u0644\u0645\u062D\u062F\u062F", dayStatsData.orders],
+    ["", ""],
+    ["\u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", ""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", purchaseStats.totalCost],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629", purchaseStats.totalQuantity],
+    ["\u0639\u062F\u062F \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", purchaseStats.purchaseCount],
+    ["", ""],
+    ["\u0627\u0644\u0645\u062E\u0632\u0648\u0646", ""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u062E\u0632\u0648\u0646", inventoryStats.totalStockQuantity],
+    ["\u0645\u0646\u062A\u062C\u0627\u062A \u0645\u062E\u0632\u0648\u0646 \u0645\u0646\u062E\u0641\u0636", inventoryStats.lowStockCount],
+    ["\u0645\u0646\u062A\u062C\u0627\u062A \u063A\u064A\u0631 \u0645\u062A\u0648\u0641\u0631\u0629", inventoryStats.outOfStockCount]
   ];
   const summary = sheetOf(summaryRows);
-  const moneyRows = [1, 2, 3, 4, 5, 14, 22, 24];
+  const moneyRows = [1, 2, 3, 4, 5, 14, 22, 24, 28];
   for (let r = 1; r < summaryRows.length; r++) setFormat(summary, r, 1, moneyRows.includes(r) ? MONEY : RATING);
-  for (const r of [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 20, 21, 23, 25]) setFormat(summary, r, 1, COUNT);
+  for (const r of [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 20, 21, 23, 25, 29, 30, 31, 33, 34, 35]) setFormat(summary, r, 1, COUNT);
   summary["!cols"] = [{ wch: 30 }, { wch: 20 }];
   XLSX.utils.book_append_sheet(wb, summary, "\u0645\u0644\u062E\u0635 \u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645");
   const orderRows = [
@@ -5615,7 +6523,142 @@ var exportStats = asyncHandler(async (req, res) => {
   }
   analyticsWs["!cols"] = [{ wch: 24 }, { wch: 14 }, { wch: 18 }];
   XLSX.utils.book_append_sheet(wb, analyticsWs, "\u0627\u0644\u062A\u062D\u0644\u064A\u0644\u0627\u062A");
-  const filename = period === "today" ? `dashboard-report-${selectedDate}.xlsx` : `dashboard-report-${iso(period === "week" ? weekStart : monthStart)}-to-${selectedDate}.xlsx`;
+  const purchaseRows = [
+    ["\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", "\u0627\u0644\u062A\u0627\u0631\u064A\u062E", "\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0646\u0648\u0639/\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0643\u0645\u064A\u0629", "\u0633\u0639\u0631 \u0627\u0644\u0648\u062D\u062F\u0629", "\u0627\u0644\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A\u0629", "\u0627\u0644\u0645\u0648\u0631\u062F", "\u0645\u0644\u0627\u062D\u0638\u0627\u062A"]
+  ];
+  for (const p of purchasesPage.items) {
+    purchaseRows.push([
+      String(p._id ?? ""),
+      p.purchaseDate ? fmtDate(new Date(String(p.purchaseDate))) : "",
+      String(p.productName ?? ""),
+      String(p.productSize ?? ""),
+      Number(p.quantity) || 0,
+      Number(p.unitCost) || 0,
+      Number(p.totalCost) || 0,
+      String(p.supplier ?? ""),
+      String(p.notes ?? "")
+    ]);
+  }
+  const purchaseWs = sheetOf(purchaseRows);
+  for (let r = 1; r < purchaseRows.length; r++) {
+    setFormat(purchaseWs, r, 5, MONEY);
+    setFormat(purchaseWs, r, 6, MONEY);
+    setFormat(purchaseWs, r, 4, COUNT);
+  }
+  purchaseWs["!cols"] = [{ wch: 40 }, { wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 24 }];
+  XLSX.utils.book_append_sheet(wb, purchaseWs, "\u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A");
+  const productSummaryRows = [
+    ["\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0646\u0648\u0639/\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0628\u0627\u0639\u0629", "\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A", "\u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629", "\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", "\u0627\u0644\u0645\u062E\u0632\u0648\u0646 \u0627\u0644\u062D\u0627\u0644\u064A"]
+  ];
+  const salesByProduct = /* @__PURE__ */ new Map();
+  for (const s of salesStats.byProduct) {
+    const key = `${s.productId}:${s.productSize}`;
+    salesByProduct.set(key, {
+      name: s.productName,
+      size: s.productSize,
+      qty: s.totalQuantity,
+      revenue: s.totalRevenue
+    });
+  }
+  const purchasesByProduct = /* @__PURE__ */ new Map();
+  for (const p of purchaseStats.byProduct) {
+    const key = `${p.productId}:${p.productSize}`;
+    const existing = purchasesByProduct.get(key);
+    if (existing) {
+      existing.qty += p.totalQuantity;
+      existing.cost += p.totalCost;
+    } else {
+      purchasesByProduct.set(key, { name: p.productName, size: p.productSize, qty: p.totalQuantity, cost: p.totalCost });
+    }
+  }
+  const stockMap = /* @__PURE__ */ new Map();
+  for (const ps of allProductsWithStock) {
+    const key = `${ps.productId}:${ps.productSize}`;
+    stockMap.set(key, ps.stockQuantity);
+  }
+  const allProductKeys = /* @__PURE__ */ new Set([...allProductsWithStock.map((p) => `${p.productId}:${p.productSize}`), ...salesByProduct.keys(), ...purchasesByProduct.keys()]);
+  for (const key of allProductKeys) {
+    const sales = salesByProduct.get(key);
+    const purchases = purchasesByProduct.get(key);
+    const stock = stockMap.get(key) ?? 0;
+    const productName = sales?.name ?? purchases?.name ?? allProductsWithStock.find((p) => `${p.productId}:${p.productSize}` === key)?.productName ?? "";
+    const productSize = sales?.size ?? purchases?.size ?? allProductsWithStock.find((p) => `${p.productId}:${p.productSize}` === key)?.productSize ?? "";
+    productSummaryRows.push([
+      productName,
+      productSize,
+      sales?.qty ?? 0,
+      sales?.revenue ?? 0,
+      purchases?.qty ?? 0,
+      purchases?.cost ?? 0,
+      stock
+    ]);
+  }
+  const productSummaryWs = sheetOf(productSummaryRows);
+  for (let r = 1; r < productSummaryRows.length; r++) {
+    setFormat(productSummaryWs, r, 2, COUNT);
+    setFormat(productSummaryWs, r, 3, MONEY);
+    setFormat(productSummaryWs, r, 4, COUNT);
+    setFormat(productSummaryWs, r, 5, MONEY);
+    setFormat(productSummaryWs, r, 6, COUNT);
+  }
+  productSummaryWs["!cols"] = [{ wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }];
+  XLSX.utils.book_append_sheet(wb, productSummaryWs, "\u0645\u0644\u062E\u0635 \u0627\u0644\u0645\u0646\u062A\u062C\u0627\u062A");
+  if (dailyMovement.length > 0) {
+    const dailyRows = [
+      ["\u0627\u0644\u062A\u0627\u0631\u064A\u062E", "\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0646\u0648\u0639/\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0628\u0627\u0639\u0629", "\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A", "\u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629", "\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A"]
+    ];
+    for (const d of dailyMovement) {
+      dailyRows.push([
+        d.date,
+        d.productName,
+        d.productSize,
+        d.soldQty,
+        d.salesRevenue,
+        d.purchasedQty,
+        d.purchaseCost
+      ]);
+    }
+    const dailyWs = sheetOf(dailyRows);
+    for (let r = 1; r < dailyRows.length; r++) {
+      setFormat(dailyWs, r, 3, COUNT);
+      setFormat(dailyWs, r, 4, MONEY);
+      setFormat(dailyWs, r, 5, COUNT);
+      setFormat(dailyWs, r, 6, MONEY);
+    }
+    dailyWs["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, dailyWs, "\u0627\u0644\u062D\u0631\u0643\u0629 \u0627\u0644\u064A\u0648\u0645\u064A\u0629");
+  }
+  const periodLabel = period === "today" ? "\u0627\u0644\u064A\u0648\u0645" : period === "week" ? "\u0647\u0630\u0627 \u0627\u0644\u0623\u0633\u0628\u0648\u0639" : period === "month" ? "\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631" : "\u0641\u062A\u0631\u0629 \u0645\u062E\u0635\u0635\u0629";
+  const periodDateRange = `${iso(periodStart)} \u2192 ${iso(periodEnd)}`;
+  const msPerDay = 864e5;
+  const calendarDays = Math.round((periodEnd.getTime() - periodStart.getTime()) / msPerDay) + 1;
+  const financialRows = [
+    ["\u0627\u0644\u0645\u0624\u0634\u0631", "\u0627\u0644\u0642\u064A\u0645\u0629"],
+    ["\u0641\u062A\u0631\u0629 \u0627\u0644\u062A\u0642\u0631\u064A\u0631", `${periodLabel} (${periodDateRange})`],
+    ["\u0639\u062F\u062F \u0623\u064A\u0627\u0645 \u0627\u0644\u062A\u0642\u0648\u064A\u0645", calendarDays],
+    ["", ""],
+    ["\u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A / \u0627\u0644\u0625\u064A\u0631\u0627\u062F\u0627\u062A", ""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0625\u064A\u0631\u0627\u062F\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", salesStats.salesValue],
+    ["\u0639\u062F\u062F \u0627\u0644\u0637\u0644\u0628\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", salesStats.orderCount],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0648\u062D\u062F\u0627\u062A \u0627\u0644\u0645\u0628\u0627\u0639\u0629 (\u0627\u0644\u0641\u062A\u0631\u0629)", salesStats.salesQuantity],
+    ["", ""],
+    ["\u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", ""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", purchaseStats.totalCost],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629 (\u0627\u0644\u0641\u062A\u0631\u0629)", purchaseStats.totalQuantity],
+    ["\u0639\u062F\u062F \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", purchaseStats.purchaseCount],
+    ["", ""],
+    ["\u0627\u0644\u0645\u062E\u0632\u0648\u0646", ""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u062E\u0632\u0648\u0646 \u0627\u0644\u062D\u0627\u0644\u064A", inventoryStats.totalStockQuantity],
+    ["\u0627\u0644\u0645\u0646\u062A\u062C\u0627\u062A \u0630\u0627\u062A \u0627\u0644\u0645\u062E\u0632\u0648\u0646 \u0627\u0644\u0645\u0646\u062E\u0641\u0636", inventoryStats.lowStockCount],
+    ["\u0627\u0644\u0645\u0646\u062A\u062C\u0627\u062A \u063A\u064A\u0631 \u0627\u0644\u0645\u062A\u0648\u0641\u0631\u0629", inventoryStats.outOfStockCount]
+  ];
+  const financialWs = sheetOf(financialRows);
+  for (let r = 4; r <= 7; r++) setFormat(financialWs, r, 1, MONEY);
+  for (let r = 9; r <= 11; r++) setFormat(financialWs, r, 1, MONEY);
+  for (let r = 13; r <= 15; r++) setFormat(financialWs, r, 1, COUNT);
+  financialWs["!cols"] = [{ wch: 36 }, { wch: 28 }];
+  XLSX.utils.book_append_sheet(wb, financialWs, "\u0645\u0644\u062E\u0635 \u0645\u0627\u0644\u064A");
+  const filename = period === "today" ? `freezer-elbalad-sales-purchases-${selectedDate}.xlsx` : period === "custom" && startDate && endDate ? `freezer-elbalad-sales-purchases-${startDate}-to-${endDate}.xlsx` : `freezer-elbalad-sales-purchases-${iso(period === "week" ? weekStart : monthStart)}-to-${selectedDate}.xlsx`;
   const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -5716,7 +6759,7 @@ var POST_COLS = `
   p.title, p."titleEn", p.slug, p.excerpt, p."excerptEn",
   p.content, p."contentEn", p.image, p.tags,
   p."publishedAt", p."isPublished", p."createdAt", p."updatedAt"`;
-var toPage7 = (rows, limit, maxPages) => {
+var toPage8 = (rows, limit, maxPages) => {
   const total = rows[0] ? rows[0].__total : 0;
   const items = rows.map(({ __total, ...rest }) => rest);
   return { items, total, pages: maxPages ? Math.max(1, Math.ceil(total / limit)) : Math.ceil(total / limit) };
@@ -5730,7 +6773,7 @@ var listPublished = async (page, limit) => {
      LIMIT $1 OFFSET $2`,
     [limit, (page - 1) * limit]
   );
-  return toPage7(rows, limit, false);
+  return toPage8(rows, limit, false);
 };
 var getBySlug2 = async (slug, publishedOnly = true) => {
   const rows = await query(
@@ -5757,7 +6800,7 @@ var listAll2 = async (q, page, limit) => {
      LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
     [...values, limit, (page - 1) * limit]
   );
-  return toPage7(rows, limit, true);
+  return toPage8(rows, limit, true);
 };
 var exists2 = async (slug, excludeId) => {
   const rows = await query(
@@ -6045,6 +7088,23 @@ var createTestPrintJob = async (receipt, printerId, printerName) => {
 };
 
 // server/src/controllers/print.controller.ts
+var PrintErrorCode = Object.freeze({
+  PRINT_AGENT_OFFLINE: "PRINT_AGENT_OFFLINE",
+  PRINTER_NOT_FOUND: "PRINTER_NOT_FOUND",
+  USB_DEVICE_NOT_FOUND: "USB_DEVICE_NOT_FOUND",
+  LAN_PRINTER_UNREACHABLE: "LAN_PRINTER_UNREACHABLE",
+  BLUETOOTH_UNAVAILABLE: "BLUETOOTH_UNAVAILABLE",
+  PRINTER_BUSY: "PRINTER_BUSY",
+  PRINT_TIMEOUT: "PRINT_TIMEOUT",
+  UNSUPPORTED_PRINTER: "UNSUPPORTED_PRINTER",
+  INVALID_PRINTER_CONFIGURATION: "INVALID_PRINTER_CONFIGURATION",
+  PRINT_PERMISSION_DENIED: "PRINT_PERMISSION_DENIED",
+  PRINT_JOB_FAILED: "PRINT_JOB_FAILED",
+  PRINTER_OFFLINE: "PRINTER_OFFLINE",
+  CONNECTION_REFUSED: "CONNECTION_REFUSED",
+  PAPER_OUT: "PAPER_OUT"
+});
+var agentStatus = /* @__PURE__ */ new Map();
 var createPrintJob2 = asyncHandler(async (req, res) => {
   const { orderId, receipt, printerId, printerName, format, paperWidth, language, copies } = req.body;
   if (!orderId || !receipt) {
@@ -6052,6 +7112,16 @@ var createPrintJob2 = asyncHandler(async (req, res) => {
   }
   const order = await getById6(orderId);
   if (!order) throw new ApiError(404, "Order not found");
+  if (printerId) {
+    const recentJobs = await listByOrder(orderId);
+    const recentDuplicate = recentJobs.find(
+      (j) => j.printerId === printerId && j.status === "printed" && Date.now() - new Date(j.createdAt).getTime() < 6e4
+      // Within last minute
+    );
+    if (recentDuplicate) {
+      throw new ApiError(409, "Duplicate print detected. Use reprint to print again.");
+    }
+  }
   const job = await createPrintJob({
     orderId,
     orderNo: order.orderNo,
@@ -6088,7 +7158,7 @@ var reportSuccess = asyncHandler(async (req, res) => {
 });
 var reportFailure = asyncHandler(async (req, res) => {
   const { jobId } = req.params;
-  const { error } = req.body;
+  const { error, errorCode: _errorCode } = req.body;
   if (!error) throw new ApiError(400, "Error message is required");
   await markFailed(jobId, String(error));
   res.json(new ApiResponse(200, null, "Failure recorded"));
@@ -6116,6 +7186,80 @@ var markOrderPrinted = asyncHandler(async (req, res) => {
   await markPrinted(job.id);
   res.json(new ApiResponse(200, { printedAt: (/* @__PURE__ */ new Date()).toISOString() }, "Order marked as printed"));
 });
+var updateAgentStatus = asyncHandler(async (req, res) => {
+  const { connectionType, connected, status: printerStatus, paperWidth, ip } = req.body;
+  const agentId = req.ip || "unknown";
+  agentStatus.set(agentId, {
+    connectionType: connectionType || "unknown",
+    connected: connected ?? false,
+    status: printerStatus || "unknown",
+    paperWidth: paperWidth || 80,
+    lastSeen: (/* @__PURE__ */ new Date()).toISOString(),
+    ip
+  });
+  res.json(new ApiResponse(200, null, "Agent status updated"));
+});
+var getAgentStatus = asyncHandler(async (req, res) => {
+  const statuses = Array.from(agentStatus.entries()).map(([id, s]) => ({
+    agentId: id,
+    ...s,
+    isRecent: Date.now() - new Date(s.lastSeen).getTime() < 3e4
+    // Within last 30s
+  }));
+  res.json(new ApiResponse(200, statuses));
+});
+var getErrorCodes = asyncHandler(async (_req, res) => {
+  res.json(new ApiResponse(200, PrintErrorCode));
+});
+var discoverPrinters = asyncHandler(async (req, res) => {
+  const agentUrl = req.query.agentUrl || "";
+  if (!agentUrl) {
+    throw new ApiError(400, "agentUrl query parameter is required (e.g. http://192.168.1.50:9200)");
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15e3);
+    const response = await fetch(`${agentUrl.replace(/\/+$/, "")}/discover`, {
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" }
+    });
+    clearTimeout(timeout);
+    if (!response.ok) {
+      throw new ApiError(502, `Local print agent returned ${response.status}`);
+    }
+    const data = await response.json();
+    res.json(new ApiResponse(200, data));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("abort") || message.includes("fetch")) {
+      throw new ApiError(502, "Local print agent is not reachable. Ensure it is running on the local network.");
+    }
+    throw err;
+  }
+});
+var testDiscoveredPrinter = asyncHandler(async (req, res) => {
+  const { agentUrl, printerName } = req.body;
+  if (!agentUrl || !printerName) {
+    throw new ApiError(400, "agentUrl and printerName are required");
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1e4);
+    const response = await fetch(
+      `${agentUrl.replace(/\/+$/, "")}/printers/${encodeURIComponent(printerName)}/test`,
+      { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" } }
+    );
+    clearTimeout(timeout);
+    const data = await response.json();
+    res.json(new ApiResponse(200, data));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("abort") || message.includes("fetch")) {
+      throw new ApiError(502, "Local print agent is not reachable");
+    }
+    throw err;
+  }
+});
 
 // server/src/routes/print.routes.ts
 var router23 = Router23();
@@ -6128,6 +7272,11 @@ router23.patch("/:jobId/success", requirePermission("orders", "update"), reportS
 router23.patch("/:jobId/failure", requirePermission("orders", "update"), reportFailure);
 router23.post("/:jobId/retry", requirePermission("orders", "update"), retryPrintJob);
 router23.post("/order/:orderId/mark", requirePermission("orders", "update"), markOrderPrinted);
+router23.patch("/agent/status", requirePermission("orders", "update"), updateAgentStatus);
+router23.get("/agent/status", requirePermission("orders", "read"), getAgentStatus);
+router23.get("/error-codes", requirePermission("orders", "read"), getErrorCodes);
+router23.get("/discover", requirePermission("orders", "read"), discoverPrinters);
+router23.post("/discover/test", requirePermission("orders", "update"), testDiscoveredPrinter);
 router23.get("/poll", pollJob);
 var print_routes_default = router23;
 
@@ -6313,8 +7462,189 @@ router25.get("/product/:productId", requirePermission("products", "read"), getPr
 router25.put("/product/:productId", requirePermission("products", "update"), setProductLabels);
 var label_routes_default = router25;
 
-// server/src/routes/paymentWebhook.routes.ts
+// server/src/routes/inventory.routes.ts
 import { Router as Router26 } from "express";
+
+// server/src/controllers/inventory.controller.ts
+var getInventoryStats2 = asyncHandler(async (_req, res) => {
+  const stats3 = await getInventoryStats();
+  res.json(new ApiResponse(200, stats3));
+});
+var getSalesStats2 = asyncHandler(async (req, res) => {
+  const { startDate, endDate } = req.query;
+  const stats3 = await getSalesStats(startDate, endDate);
+  res.json(new ApiResponse(200, stats3));
+});
+var updateStock2 = asyncHandler(async (req, res) => {
+  const { productId, sizeId, stockQuantity } = req.body;
+  if (!productId) throw new ApiError(400, "Product ID is required");
+  if (typeof stockQuantity !== "number" || stockQuantity < 0) {
+    throw new ApiError(400, "Stock quantity must be a non-negative number");
+  }
+  await updateStock(productId, stockQuantity, sizeId || null);
+  res.json(new ApiResponse(200, null, "Stock updated"));
+});
+var setTrackInventory2 = asyncHandler(async (req, res) => {
+  const { productId, track } = req.body;
+  if (!productId) throw new ApiError(400, "Product ID is required");
+  await setTrackInventory(productId, Boolean(track));
+  res.json(new ApiResponse(200, null, "Inventory tracking updated"));
+});
+var getStock2 = asyncHandler(async (req, res) => {
+  const { productId, sizeId } = req.query;
+  if (!productId) throw new ApiError(400, "Product ID is required");
+  const stock = await getStock(productId, sizeId);
+  res.json(new ApiResponse(200, stock));
+});
+
+// server/src/routes/inventory.routes.ts
+var router26 = Router26();
+router26.use(requireAuth);
+router26.get("/stats", requirePermission("products", "read"), getInventoryStats2);
+router26.get("/sales", requirePermission("orders", "read"), getSalesStats2);
+router26.get("/stock", requirePermission("products", "read"), getStock2);
+router26.patch("/stock", requirePermission("products", "update"), updateStock2);
+router26.patch("/track", requirePermission("products", "update"), setTrackInventory2);
+var inventory_routes_default = router26;
+
+// server/src/routes/purchase.routes.ts
+import { Router as Router27 } from "express";
+
+// server/src/controllers/purchase.controller.ts
+var createPurchase2 = asyncHandler(async (req, res) => {
+  const { productId, sizeId, productName, productSize, quantity, unitCost, supplier, notes, purchaseDate, weightGrams, weightMode, weightDisplay, categoryId } = req.body;
+  console.log("[purchases] CREATE request:", { productId, productName, quantity, unitCost, weightMode, userId: req.user?.id });
+  if (!productId) throw new ApiError(400, "Product is required");
+  if (!productName) throw new ApiError(400, "Product name is required");
+  if (typeof quantity !== "number" || quantity <= 0) throw new ApiError(400, "Quantity must be greater than 0");
+  if (typeof unitCost !== "number" || unitCost < 0) throw new ApiError(400, "Unit cost must be a non-negative number");
+  const totalCost = quantity * unitCost;
+  const purchase = await createPurchase({
+    productId,
+    sizeId: sizeId || null,
+    productName,
+    productSize: productSize || "",
+    quantity,
+    unitCost,
+    totalCost,
+    supplier: supplier || "",
+    notes: notes || "",
+    purchaseDate: purchaseDate || (/* @__PURE__ */ new Date()).toISOString(),
+    createdBy: req.user.id,
+    weightGrams: typeof weightGrams === "number" ? weightGrams : 0,
+    weightMode: weightMode || "fixed",
+    weightDisplay: weightDisplay || "",
+    categoryId: categoryId || null
+  });
+  console.log("[purchases] CREATE success:", { id: purchase._id, productId, totalCost });
+  res.status(201).json(new ApiResponse(201, purchase, "Purchase recorded successfully"));
+});
+var listPurchases2 = asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const { startDate, endDate, productId } = req.query;
+  console.log("[purchases] LIST request:", { page, limit, startDate, endDate, productId });
+  const result = await listPurchases(page, limit, startDate, endDate, productId);
+  console.log("[purchases] LIST result:", { total: result.total, itemCount: result.items.length });
+  res.json(new ApiResponse(200, { ...result, page, limit }));
+});
+var getPurchaseStats2 = asyncHandler(async (req, res) => {
+  const { startDate, endDate } = req.query;
+  const stats3 = await getPurchaseStats(startDate, endDate);
+  res.json(new ApiResponse(200, stats3));
+});
+var deletePurchase2 = asyncHandler(async (req, res) => {
+  const deleted = await deletePurchase(req.params.id);
+  if (!deleted) throw new ApiError(404, "Purchase not found");
+  res.json(new ApiResponse(200, null, "Purchase deleted"));
+});
+var getProductReport2 = asyncHandler(async (req, res) => {
+  const { productId } = req.query;
+  if (!productId) throw new ApiError(400, "Product ID is required");
+  const report = await getProductReport(productId);
+  if (!report) throw new ApiError(404, "Product not found");
+  res.json(new ApiResponse(200, report));
+});
+
+// server/src/routes/purchase.routes.ts
+var router27 = Router27();
+router27.use(requireAuth);
+router27.get("/", requirePermission("orders", "read"), listPurchases2);
+router27.get("/stats", requirePermission("orders", "read"), getPurchaseStats2);
+router27.get("/report", requirePermission("orders", "read"), getProductReport2);
+router27.post("/", requirePermission("orders", "create"), createPurchase2);
+router27.delete("/:id", requirePermission("orders", "delete"), deletePurchase2);
+var purchase_routes_default = router27;
+
+// server/src/routes/purchase-health.routes.ts
+import { Router as Router28 } from "express";
+var router28 = Router28();
+router28.use(requireAuth);
+router28.get("/_health", asyncHandler(async (_req, res) => {
+  const checks = {};
+  try {
+    const tableCheck = await query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'purchases'
+      ) AS "exists"`
+    );
+    checks.tableExists = tableCheck[0]?.exists ?? false;
+  } catch (err) {
+    checks.tableExists = false;
+    checks.tableError = err instanceof Error ? err.message : String(err);
+  }
+  if (checks.tableExists) {
+    try {
+      const countResult = await query('SELECT count(*)::text AS "count" FROM purchases');
+      checks.totalRows = Number(countResult[0]?.count ?? 0);
+    } catch {
+      checks.totalRows = "error";
+    }
+  }
+  if (checks.tableExists) {
+    try {
+      const cols = await query(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = 'purchases'
+         ORDER BY ordinal_position`
+      );
+      checks.columns = cols.map((c) => c.column_name);
+    } catch {
+      checks.columns = "error";
+    }
+  }
+  try {
+    const migrations = await query(
+      `SELECT name FROM schema_migrations WHERE name LIKE '%purchase%' ORDER BY name`
+    );
+    checks.appliedMigrations = migrations.map((m) => m.name);
+  } catch {
+    checks.appliedMigrations = "error";
+  }
+  try {
+    const stockCol = await query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'products' AND column_name = 'stockQuantity'
+      ) AS "exists"`
+    );
+    checks.productHasStockColumn = stockCol[0]?.exists ?? false;
+  } catch {
+    checks.productHasStockColumn = "error";
+  }
+  const allOk = checks.tableExists === true;
+  res.status(allOk ? 200 : 503).json(
+    new ApiResponse(allOk ? 200 : 503, {
+      status: allOk ? "ok" : "degraded",
+      ...checks
+    })
+  );
+}));
+var purchase_health_routes_default = router28;
+
+// server/src/routes/paymentWebhook.routes.ts
+import { Router as Router29 } from "express";
 
 // server/src/services/payment/paymentAdapter.ts
 var PaymentManager = class {
@@ -6456,40 +7786,771 @@ var handleGenericWebhook = asyncHandler(async (req, res) => {
 });
 
 // server/src/routes/paymentWebhook.routes.ts
-var router26 = Router26();
-router26.post("/webhook/:provider", handleWebhook);
-router26.post("/webhook", handleGenericWebhook);
-var paymentWebhook_routes_default = router26;
+var router29 = Router29();
+router29.post("/webhook/:provider", handleWebhook);
+router29.post("/webhook", handleGenericWebhook);
+var paymentWebhook_routes_default = router29;
+
+// server/src/routes/payment.routes.ts
+import { Router as Router30 } from "express";
+
+// server/src/db/payment-transactions.ts
+async function createTransaction(input) {
+  const rows = await query(
+    `INSERT INTO payment_transactions
+      ("orderId", "paymentMethod", provider, amount, currency, status,
+       "transactionReference", "providerTransactionId",
+       "senderPhone", "senderName", "proofUrl", "proofType",
+       "cardLast4", "cardBrand", metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+     RETURNING *`,
+    [
+      input.orderId,
+      input.paymentMethod,
+      input.provider ?? "manual",
+      input.amount,
+      input.currency ?? "EGP",
+      input.status ?? "pending",
+      input.transactionReference ?? "",
+      input.providerTransactionId ?? "",
+      input.senderPhone ?? "",
+      input.senderName ?? "",
+      input.proofUrl ?? "",
+      input.proofType ?? "",
+      input.cardLast4 ?? "",
+      input.cardBrand ?? "",
+      JSON.stringify(input.metadata ?? {})
+    ]
+  );
+  return rows[0];
+}
+async function getTransactionById(id) {
+  const rows = await query(
+    "SELECT * FROM payment_transactions WHERE id = $1",
+    [id]
+  );
+  return rows[0] ?? null;
+}
+async function getTransactionsByOrder(orderId) {
+  const rows = await query(
+    'SELECT * FROM payment_transactions WHERE "orderId" = $1 ORDER BY "createdAt" DESC',
+    [orderId]
+  );
+  return rows;
+}
+async function getPendingVerification(limit = 50, offset = 0) {
+  const countRows = await query(
+    `SELECT COUNT(*) as count FROM payment_transactions WHERE status = 'pending_verification'`
+  );
+  const total = parseInt(countRows[0]?.count ?? "0", 10);
+  const items = await query(
+    `SELECT pt.*, o."orderNo", o."customerName", o.phone
+     FROM payment_transactions pt
+     JOIN orders o ON o.id = pt."orderId"
+     WHERE pt.status = 'pending_verification'
+     ORDER BY pt."createdAt" ASC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  );
+  return { items, total };
+}
+async function approveTransaction(id, verifiedBy) {
+  const rows = await query(
+    `UPDATE payment_transactions
+     SET status = 'paid', "verifiedBy" = $2, "verifiedAt" = now()
+     WHERE id = $1 AND status = 'pending_verification'
+     RETURNING *`,
+    [id, verifiedBy]
+  );
+  return rows[0] ?? null;
+}
+async function rejectTransaction(id, verifiedBy, reason) {
+  const rows = await query(
+    `UPDATE payment_transactions
+     SET status = 'rejected', "verifiedBy" = $2, "rejectionReason" = $3, "verifiedAt" = now()
+     WHERE id = $1 AND status = 'pending_verification'
+     RETURNING *`,
+    [id, verifiedBy, reason]
+  );
+  return rows[0] ?? null;
+}
+async function updateOrderPaymentStatus(orderId, paymentStatus, transactionReference) {
+  await query(
+    `UPDATE orders
+     SET "paymentStatus" = $2,
+         "paymentReference" = COALESCE(NULLIF($3, ''), "paymentReference"),
+         "paidAt" = CASE WHEN $2 = 'paid' THEN now() ELSE "paidAt" END
+     WHERE id = $1`,
+    [orderId, paymentStatus, transactionReference ?? ""]
+  );
+}
+async function findDuplicateTransaction(orderId, transactionReference) {
+  if (!transactionReference) return null;
+  const rows = await query(
+    `SELECT * FROM payment_transactions
+     WHERE "orderId" = $1 AND "transactionReference" = $2
+     LIMIT 1`,
+    [orderId, transactionReference]
+  );
+  return rows[0] ?? null;
+}
+
+// server/src/controllers/payment.controller.ts
+var submitManualPayment = asyncHandler(async (req, res) => {
+  const {
+    orderId,
+    paymentMethod,
+    transactionReference,
+    senderPhone,
+    senderName,
+    proofUrl,
+    proofType
+  } = req.body;
+  if (!orderId) throw new ApiError(400, "Order ID is required");
+  if (!paymentMethod) throw new ApiError(400, "Payment method is required");
+  const order = await getById6(orderId);
+  if (!order) throw new ApiError(404, "Order not found");
+  const userId = req.user.id;
+  const isAdmin = req.user.role === ROLES.ADMIN || req.user.role === ROLES.MANAGER || req.user.role === ROLES.EMPLOYEE;
+  const orderUserId = typeof order.user === "string" ? order.user : order.user?._id;
+  if (!isAdmin && orderUserId !== userId) {
+    throw new ApiError(403, "You can only submit payment for your own orders");
+  }
+  const validManualMethods = ["vodafone_cash", "bank_transfer", "instapay"];
+  if (!validManualMethods.includes(paymentMethod)) {
+    throw new ApiError(400, "Invalid manual payment method");
+  }
+  if (transactionReference) {
+    const duplicate = await findDuplicateTransaction(orderId, transactionReference);
+    if (duplicate) {
+      throw new ApiError(409, "This transaction reference has already been submitted");
+    }
+  }
+  if (paymentMethod === "vodafone_cash") {
+    if (!senderPhone) throw new ApiError(400, "Phone number used for transfer is required");
+    if (!transactionReference) throw new ApiError(400, "Transaction number is required");
+  }
+  const transaction = await createTransaction({
+    orderId,
+    paymentMethod,
+    provider: "manual",
+    amount: Number(order.total),
+    status: "pending_verification",
+    transactionReference: transactionReference ?? "",
+    senderPhone: senderPhone ?? "",
+    senderName: senderName ?? "",
+    proofUrl: proofUrl ?? "",
+    proofType: proofType ?? "",
+    metadata: {
+      submittedBy: userId,
+      orderNo: order.orderNo
+    }
+  });
+  await updateOrderPaymentStatus(orderId, "pending_verification");
+  await query(
+    `UPDATE orders SET "paymentDetails" = $2 WHERE id = $1`,
+    [orderId, JSON.stringify({
+      method: paymentMethod,
+      transactionId: transaction.id,
+      reference: transactionReference ?? "",
+      senderPhone: senderPhone ?? "",
+      submittedAt: (/* @__PURE__ */ new Date()).toISOString()
+    })]
+  );
+  res.status(201).json(new ApiResponse(201, transaction, "Payment submitted for verification"));
+});
+var listPendingPayments = asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+  const result = await getPendingVerification(limit, offset);
+  res.json(new ApiResponse(200, {
+    items: result.items,
+    total: result.total,
+    page,
+    pages: Math.ceil(result.total / limit)
+  }));
+});
+var getTransaction = asyncHandler(async (req, res) => {
+  const transaction = await getTransactionById(req.params.id);
+  if (!transaction) throw new ApiError(404, "Transaction not found");
+  const order = await getById6(transaction.orderId);
+  res.json(new ApiResponse(200, {
+    ...transaction,
+    order: order ? {
+      orderNo: order.orderNo,
+      customerName: order.customerName,
+      phone: order.phone,
+      total: order.total
+    } : null
+  }));
+});
+var approvePayment = asyncHandler(async (req, res) => {
+  const transaction = await getTransactionById(req.params.id);
+  if (!transaction) throw new ApiError(404, "Transaction not found");
+  if (transaction.status !== "pending_verification") {
+    throw new ApiError(400, "This transaction is not pending verification");
+  }
+  const approved = await approveTransaction(req.params.id, req.user.id);
+  if (!approved) throw new ApiError(400, "Failed to approve transaction");
+  await updateOrderPaymentStatus(
+    transaction.orderId,
+    PAYMENT_STATUS.PAID,
+    transaction.transactionReference
+  );
+  res.json(new ApiResponse(200, approved, "Payment approved"));
+});
+var rejectPayment = asyncHandler(async (req, res) => {
+  const { reason } = req.body;
+  if (!reason) throw new ApiError(400, "Rejection reason is required");
+  const transaction = await getTransactionById(req.params.id);
+  if (!transaction) throw new ApiError(404, "Transaction not found");
+  if (transaction.status !== "pending_verification") {
+    throw new ApiError(400, "This transaction is not pending verification");
+  }
+  const rejected = await rejectTransaction(req.params.id, req.user.id, reason);
+  if (!rejected) throw new ApiError(400, "Failed to reject transaction");
+  await updateOrderPaymentStatus(transaction.orderId, "rejected");
+  res.json(new ApiResponse(200, rejected, "Payment rejected"));
+});
+var getOrderPayments = asyncHandler(async (req, res) => {
+  const transactions = await getTransactionsByOrder(req.params.orderId);
+  res.json(new ApiResponse(200, transactions));
+});
+var getPaymentSettings = asyncHandler(async (_req, res) => {
+  const result = await query(
+    `SELECT value FROM settings WHERE key = 'paymentSettings'`
+  );
+  const defaultSettings = {
+    vodafoneCash: {
+      enabled: true,
+      walletNumber: "",
+      instructions: {
+        ar: "\u0642\u0645 \u0628\u0627\u0644\u062A\u062D\u0648\u064A\u0644 \u0625\u0644\u0649 \u0631\u0642\u0645 \u0627\u0644\u0645\u062D\u0641\u0638\u0629 \u0627\u0644\u062A\u0627\u0644\u064A\u060C \u062B\u0645 \u0623\u062F\u062E\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062A\u062D\u0648\u064A\u0644",
+        en: "Transfer to the following wallet number, then enter transfer details"
+      }
+    },
+    bankTransfer: {
+      enabled: false,
+      bankName: "",
+      accountNumber: "",
+      accountName: "",
+      instructions: { ar: "", en: "" }
+    },
+    instapay: {
+      enabled: false,
+      accountName: "",
+      instructions: { ar: "", en: "" }
+    },
+    card: {
+      enabled: false,
+      provider: "none"
+    },
+    cashOnDelivery: {
+      enabled: true
+    }
+  };
+  const settings = result[0]?.value ?? defaultSettings;
+  res.json(new ApiResponse(200, settings));
+});
+var updatePaymentSettings = asyncHandler(async (req, res) => {
+  const settings = req.body;
+  if (!settings || typeof settings !== "object") {
+    throw new ApiError(400, "Invalid settings");
+  }
+  const safeSettings = {
+    vodafoneCash: {
+      enabled: Boolean(settings.vodafoneCash?.enabled),
+      walletNumber: String(settings.vodafoneCash?.walletNumber ?? ""),
+      instructions: settings.vodafoneCash?.instructions ?? { ar: "", en: "" }
+    },
+    bankTransfer: {
+      enabled: Boolean(settings.bankTransfer?.enabled),
+      bankName: String(settings.bankTransfer?.bankName ?? ""),
+      accountNumber: String(settings.bankTransfer?.accountNumber ?? ""),
+      accountName: String(settings.bankTransfer?.accountName ?? ""),
+      instructions: settings.bankTransfer?.instructions ?? { ar: "", en: "" }
+    },
+    instapay: {
+      enabled: Boolean(settings.instapay?.enabled),
+      accountName: String(settings.instapay?.accountName ?? ""),
+      instructions: settings.instapay?.instructions ?? { ar: "", en: "" }
+    },
+    card: {
+      enabled: Boolean(settings.card?.enabled),
+      provider: String(settings.card?.provider ?? "none")
+    },
+    cashOnDelivery: {
+      enabled: Boolean(settings.cashOnDelivery?.enabled ?? true)
+    }
+  };
+  await query(
+    `INSERT INTO settings (key, value) VALUES ('paymentSettings', $1)
+     ON CONFLICT (key) DO UPDATE SET value = $1`,
+    [JSON.stringify(safeSettings)]
+  );
+  res.json(new ApiResponse(200, safeSettings, "Payment settings updated"));
+});
+
+// server/src/routes/payment.routes.ts
+var router30 = Router30();
+router30.use(requireAuth);
+router30.post("/submit", submitManualPayment);
+router30.get("/order/:orderId", getOrderPayments);
+router30.get("/settings", getPaymentSettings);
+router30.get(
+  "/admin/pending",
+  requirePermission("orders", "read"),
+  listPendingPayments
+);
+router30.get(
+  "/admin/:id",
+  requirePermission("orders", "read"),
+  getTransaction
+);
+router30.post(
+  "/admin/:id/approve",
+  requirePermission("orders", "update"),
+  approvePayment
+);
+router30.post(
+  "/admin/:id/reject",
+  requirePermission("orders", "update"),
+  rejectPayment
+);
+router30.get(
+  "/admin/settings",
+  requirePermission("settings", "read"),
+  getPaymentSettings
+);
+router30.patch(
+  "/admin/settings",
+  requirePermission("settings", "update"),
+  updatePaymentSettings
+);
+var payment_routes_default = router30;
+
+// server/src/routes/stock-movements.routes.ts
+import { Router as Router31 } from "express";
+
+// server/src/db/stock-movements.ts
+async function recordMovement(input) {
+  try {
+    const rows = await query(
+      `INSERT INTO stock_movements (
+        "productId", "sizeId", "productName", "productSize", "categoryId",
+        "movementType", quantity,
+        "unitSellingPrice", "totalSellingPrice",
+        "unitPurchasePrice", "totalPurchasePrice",
+        "referenceType", "referenceId",
+        "orderNo", "customerName", "paymentMethod", "supplier",
+        reason, notes, "movementDate", "createdBy"
+      ) VALUES (
+        $1::uuid, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+      ) RETURNING *`,
+      [
+        input.productId,
+        input.sizeId || null,
+        input.productName,
+        input.productSize || "",
+        input.categoryId || null,
+        input.movementType,
+        input.quantity,
+        input.unitSellingPrice ?? null,
+        input.totalSellingPrice ?? null,
+        input.unitPurchasePrice ?? null,
+        input.totalPurchasePrice ?? null,
+        input.referenceType || "",
+        input.referenceId || "",
+        input.orderNo || "",
+        input.customerName || "",
+        input.paymentMethod || "",
+        input.supplier || "",
+        input.reason || "",
+        input.notes || "",
+        input.movementDate || (/* @__PURE__ */ new Date()).toISOString(),
+        input.createdBy || null
+      ]
+    );
+    return rows[0];
+  } catch {
+    return null;
+  }
+}
+async function getMovementReport(startDate, endDate) {
+  let movementRows = [];
+  try {
+    movementRows = await query(
+      `SELECT
+        sm."productId"::text AS "productId",
+        sm."productName",
+        sm."productSize",
+        sm."categoryId"::text AS "categoryId",
+        COALESCE(c.name, '') AS "categoryName",
+        sm."movementType",
+        sm.quantity,
+        sm."unitSellingPrice"::float8 AS "unitSellingPrice",
+        sm."totalSellingPrice"::float8 AS "totalSellingPrice",
+        sm."unitPurchasePrice"::float8 AS "unitPurchasePrice",
+        sm."totalPurchasePrice"::float8 AS "totalPurchasePrice",
+        sm."paymentMethod",
+        sm."orderNo",
+        sm."customerName",
+        sm.supplier,
+        sm.reason,
+        sm.notes,
+        sm."movementDate"::text AS "movementDate"
+      FROM stock_movements sm
+      LEFT JOIN categories c ON c.id = sm."categoryId"
+      WHERE sm."movementDate" >= $1::timestamptz
+        AND sm."movementDate" <= $2::timestamptz
+      ORDER BY sm."movementDate", sm."productName"`,
+      [startDate, endDate]
+    );
+  } catch {
+    movementRows = [];
+  }
+  const summaryMap = /* @__PURE__ */ new Map();
+  for (const m of movementRows) {
+    const key = `${m.productId}:${m.productSize}`;
+    let item2 = summaryMap.get(key);
+    if (!item2) {
+      item2 = {
+        productId: m.productId,
+        productName: m.productName,
+        productSize: m.productSize,
+        categoryId: m.categoryId,
+        categoryName: m.categoryName,
+        totalPurchased: 0,
+        totalSold: 0,
+        totalReturned: 0,
+        totalGifted: 0,
+        totalWasted: 0,
+        totalDamaged: 0,
+        totalAdjusted: 0,
+        totalPurchaseCost: 0,
+        totalSalesRevenue: 0,
+        currentStock: 0
+      };
+      summaryMap.set(key, item2);
+    }
+    const absQty = Math.abs(m.quantity);
+    switch (m.movementType) {
+      case "sale":
+        item2.totalSold += absQty;
+        item2.totalSalesRevenue += m.totalSellingPrice ?? 0;
+        break;
+      case "purchase":
+        item2.totalPurchased += absQty;
+        item2.totalPurchaseCost += m.totalPurchasePrice ?? 0;
+        break;
+      case "gift":
+        item2.totalGifted += absQty;
+        break;
+      case "return":
+        item2.totalReturned += absQty;
+        break;
+      case "waste":
+        item2.totalWasted += absQty;
+        break;
+      case "damage":
+        item2.totalDamaged += absQty;
+        break;
+      case "stock_adjustment":
+        item2.totalAdjusted += m.quantity;
+        break;
+    }
+  }
+  let stockRows = [];
+  try {
+    stockRows = await query(
+      `SELECT
+        p.id::text AS "productId",
+        p.name AS "productName",
+        COALESCE(ps.name, '') AS "productSize",
+        COALESCE(ps."stockQuantity", p."stockQuantity", 0)::int AS "stockQuantity"
+      FROM products p
+      LEFT JOIN product_sizes ps ON ps."productId" = p.id
+      WHERE p."isAvailable" = true
+      ORDER BY p.name, ps."sortOrder"`
+    );
+  } catch {
+    stockRows = [];
+  }
+  for (const stock of stockRows) {
+    const key = `${stock.productId}:${stock.productSize}`;
+    const item2 = summaryMap.get(key);
+    if (item2) {
+      item2.currentStock = stock.stockQuantity;
+    }
+  }
+  const details = movementRows.map((m) => {
+    const date = new Date(m.movementDate);
+    return {
+      date: date.toISOString().slice(0, 10),
+      time: date.toTimeString().slice(0, 5),
+      productName: m.productName,
+      productSize: m.productSize,
+      categoryName: m.categoryName,
+      movementType: m.movementType,
+      quantity: m.quantity,
+      unitPurchasePrice: m.unitPurchasePrice,
+      totalPurchasePrice: m.totalPurchasePrice,
+      unitSellingPrice: m.unitSellingPrice,
+      totalSellingPrice: m.totalSellingPrice,
+      paymentMethod: m.paymentMethod,
+      orderNo: m.orderNo,
+      customerName: m.customerName,
+      supplier: m.supplier,
+      reason: m.reason,
+      notes: m.notes
+    };
+  });
+  return {
+    summary: Array.from(summaryMap.values()),
+    details
+  };
+}
+
+// server/src/controllers/stock-movements.controller.ts
+import * as XLSX2 from "xlsx";
+var recordMovement2 = asyncHandler(async (req, res) => {
+  const {
+    productId,
+    sizeId,
+    productName,
+    productSize,
+    categoryId,
+    movementType,
+    quantity,
+    reason,
+    notes,
+    supplier
+  } = req.body;
+  if (!productId) throw new ApiError(400, "Product ID is required");
+  if (!productName) throw new ApiError(400, "Product name is required");
+  if (!movementType) throw new ApiError(400, "Movement type is required");
+  if (typeof quantity !== "number" || quantity === 0) throw new ApiError(400, "Quantity must be a non-zero number");
+  const validTypes = ["sale", "purchase", "gift", "return", "waste", "damage", "stock_adjustment", "other"];
+  if (!validTypes.includes(movementType)) {
+    throw new ApiError(400, `Invalid movement type. Must be one of: ${validTypes.join(", ")}`);
+  }
+  const movement = await recordMovement({
+    productId,
+    sizeId: sizeId || null,
+    productName,
+    productSize: productSize || "",
+    categoryId: categoryId || null,
+    movementType,
+    quantity,
+    reason: reason || "",
+    notes: notes || "",
+    supplier: supplier || "",
+    createdBy: req.user.id
+  });
+  if (!movement) {
+    throw new ApiError(500, "Stock movements table is not available. Please run migration 007.");
+  }
+  res.status(201).json(new ApiResponse(201, movement, "Movement recorded"));
+});
+var getMovementReport2 = asyncHandler(async (req, res) => {
+  const startDate = String(req.query.startDate ?? "");
+  const endDate = String(req.query.endDate ?? "");
+  if (!startDate || !endDate) {
+    throw new ApiError(400, "startDate and endDate are required");
+  }
+  const start = new Date(startDate);
+  const end = /* @__PURE__ */ new Date(endDate + "T23:59:59");
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    throw new ApiError(400, "Invalid date format");
+  }
+  const report = await getMovementReport(
+    start.toISOString(),
+    end.toISOString()
+  );
+  res.json(new ApiResponse(200, report));
+});
+var exportMovementReport = asyncHandler(async (req, res) => {
+  const startDate = String(req.query.startDate ?? "");
+  const endDate = String(req.query.endDate ?? "");
+  const period = String(req.query.period ?? "month");
+  if (!startDate || !endDate) {
+    throw new ApiError(400, "startDate and endDate are required");
+  }
+  const start = new Date(startDate);
+  const end = /* @__PURE__ */ new Date(endDate + "T23:59:59");
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    throw new ApiError(400, "Invalid date format");
+  }
+  const report = await getMovementReport(
+    start.toISOString(),
+    end.toISOString()
+  );
+  const msPerDay = 864e5;
+  const calendarDays = Math.round((end.getTime() - start.getTime()) / msPerDay) + 1;
+  const wb = XLSX2.utils.book_new();
+  wb.Workbook = { Views: [{ RTL: true }] };
+  const MONEY2 = '#,##0.00" \u062C.\u0645"';
+  const COUNT2 = "#,##0";
+  const movementTypeAr = {
+    sale: "\u0628\u064A\u0639",
+    purchase: "\u0634\u0631\u0627\u0621",
+    gift: "\u0647\u062F\u064A\u0629",
+    return: "\u0645\u0631\u062A\u062C\u0639",
+    waste: "\u0641\u0627\u0642\u062F",
+    damage: "\u062A\u0627\u0644\u0641",
+    stock_adjustment: "\u062A\u0633\u0648\u064A\u0629 \u0645\u062E\u0632\u0648\u0646",
+    other: "\u0623\u062E\u0631\u0649"
+  };
+  const periodLabel = period === "today" ? "\u0627\u0644\u064A\u0648\u0645" : period === "week" ? "\u0647\u0630\u0627 \u0627\u0644\u0623\u0633\u0628\u0648\u0639" : period === "month" ? "\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631" : "\u0641\u062A\u0631\u0629 \u0645\u062E\u0635\u0635\u0629";
+  const summaryRows = [
+    ["\u062A\u0642\u0631\u064A\u0631 \u062D\u0631\u0643\u0629 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u2014 FREEZER EL BALAD"],
+    [""],
+    ["\u0641\u062A\u0631\u0629 \u0627\u0644\u062A\u0642\u0631\u064A\u0631", `${periodLabel}: ${startDate} \u2192 ${endDate}`],
+    ["\u0639\u062F\u062F \u0627\u0644\u0623\u064A\u0627\u0645", calendarDays],
+    ["\u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0625\u0646\u0634\u0627\u0621", (/* @__PURE__ */ new Date()).toISOString().slice(0, 16).replace("T", " ")],
+    [""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", report.summary.reduce((a, p) => a + p.totalPurchased, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A", report.summary.reduce((a, p) => a + p.totalSold, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0647\u062F\u0627\u064A\u0627", report.summary.reduce((a, p) => a + p.totalGifted, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u0631\u062A\u062C\u0639\u0627\u062A", report.summary.reduce((a, p) => a + p.totalReturned, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0641\u0627\u0642\u062F", report.summary.reduce((a, p) => a + p.totalWasted, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u062A\u0627\u0644\u0641", report.summary.reduce((a, p) => a + p.totalDamaged, 0)],
+    [""],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", report.summary.reduce((a, p) => a + p.totalPurchaseCost, 0)],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A", report.summary.reduce((a, p) => a + p.totalSalesRevenue, 0)]
+  ];
+  const summaryWs = XLSX2.utils.aoa_to_sheet(summaryRows);
+  summaryWs["!cols"] = [{ wch: 30 }, { wch: 30 }];
+  XLSX2.utils.book_append_sheet(wb, summaryWs, "\u0645\u0644\u062E\u0635 \u0627\u0644\u062A\u0642\u0631\u064A\u0631");
+  const productSummaryRows = [
+    ["\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0641\u0626\u0629", "\u062A\u0645 \u0627\u0644\u0634\u0631\u0627\u0621", "\u062A\u0645 \u0627\u0644\u0628\u064A\u0639", "\u0647\u062F\u0627\u064A\u0627", "\u0645\u0631\u062A\u062C\u0639", "\u0641\u0627\u0642\u062F", "\u062A\u0627\u0644\u0641", "\u062A\u0633\u0648\u064A\u0629", "\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0634\u0631\u0627\u0621", "\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u0628\u064A\u0639", "\u0627\u0644\u0645\u062E\u0632\u0648\u0646 \u0627\u0644\u062D\u0627\u0644\u064A"]
+  ];
+  for (const item2 of report.summary) {
+    productSummaryRows.push([
+      item2.productName,
+      item2.productSize || "\u2014",
+      item2.categoryName || "\u2014",
+      item2.totalPurchased,
+      item2.totalSold,
+      item2.totalGifted,
+      item2.totalReturned,
+      item2.totalWasted,
+      item2.totalDamaged,
+      item2.totalAdjusted,
+      item2.totalPurchaseCost,
+      item2.totalSalesRevenue,
+      item2.currentStock
+    ]);
+  }
+  const productSummaryWs = XLSX2.utils.aoa_to_sheet(productSummaryRows);
+  for (let r = 1; r < productSummaryRows.length; r++) {
+    for (const c of [3, 4, 5, 6, 7, 8, 9, 12]) {
+      const cell = productSummaryWs[XLSX2.utils.encode_cell({ r, c })];
+      if (cell && cell.t === "n") cell.z = COUNT2;
+    }
+    for (const c of [10, 11]) {
+      const cell = productSummaryWs[XLSX2.utils.encode_cell({ r, c })];
+      if (cell && cell.t === "n") cell.z = MONEY2;
+    }
+  }
+  productSummaryWs["!cols"] = [{ wch: 20 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+  XLSX2.utils.book_append_sheet(wb, productSummaryWs, "\u0645\u0644\u062E\u0635 \u0627\u0644\u0623\u0635\u0646\u0627\u0641");
+  const detailRows = [
+    ["\u0627\u0644\u062A\u0627\u0631\u064A\u062E", "\u0627\u0644\u0648\u0642\u062A", "\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0641\u0626\u0629", "\u0646\u0648\u0639 \u0627\u0644\u062D\u0631\u0643\u0629", "\u0627\u0644\u0643\u0645\u064A\u0629", "\u0633\u0639\u0631 \u0627\u0644\u0634\u0631\u0627\u0621", "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0634\u0631\u0627\u0621", "\u0633\u0639\u0631 \u0627\u0644\u0628\u064A\u0639", "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0628\u064A\u0639", "\u0637\u0631\u064A\u0642\u0629 \u0627\u0644\u062F\u0641\u0639", "\u0631\u0642\u0645 \u0627\u0644\u0637\u0644\u0628", "\u0627\u0644\u0639\u0645\u064A\u0644", "\u0627\u0644\u0645\u0648\u0631\u062F", "\u0627\u0644\u0633\u0628\u0628", "\u0645\u0644\u0627\u062D\u0638\u0627\u062A"]
+  ];
+  for (const d of report.details) {
+    detailRows.push([
+      d.date,
+      d.time,
+      d.productName,
+      d.productSize || "\u2014",
+      d.categoryName || "\u2014",
+      movementTypeAr[d.movementType] ?? d.movementType,
+      d.quantity,
+      d.unitPurchasePrice ?? "\u2014",
+      d.totalPurchasePrice ?? "\u2014",
+      d.unitSellingPrice ?? "\u2014",
+      d.totalSellingPrice ?? "\u2014",
+      d.paymentMethod || "\u2014",
+      d.orderNo || "\u2014",
+      d.customerName || "\u2014",
+      d.supplier || "\u2014",
+      d.reason || "\u2014",
+      d.notes || "\u2014"
+    ]);
+  }
+  const detailWs = XLSX2.utils.aoa_to_sheet(detailRows);
+  detailWs["!cols"] = [
+    { wch: 12 },
+    { wch: 8 },
+    { wch: 20 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 8 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 18 },
+    { wch: 16 },
+    { wch: 20 },
+    { wch: 20 }
+  ];
+  XLSX2.utils.book_append_sheet(wb, detailWs, "\u062D\u0631\u0643\u0629 \u0627\u0644\u0623\u0635\u0646\u0627\u0641");
+  const filename = `freezer-elbalad-movement-report-${startDate}-to-${endDate}.xlsx`;
+  const buffer = XLSX2.write(wb, { type: "buffer", bookType: "xlsx" });
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(buffer);
+});
+
+// server/src/routes/stock-movements.routes.ts
+var router31 = Router31();
+router31.use(requireAuth, requireRole("admin"));
+router31.post("/record", recordMovement2);
+router31.get("/report", getMovementReport2);
+router31.get("/export", exportMovementReport);
+var stock_movements_routes_default = router31;
 
 // server/src/routes/index.ts
-var router27 = Router27();
-router27.use("/auth", auth_routes_default);
-router27.use("/users/me", user_routes_default);
-router27.use("/products", product_routes_default);
-router27.use("/categories", category_routes_default);
-router27.use("/reviews", review_routes_default);
-router27.use("/wishlist", wishlist_routes_default);
-router27.use("/cart", cart_routes_default);
-router27.use("/orders", order_routes_default);
-router27.use("/coupons", coupon_routes_default);
-router27.use("/offers", offer_routes_default);
-router27.use("/banners", banner_routes_default);
-router27.use("/gallery", gallery_routes_default);
-router27.use("/branches", branch_routes_default);
-router27.use("/contacts", contact_routes_default);
-router27.use("/newsletter", newsletter_routes_default);
-router27.use("/settings", setting_routes_default);
-router27.use("/notifications", notification_routes_default);
-router27.use("/analytics", analytics_routes_default);
-router27.use("/upload", upload_routes_default);
-router27.use("/posts", post_routes_default);
-router27.use("/admin/users", adminApiLimiter, adminUser_routes_default);
-router27.use("/system", systemReset_routes_default);
-router27.use("/print", print_routes_default);
-router27.use("/service-tokens", serviceToken_routes_default);
-router27.use("/labels", label_routes_default);
-router27.use("/payments", paymentWebhook_routes_default);
-var routes_default = router27;
+var router32 = Router32();
+router32.use("/auth", auth_routes_default);
+router32.use("/users/me", user_routes_default);
+router32.use("/products", product_routes_default);
+router32.use("/categories", category_routes_default);
+router32.use("/reviews", review_routes_default);
+router32.use("/wishlist", wishlist_routes_default);
+router32.use("/cart", cart_routes_default);
+router32.use("/orders", order_routes_default);
+router32.use("/coupons", coupon_routes_default);
+router32.use("/offers", offer_routes_default);
+router32.use("/banners", banner_routes_default);
+router32.use("/gallery", gallery_routes_default);
+router32.use("/branches", branch_routes_default);
+router32.use("/contacts", contact_routes_default);
+router32.use("/newsletter", newsletter_routes_default);
+router32.use("/settings", setting_routes_default);
+router32.use("/notifications", notification_routes_default);
+router32.use("/analytics", analytics_routes_default);
+router32.use("/upload", upload_routes_default);
+router32.use("/posts", post_routes_default);
+router32.use("/admin/users", adminApiLimiter, adminUser_routes_default);
+router32.use("/system", systemReset_routes_default);
+router32.use("/print", print_routes_default);
+router32.use("/service-tokens", serviceToken_routes_default);
+router32.use("/labels", label_routes_default);
+router32.use("/inventory", inventory_routes_default);
+router32.use("/purchases", purchase_routes_default);
+router32.use("/purchases", purchase_health_routes_default);
+router32.use("/payments", paymentWebhook_routes_default);
+router32.use("/payment", payment_routes_default);
+router32.use("/stock-movements", stock_movements_routes_default);
+var routes_default = router32;
 
 // server/src/app.ts
 var app = express();
