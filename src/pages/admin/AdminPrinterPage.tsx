@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Printer, Send, RefreshCw, CheckCircle, XCircle, AlertTriangle, Key, Copy, Trash2, Plus, Star, StarOff, Wifi, Usb, Bluetooth, Monitor, Clock, Search, Wrench } from 'lucide-react';
@@ -20,6 +20,7 @@ import {
   getProfileCapabilities,
   type ThermalPrinterProfile,
 } from '@/lib/thermalPrinterProfiles';
+import { useAgentSSE } from '@/hooks/useAgentSSE';
 
 interface PrinterConfig {
   id: string;
@@ -81,6 +82,16 @@ export function AdminPrinterPage() {
   const printJobs = useQuery({ queryKey: ['admin', 'print-jobs'], queryFn: listRecentPrintJobs, refetchInterval: 10000 });
   const serviceTokens = useQuery({ queryKey: ['admin', 'service-tokens'], queryFn: listServiceTokens });
   const agentStatusQuery = useQuery({ queryKey: ['admin', 'agent-status'], queryFn: getAgentStatus, refetchInterval: 15000 });
+
+  // Real-time agent status via SSE
+  const agentSSE = useAgentSSE(true);
+
+  // Refresh print jobs when SSE reports a print event
+  useEffect(() => {
+    if (agentSSE.recentEvents.length > 0) {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'print-jobs'] });
+    }
+  }, [agentSSE.recentEvents.length, queryClient]);
 
   // Connection test state
   const [testingConnection, setTestingConnection] = useState<string | null>(null);
@@ -749,7 +760,7 @@ export function AdminPrinterPage() {
           </CardContent>
         </Card>
 
-        {/* Agent Status */}
+        {/* Agent Status — Real-time via SSE */}
         <Card>
           <CardContent className="p-6">
             <div className="mb-4 flex items-center justify-between">
@@ -757,76 +768,180 @@ export function AdminPrinterPage() {
                 <Monitor className="h-4 w-4" />
                 {lang === 'ar' ? 'حالة خدمة الطباعة المحلية' : 'Local Print Agent Status'}
               </h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => void queryClient.invalidateQueries({ queryKey: ['admin', 'agent-status'] })}
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* SSE connection indicator */}
+                <span className={cn(
+                  'flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold',
+                  agentSSE.connected
+                    ? 'bg-emerald-500/15 text-emerald-400'
+                    : 'bg-red-500/15 text-red-400',
+                )}>
+                  <span className={cn(
+                    'h-1.5 w-1.5 rounded-full',
+                    agentSSE.connected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400',
+                  )} />
+                  {agentSSE.connected
+                    ? (lang === 'ar' ? 'مباشر' : 'LIVE')
+                    : (lang === 'ar' ? 'غير متصل' : 'OFFLINE')}
+                </span>
+              </div>
             </div>
 
-            {agentStatusQuery.isLoading ? (
-              <Skeleton className="h-24" />
-            ) : agentStatusQuery.data && agentStatusQuery.data.length > 0 ? (
-              <div className="space-y-2">
-                {agentStatusQuery.data.map((agent: AgentStatus) => (
-                  <div
-                    key={agent.agentId}
-                    className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        'flex h-8 w-8 items-center justify-center rounded-lg',
-                        agent.connected ? 'bg-emerald-500/10' : 'bg-red-500/10',
-                      )}>
-                        {connectionIcon(agent.connectionType)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-night-100">
-                          {agent.connectionType.toUpperCase()}
-                          <span className="ml-2 text-xs text-night-500">({agent.paperWidth}mm)</span>
-                        </p>
-                        <div className="flex items-center gap-1 text-xs">
-                          <Clock className="h-3 w-3" />
-                          <span className="text-night-500">
-                            {agent.isRecent
-                              ? (lang === 'ar' ? 'متصل الآن' : 'Connected now')
-                              : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
+            {/* Real-time printer status */}
+            <div className="space-y-3">
+              {/* Main status card */}
+              <div className={cn(
+                'flex items-center justify-between rounded-xl border px-4 py-3',
+                agentSSE.printerOnline
+                  ? 'border-emerald-500/30 bg-emerald-500/5'
+                  : 'border-red-500/30 bg-red-500/5',
+              )}>
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    'flex h-10 w-10 items-center justify-center rounded-lg',
+                    agentSSE.printerOnline ? 'bg-emerald-500/10' : 'bg-red-500/10',
+                  )}>
+                    {agentSSE.printerOnline
+                      ? <CheckCircle className="h-5 w-5 text-emerald-400" />
+                      : <XCircle className="h-5 w-5 text-red-400" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-night-100">
+                      {agentSSE.connectionType
+                        ? agentSSE.connectionType.toUpperCase()
+                        : (lang === 'ar' ? 'طابعة' : 'Printer')}
+                    </p>
+                    <p className="text-xs text-night-500">
+                      {agentSSE.printerStatus === 'online'
+                        ? (lang === 'ar' ? 'جاهزة للطباعة' : 'Ready to print')
+                        : agentSSE.printerStatus === 'printing'
+                        ? (lang === 'ar' ? 'جاري الطباعة...' : 'Printing...')
+                        : agentSSE.printerStatus === 'error'
+                        ? (lang === 'ar' ? 'خطأ في الطابعة' : 'Printer error')
+                        : agentSSE.printerOnline
+                        ? (lang === 'ar' ? 'متصلة' : 'Connected')
+                        : (lang === 'ar' ? 'غير متصلة' : 'Disconnected')}
+                    </p>
+                  </div>
+                </div>
+                <span className={cn(
+                  'rounded-md px-2.5 py-1 text-xs font-bold',
+                  agentSSE.printerOnline
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'bg-red-500/20 text-red-400',
+                )}>
+                  {agentSSE.printerOnline
+                    ? (lang === 'ar' ? 'نشط' : 'Online')
+                    : (lang === 'ar' ? 'غير متصل' : 'Offline')}
+                </span>
+              </div>
+
+              {/* Recent print activity from SSE */}
+              {agentSSE.recentEvents.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-night-500">
+                    {lang === 'ar' ? 'نشاط الطباعة المباشر' : 'Live Print Activity'}
+                  </p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {agentSSE.recentEvents.map((evt, i) => (
+                      <div key={`${evt.data.jobId}-${i}`} className="flex items-center justify-between rounded-lg border border-night-800 px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            'h-2 w-2 rounded-full',
+                            evt.type === 'print-start' ? 'bg-amber-400 animate-pulse'
+                            : evt.type === 'print-success' ? 'bg-emerald-400'
+                            : 'bg-red-400',
+                          )} />
+                          <span className="text-xs font-bold text-night-200">#{evt.data.orderNo}</span>
+                          <span className="text-[10px] text-night-500">
+                            {evt.type === 'print-start'
+                              ? (lang === 'ar' ? 'جاري الطباعة...' : 'Printing...')
+                              : evt.type === 'print-success'
+                              ? (lang === 'ar' ? 'تم بنجاح' : 'Success')
+                              : (lang === 'ar' ? 'فشل' : 'Failed')}
                           </span>
-                          <span className="text-night-600">·</span>
-                          <span className="text-night-500">{new Date(agent.lastSeen).toLocaleTimeString()}</span>
+                          {evt.data.error && (
+                            <span className="text-[10px] text-red-400 truncate max-w-[120px]">
+                              {evt.data.error}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-night-600">
+                          {new Date(evt.data.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Fallback: show agent status from API if SSE is not connected */}
+              {!agentSSE.connected && agentStatusQuery.data && agentStatusQuery.data.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-night-500">
+                    {lang === 'ar' ? 'الحالة (تحديث يدوي)' : 'Status (manual refresh)'}
+                  </p>
+                  {agentStatusQuery.data.map((agent: AgentStatus) => (
+                    <div
+                      key={agent.agentId}
+                      className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          'flex h-8 w-8 items-center justify-center rounded-lg',
+                          agent.connected ? 'bg-emerald-500/10' : 'bg-red-500/10',
+                        )}>
+                          {connectionIcon(agent.connectionType)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-night-100">
+                            {agent.connectionType.toUpperCase()}
+                            <span className="ml-2 text-xs text-night-500">({agent.paperWidth}mm)</span>
+                          </p>
+                          <div className="flex items-center gap-1 text-xs">
+                            <Clock className="h-3 w-3" />
+                            <span className="text-night-500">
+                              {agent.isRecent
+                                ? (lang === 'ar' ? 'متصل الآن' : 'Connected now')
+                                : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
+                            </span>
+                            <span className="text-night-600">·</span>
+                            <span className="text-night-500">{new Date(agent.lastSeen).toLocaleTimeString()}</span>
+                          </div>
                         </div>
                       </div>
+                      <span className={cn(
+                        'rounded-md px-2 py-0.5 text-xs font-bold',
+                        agent.isRecent
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'bg-red-500/20 text-red-400',
+                      )}>
+                        {agent.isRecent
+                          ? (lang === 'ar' ? 'نشط' : 'Online')
+                          : (lang === 'ar' ? 'غير متصل' : 'Offline')}
+                      </span>
                     </div>
-                    <span className={cn(
-                      'rounded-md px-2 py-0.5 text-xs font-bold',
-                      agent.isRecent
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-red-500/20 text-red-400',
-                    )}>
-                      {agent.isRecent
-                        ? (lang === 'ar' ? 'نشط' : 'Online')
-                        : (lang === 'ar' ? 'غير متصل' : 'Offline')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-6 text-center">
-                <Monitor className="mx-auto mb-2 h-8 w-8 text-night-600" />
-                <p className="text-sm text-night-500">
-                  {lang === 'ar'
-                    ? 'لا توجد خدمة طباعة محلية متصلة'
-                    : 'No local print agent connected'}
-                </p>
-                <p className="mt-1 text-xs text-night-600">
-                  {lang === 'ar'
-                    ? 'قم بتشغيل خدمة الطباعة المحلية على جهاز المحل'
-                    : 'Start the local print service on the shop computer'}
-                </p>
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+
+              {/* No agent found */}
+              {!agentSSE.connected && (!agentStatusQuery.data || agentStatusQuery.data.length === 0) && (
+                <div className="py-6 text-center">
+                  <Monitor className="mx-auto mb-2 h-8 w-8 text-night-600" />
+                  <p className="text-sm text-night-500">
+                    {lang === 'ar'
+                      ? 'لا توجد خدمة طباعة محلية متصلة'
+                      : 'No local print agent connected'}
+                  </p>
+                  <p className="mt-1 text-xs text-night-600">
+                    {lang === 'ar'
+                      ? 'قم بتشغيل خدمة الطباعة المحلية على جهاز المحل'
+                      : 'Start the local print service on the shop computer'}
+                  </p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 

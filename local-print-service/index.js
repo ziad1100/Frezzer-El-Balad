@@ -1131,6 +1131,13 @@ async function processJob(job, adapter, retryCount = 0) {
     connectionType: adapter.connectionType,
   });
 
+  // Broadcast printing status to SSE clients
+  broadcastSSE('print-start', {
+    jobId: job.id,
+    orderNo: job.orderNo,
+    timestamp: new Date().toISOString(),
+  });
+
   try {
     // Reconnect printer if needed
     const status = await adapter.getStatus();
@@ -1154,6 +1161,13 @@ async function processJob(job, adapter, retryCount = 0) {
     }
     await reportSuccess(job.id);
     processedJobs.add(job.id);
+
+    // Broadcast success to SSE clients
+    broadcastSSE('print-success', {
+      jobId: job.id,
+      orderNo: job.orderNo,
+      timestamp: new Date().toISOString(),
+    });
 
     // Prevent memory leak — keep only last 1000 job IDs
     if (processedJobs.size > 1000) {
@@ -1187,6 +1201,16 @@ async function processJob(job, adapter, retryCount = 0) {
 
     // Permanent failure
     await reportFailure(job.id, err.message, errorCode);
+
+    // Broadcast failure to SSE clients
+    broadcastSSE('print-failure', {
+      jobId: job.id,
+      orderNo: job.orderNo,
+      error: err.message,
+      code: errorCode,
+      timestamp: new Date().toISOString(),
+    });
+
     log('error', 'SERVICE', `Job ${job.id} permanently failed after ${retryCount} retries`);
   }
 }
@@ -1195,6 +1219,21 @@ async function poll(adapter) {
   const job = await pollForJobs();
   if (job) {
     await processJob(job, adapter);
+  }
+}
+
+// ─── SSE Clients ───────────────────────────────────────────────────────────
+const sseClients = new Map();
+
+/** Broadcast a status event to all connected SSE clients. */
+function broadcastSSE(eventName, data) {
+  const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const [clientId, sendFn] of sseClients) {
+    try {
+      sendFn(eventName, data);
+    } catch {
+      sseClients.delete(clientId);
+    }
   }
 }
 
@@ -1550,6 +1589,50 @@ function startHealthServer(adapter) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Discovery failed', details: err.message }));
       }
+    } else if (req.url === '/events' && req.method === 'GET') {
+      // Server-Sent Events endpoint for real-time printer status streaming
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'X-Accel-Buffering': 'no',
+      });
+
+      // Send initial status immediately
+      const sendEvent = (eventName, data) => {
+        try {
+          res.write(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`);
+        } catch {
+          // client disconnected
+        }
+      };
+
+      const initialStatus = await adapter.getStatus();
+      sendEvent('status', {
+        connected: initialStatus.connected,
+        connectionType: adapter.connectionType,
+        status: initialStatus.status,
+        details: initialStatus.details,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Register this client
+      const clientId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      sseClients.set(clientId, sendEvent);
+      log('info', 'SSE', `Client connected: ${clientId} (total: ${sseClients.size})`);
+
+      // Send heartbeat every 15 seconds to keep connection alive
+      const heartbeatInterval = setInterval(() => {
+        sendEvent('heartbeat', { timestamp: new Date().toISOString() });
+      }, 15000);
+
+      // Cleanup on disconnect
+      req.on('close', () => {
+        clearInterval(heartbeatInterval);
+        sseClients.delete(clientId);
+        log('info', 'SSE', `Client disconnected: ${clientId} (total: ${sseClients.size})`);
+      });
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found' }));
@@ -1565,6 +1648,7 @@ function startHealthServer(adapter) {
     log('info', 'HEALTH', `  POST http://localhost:${CONFIG.healthPort}/test`);
     log('info', 'HEALTH', `  POST http://localhost:${CONFIG.healthPort}/printers/{name}/test`);
     log('info', 'HEALTH', `  POST http://localhost:${CONFIG.healthPort}/print/direct`);
+    log('info', 'HEALTH', `  GET  http://localhost:${CONFIG.healthPort}/events (SSE)`);
   });
 
   return server;
@@ -1637,6 +1721,24 @@ async function main() {
   // Start polling loop
   setInterval(() => poll(adapter), CONFIG.pollInterval);
   log('info', 'SERVICE', 'Polling started. Press Ctrl+C to stop.');
+
+  // Periodic status broadcast to SSE clients (every 10 seconds)
+  setInterval(async () => {
+    if (sseClients.size === 0) return;
+    try {
+      const status = await adapter.getStatus();
+      broadcastSSE('status', {
+        connected: status.connected,
+        connectionType: adapter.connectionType,
+        status: status.status,
+        details: status.details,
+        pendingJobs: 0,
+        timestamp: new Date().toISOString(),
+      });
+    } catch {
+      // ignore broadcast errors
+    }
+  }, 10000);
 
   // Report initial status
   const status = await adapter.getStatus();
