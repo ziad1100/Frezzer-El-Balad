@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Printer, Send, RefreshCw, CheckCircle, XCircle, AlertTriangle, Key, Copy, Trash2, Plus, Star, StarOff, Wifi, Usb, Bluetooth, Monitor, Clock, Search } from 'lucide-react';
+import { Printer, Send, RefreshCw, CheckCircle, XCircle, AlertTriangle, Key, Copy, Trash2, Plus, Star, StarOff, Wifi, Usb, Bluetooth, Monitor, Clock, Search, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminSettings, updateSettings } from '@/api/admin';
 import { listRecentPrintJobs, retryPrintJob, generateServiceToken, listServiceTokens, revokeServiceToken, createTestPrintJob, getAgentStatus, type AgentStatus } from '@/api/print';
@@ -12,6 +12,14 @@ import { PageHeader } from '@/components/admin/primitives';
 import { cn } from '@/lib/utils';
 import { PrinterScanner } from '@/components/admin/PrinterScanner';
 import type { DiscoveredPrinter } from '@/api/print';
+import {
+  THERMAL_PRINTER_PROFILES,
+  matchPrinterProfile,
+  detectPaperWidth,
+  getProfileDefaults,
+  getProfileCapabilities,
+  type ThermalPrinterProfile,
+} from '@/lib/thermalPrinterProfiles';
 
 interface PrinterConfig {
   id: string;
@@ -85,6 +93,8 @@ export function AdminPrinterPage() {
   const [newTokenName, setNewTokenName] = useState('');
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState('');
+  const [selectedProfile, setSelectedProfile] = useState<ThermalPrinterProfile | null>(null);
   const [newPrinter, setNewPrinter] = useState<Partial<PrinterConfig>>({
     name: '',
     type: 'thermal',
@@ -259,20 +269,34 @@ export function AdminPrinterPage() {
   const handleSelectDiscoveredPrinter = (printer: DiscoveredPrinter) => {
     const id = newPrinterId();
     const connType = printer.connection === 'serial' ? 'usb' : printer.connection;
+
+    // Auto-detect profile and paper width
+    const profile = matchPrinterProfile(printer.name, printer.model, printer.source);
+    const autoPaperWidth = detectPaperWidth(printer.name, printer.model, printer.source, printer.port);
+
     const p: PrinterConfig = {
       id,
       name: printer.name,
-      type: 'thermal',
-      paperWidth: (printer.paperWidth === '58' ? '58' : '80') as '58' | '80',
+      type: profile ? (connType === 'windows' ? 'windows_default' : 'thermal') : 'thermal',
+      paperWidth: autoPaperWidth,
       connection: connType as PrinterConfig['connection'],
       ipAddress: printer.ip || '',
       port: printer.port || (connType === 'lan' ? '9100' : ''),
-      deviceModel: printer.model || '',
+      deviceModel: profile ? profile.name : (printer.model || ''),
       isDefault: printers.length === 0,
       isActive: true,
     };
     setPrinters([...printers, p]);
-    toast.success(lang === 'ar' ? `تمت إضافة ${printer.name}` : `Added ${printer.name}`);
+
+    if (profile) {
+      toast.success(
+        lang === 'ar'
+          ? `تمت إضافة ${printer.name} — تم التعرف على الطابعة (${profile.name})`
+          : `Added ${printer.name} — profile detected (${profile.name})`
+      );
+    } else {
+      toast.success(lang === 'ar' ? `تمت إضافة ${printer.name}` : `Added ${printer.name}`);
+    }
     setShowScanner(false);
   };
 
@@ -377,10 +401,75 @@ export function AdminPrinterPage() {
                 <p className="text-sm font-bold text-brand-400">
                   {lang === 'ar' ? 'طابعة جديدة' : 'New Printer'}
                 </p>
+
+                {/* Profile Selector */}
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-night-400">
+                    <Wrench className="h-3 w-3" />
+                    {lang === 'ar' ? 'ملف الطابعة (اختياري — يملأ البيانات تلقائياً)' : 'Printer Profile (optional — auto-fills settings)'}
+                  </label>
+                  <Select
+                    value={selectedProfileId}
+                    onChange={(e) => {
+                      const pid = e.target.value;
+                      setSelectedProfileId(pid);
+                      if (pid) {
+                        const defaults = getProfileDefaults(pid);
+                        setNewPrinter((prev) => ({
+                          ...prev,
+                          name: prev.name || defaults.name,
+                          type: defaults.type,
+                          paperWidth: defaults.paperWidth,
+                          connection: defaults.connection,
+                          port: defaults.port,
+                          deviceModel: defaults.deviceModel,
+                        }));
+                        setSelectedProfile(THERMAL_PRINTER_PROFILES.find((p) => p.id === pid) || null);
+                      } else {
+                        setSelectedProfile(null);
+                      }
+                    }}
+                  >
+                    <option value="">{lang === 'ar' ? '— بدون ملف —' : '— No profile —'}</option>
+                    {THERMAL_PRINTER_PROFILES.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.paperWidth}mm · {p.connection.toUpperCase()})
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                {/* Profile Info */}
+                {selectedProfile && (
+                  <div className="rounded-lg border border-night-700 bg-night-900/50 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Printer className="h-4 w-4 text-brand-400" />
+                      <span className="text-xs font-bold text-night-200">{selectedProfile.name}</span>
+                      <span className="text-xs text-night-500">— {selectedProfile.manufacturer}</span>
+                    </div>
+                    <p className="text-xs text-night-500 mb-2">
+                      {lang === 'ar' ? selectedProfile.notesAr : selectedProfile.notesEn}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {getProfileCapabilities(selectedProfile).map((cap) => (
+                        <span
+                          key={cap.labelEn}
+                          className={cn(
+                            'rounded-md px-1.5 py-0.5 text-[10px] font-bold',
+                            cap.supported ? 'bg-emerald-500/15 text-emerald-400' : 'bg-night-800 text-night-500',
+                          )}
+                        >
+                          {lang === 'ar' ? cap.labelAr : cap.labelEn} {cap.supported ? '✓' : '✗'}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <Input
                   value={newPrinter.name ?? ''}
                   onChange={(e) => setNewPrinter({ ...newPrinter, name: e.target.value })}
-                  placeholder={lang === 'ar' ? 'اسم الطابعة' : 'Printer name'}
+                  placeholder={lang === 'ar' ? 'اسم الطابعة (مثال: الكاونتر)' : 'Printer name (e.g. Main Counter)'}
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
@@ -397,8 +486,8 @@ export function AdminPrinterPage() {
                   <div>
                     <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'عرض الورق' : 'Paper Width'}</label>
                     <Select value={newPrinter.paperWidth ?? '80'} onChange={(e) => setNewPrinter({ ...newPrinter, paperWidth: e.target.value as '58' | '80' })}>
-                      <option value="80">80mm</option>
-                      <option value="58">58mm</option>
+                      <option value="80">80mm — {lang === 'ar' ? 'قياسي' : 'Standard'}</option>
+                      <option value="58">58mm — {lang === 'ar' ? 'مصغّر' : 'Compact'}</option>
                     </Select>
                   </div>
                 </div>
@@ -424,13 +513,19 @@ export function AdminPrinterPage() {
                 </div>
                 {(newPrinter.connection === 'lan' || newPrinter.connection === 'wifi') && (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <Input dir="ltr" value={newPrinter.ipAddress ?? ''} onChange={(e) => setNewPrinter({ ...newPrinter, ipAddress: e.target.value })} placeholder="192.168.1.100" />
-                    <Input dir="ltr" value={newPrinter.port ?? '9100'} onChange={(e) => setNewPrinter({ ...newPrinter, port: e.target.value })} placeholder="9100" />
+                    <div>
+                      <label className="mb-1 block text-xs text-night-400">IP Address</label>
+                      <Input dir="ltr" value={newPrinter.ipAddress ?? ''} onChange={(e) => setNewPrinter({ ...newPrinter, ipAddress: e.target.value })} placeholder="192.168.1.100" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'منفذ' : 'Port'}</label>
+                      <Input dir="ltr" value={newPrinter.port ?? '9100'} onChange={(e) => setNewPrinter({ ...newPrinter, port: e.target.value })} placeholder="9100" />
+                    </div>
                   </div>
                 )}
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleAddPrinter}>{lang === 'ar' ? 'إضافة' : 'Add'}</Button>
-                  <Button size="sm" variant="outline" onClick={() => setShowAddForm(false)}>{lang === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+                  <Button size="sm" variant="outline" onClick={() => { setShowAddForm(false); setSelectedProfileId(''); setSelectedProfile(null); }}>{lang === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
                 </div>
               </div>
             )}
@@ -488,6 +583,11 @@ export function AdminPrinterPage() {
                             {connLabel(p.connection)} · {p.paperWidth}mm
                             {(p.connection === 'lan' || p.connection === 'wifi') && p.ipAddress ? ` · ${p.ipAddress}:${p.port}` : ''}
                           </p>
+                          {p.deviceModel && (
+                            <p className="text-[10px] text-night-600">
+                              {p.deviceModel}
+                            </p>
+                          )}
                           {connectionResults[p.id] && (
                             <p className={cn('mt-1 text-xs font-semibold', connectionResults[p.id].success ? 'text-emerald-400' : 'text-red-400')}>
                               {connectionResults[p.id].message}
@@ -495,6 +595,36 @@ export function AdminPrinterPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-1">
+                          {/* Auto-Detect Profile */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title={lang === 'ar' ? 'اكتشاف تلقائي للطابعة' : 'Auto-detect printer profile'}
+                            onClick={() => {
+                              const profile = matchPrinterProfile(p.name, p.deviceModel);
+                              if (profile) {
+                                const pw = detectPaperWidth(p.name, p.deviceModel);
+                                handleUpdatePrinter(p.id, {
+                                  deviceModel: profile.name,
+                                  paperWidth: pw,
+                                  type: profile.connection === 'windows' ? 'windows_default' : 'thermal',
+                                });
+                                toast.success(
+                                  lang === 'ar'
+                                    ? `تم التعرف على: ${profile.name}`
+                                    : `Detected: ${profile.name}`
+                                );
+                              } else {
+                                toast.info(
+                                  lang === 'ar'
+                                    ? 'لم يتم التعرف على الطابعة — حدد الملف يدوياً'
+                                    : 'Printer not recognized — select a profile manually'
+                                );
+                              }
+                            }}
+                          >
+                            <Wrench className="h-3.5 w-3.5" />
+                          </Button>
                           {/* Connection Test */}
                           <Button
                             variant="ghost"
