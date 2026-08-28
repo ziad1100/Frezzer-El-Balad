@@ -200,6 +200,8 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
     purchaseStats,
     inventoryStats,
     salesStats,
+    dailyMovement,
+    allProductsWithStock,
   ] = await Promise.all([
     analyticsRepo.totals(),
     analyticsRepo.recent(daysAgo(30)),
@@ -220,6 +222,8 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
     purchasesRepo.getPurchaseStats(periodStart.toISOString(), periodEnd.toISOString()),
     inventoryRepo.getInventoryStats(),
     inventoryRepo.getSalesStats(periodStart.toISOString(), periodEnd.toISOString()),
+    inventoryRepo.getDailyProductMovement(periodStart.toISOString(), periodEnd.toISOString()),
+    inventoryRepo.getAllProductsWithStock(),
   ]);
 
   const reviewStats = reviewData as Record<string, unknown>;
@@ -476,46 +480,40 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
   const productSummaryRows: (string | number)[][] = [
     ['المنتج', 'النوع/الوزن', 'الكمية المباعة', 'إيرادات المبيعات', 'الكمية المشتراة', 'تكلفة المشتريات', 'المخزون الحالي'],
   ];
-  // Merge sales and purchases by product
+  // Build maps for sales and purchases by product+size
   const salesByProduct = new Map<string, { name: string; size: string; qty: number; revenue: number }>();
   for (const s of salesStats.byProduct) {
     const key = `${s.productId}:${s.productSize}`;
     salesByProduct.set(key, {
-      name: s.productName,
-      size: s.productSize,
-      qty: s.totalQuantity,
-      revenue: s.totalRevenue,
+      name: s.productName, size: s.productSize, qty: s.totalQuantity, revenue: s.totalRevenue,
     });
   }
   const purchasesByProduct = new Map<string, { name: string; size: string; qty: number; cost: number }>();
   for (const p of purchaseStats.byProduct) {
     const key = `${p.productId}:${p.productSize}`;
     const existing = purchasesByProduct.get(key);
-    if (existing) {
-      existing.qty += p.totalQuantity;
-      existing.cost += p.totalCost;
-    } else {
-      purchasesByProduct.set(key, {
-        name: p.productName,
-        size: p.productSize,
-        qty: p.totalQuantity,
-        cost: p.totalCost,
-      });
-    }
+    if (existing) { existing.qty += p.totalQuantity; existing.cost += p.totalCost; }
+    else { purchasesByProduct.set(key, { name: p.productName, size: p.productSize, qty: p.totalQuantity, cost: p.totalCost }); }
   }
-  // Combine all products
-  const allProductKeys = new Set([...salesByProduct.keys(), ...purchasesByProduct.keys()]);
+  // Build stock map
+  const stockMap = new Map<string, number>();
+  for (const ps of allProductsWithStock) {
+    const key = `${ps.productId}:${ps.productSize}`;
+    stockMap.set(key, ps.stockQuantity);
+  }
+  // Use ALL tracked products (with stock data) so every product appears
+  const allProductKeys = new Set([...allProductsWithStock.map((p) => `${p.productId}:${p.productSize}`), ...salesByProduct.keys(), ...purchasesByProduct.keys()]);
   for (const key of allProductKeys) {
     const sales = salesByProduct.get(key);
     const purchases = purchasesByProduct.get(key);
+    const stock = stockMap.get(key) ?? 0;
+    const productName = sales?.name ?? purchases?.name ?? allProductsWithStock.find((p) => `${p.productId}:${p.productSize}` === key)?.productName ?? '';
+    const productSize = sales?.size ?? purchases?.size ?? allProductsWithStock.find((p) => `${p.productId}:${p.productSize}` === key)?.productSize ?? '';
     productSummaryRows.push([
-      sales?.name ?? purchases?.name ?? '',
-      sales?.size ?? purchases?.size ?? '',
-      sales?.qty ?? 0,
-      sales?.revenue ?? 0,
-      purchases?.qty ?? 0,
-      purchases?.cost ?? 0,
-      '', // Current inventory is shown in dashboard, not calculated here per product
+      productName, productSize,
+      sales?.qty ?? 0, sales?.revenue ?? 0,
+      purchases?.qty ?? 0, purchases?.cost ?? 0,
+      stock,
     ]);
   }
   const productSummaryWs = sheetOf(productSummaryRows);
@@ -529,12 +527,38 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
   productSummaryWs['!cols'] = [{ wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }];
   XLSX.utils.book_append_sheet(wb, productSummaryWs, 'ملخص المنتجات');
 
-  // ---- Sheet 11: ملخص مالي (financial summary) ----
+  // ---- Sheet 11: الحركة اليومية (daily product movement) ----
+  if (dailyMovement.length > 0) {
+    const dailyRows: (string | number)[][] = [
+      ['التاريخ', 'المنتج', 'النوع/الوزن', 'الكمية المباعة', 'إيرادات المبيعات', 'الكمية المشتراة', 'تكلفة المشتريات'],
+    ];
+    for (const d of dailyMovement) {
+      dailyRows.push([
+        d.date, d.productName, d.productSize,
+        d.soldQty, d.salesRevenue, d.purchasedQty, d.purchaseCost,
+      ]);
+    }
+    const dailyWs = sheetOf(dailyRows);
+    for (let r = 1; r < dailyRows.length; r++) {
+      setFormat(dailyWs, r, 3, COUNT);
+      setFormat(dailyWs, r, 4, MONEY);
+      setFormat(dailyWs, r, 5, COUNT);
+      setFormat(dailyWs, r, 6, MONEY);
+    }
+    dailyWs['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, dailyWs, 'الحركة اليومية');
+  }
+
+  // ---- Sheet 12: ملخص مالي (financial summary) ----
   const periodLabel = period === 'today' ? 'اليوم' : period === 'week' ? 'هذا الأسبوع' : period === 'month' ? 'هذا الشهر' : 'فترة مخصصة';
   const periodDateRange = `${iso(periodStart)} → ${iso(periodEnd)}`;
+  // Calculate calendar days in period
+  const msPerDay = 86400000;
+  const calendarDays = Math.round((periodEnd.getTime() - periodStart.getTime()) / msPerDay) + 1;
   const financialRows: (string | number)[][] = [
     ['المؤشر', 'القيمة'],
     ['فترة التقرير', `${periodLabel} (${periodDateRange})`],
+    ['عدد أيام التقويم', calendarDays],
     ['', ''],
     ['المبيعات / الإيرادات', ''],
     ['إجمالي الإيرادات (الفترة)', salesStats.salesValue],

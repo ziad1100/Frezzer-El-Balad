@@ -4429,6 +4429,85 @@ var getSalesStats = async (startDate, endDate) => {
     byProduct
   };
 };
+var getDailyProductMovement = async (startDate, endDate) => {
+  const salesRows = await query(
+    `SELECT o."createdAt"::date::text AS "date",
+            oi."productId"::text AS "productId",
+            oi.name AS "productName",
+            oi.size AS "productSize",
+            SUM(oi.qty)::int AS "soldQty",
+            SUM(oi."lineTotal")::float8 AS "salesRevenue"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     WHERE o."createdAt" >= $1::timestamptz AND o."createdAt" <= $2::timestamptz
+       AND o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')
+     GROUP BY o."createdAt"::date, oi."productId", oi.name, oi.size
+     ORDER BY o."createdAt"::date, oi.name`,
+    [startDate, endDate]
+  );
+  const purchaseRows = await query(
+    `SELECT "purchaseDate"::date::text AS "date",
+            "productId"::text AS "productId",
+            "productName",
+            "productSize",
+            SUM(quantity)::int AS "purchasedQty",
+            SUM("totalCost")::float8 AS "purchaseCost"
+     FROM purchases
+     WHERE "purchaseDate" >= $1::timestamptz AND "purchaseDate" <= $2::timestamptz
+     GROUP BY "purchaseDate"::date, "productId", "productName", "productSize"
+     ORDER BY "purchaseDate"::date, "productName"`,
+    [startDate, endDate]
+  );
+  const merged = /* @__PURE__ */ new Map();
+  for (const s of salesRows) {
+    const key = `${s.date}:${s.productId}:${s.productSize}`;
+    merged.set(key, {
+      date: s.date,
+      productId: s.productId,
+      productName: s.productName,
+      productSize: s.productSize,
+      soldQty: s.soldQty,
+      salesRevenue: s.salesRevenue,
+      purchasedQty: 0,
+      purchaseCost: 0
+    });
+  }
+  for (const p of purchaseRows) {
+    const key = `${p.date}:${p.productId}:${p.productSize}`;
+    const existing = merged.get(key);
+    if (existing) {
+      existing.purchasedQty = p.purchasedQty;
+      existing.purchaseCost = p.purchaseCost;
+    } else {
+      merged.set(key, {
+        date: p.date,
+        productId: p.productId,
+        productName: p.productName,
+        productSize: p.productSize,
+        soldQty: 0,
+        salesRevenue: 0,
+        purchasedQty: p.purchasedQty,
+        purchaseCost: p.purchaseCost
+      });
+    }
+  }
+  return Array.from(merged.values()).sort((a, b) => a.date.localeCompare(b.date) || a.productName.localeCompare(b.productName));
+};
+var getAllProductsWithStock = async () => {
+  const productRows = await query(
+    `SELECT id::text AS "productId", name AS "productName", '' AS "productSize", "stockQuantity"
+     FROM products
+     WHERE "trackInventory" = true AND (sizes IS NULL OR jsonb_array_length(sizes) = 0)`
+  );
+  const sizeRows = await query(
+    `SELECT p.id::text AS "productId", p.name AS "productName",
+            ps.name AS "productSize", ps."stockQuantity"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     WHERE p."trackInventory" = true`
+  );
+  return [...productRows, ...sizeRows];
+};
 
 // src/db/notifications.ts
 var NOTIFICATION_COLS = `
@@ -6065,7 +6144,9 @@ var exportStats = asyncHandler(async (req, res) => {
     purchasesPage,
     purchaseStats,
     inventoryStats,
-    salesStats
+    salesStats,
+    dailyMovement,
+    allProductsWithStock
   ] = await Promise.all([
     totals(),
     recent(daysAgo(30)),
@@ -6085,7 +6166,9 @@ var exportStats = asyncHandler(async (req, res) => {
     listPurchases(1, 1e3, periodStart.toISOString(), periodEnd.toISOString()),
     getPurchaseStats(periodStart.toISOString(), periodEnd.toISOString()),
     getInventoryStats(),
-    getSalesStats(periodStart.toISOString(), periodEnd.toISOString())
+    getSalesStats(periodStart.toISOString(), periodEnd.toISOString()),
+    getDailyProductMovement(periodStart.toISOString(), periodEnd.toISOString()),
+    getAllProductsWithStock()
   ]);
   const reviewStats = reviewData;
   const periodMap = [
@@ -6335,27 +6418,29 @@ var exportStats = asyncHandler(async (req, res) => {
       existing.qty += p.totalQuantity;
       existing.cost += p.totalCost;
     } else {
-      purchasesByProduct.set(key, {
-        name: p.productName,
-        size: p.productSize,
-        qty: p.totalQuantity,
-        cost: p.totalCost
-      });
+      purchasesByProduct.set(key, { name: p.productName, size: p.productSize, qty: p.totalQuantity, cost: p.totalCost });
     }
   }
-  const allProductKeys = /* @__PURE__ */ new Set([...salesByProduct.keys(), ...purchasesByProduct.keys()]);
+  const stockMap = /* @__PURE__ */ new Map();
+  for (const ps of allProductsWithStock) {
+    const key = `${ps.productId}:${ps.productSize}`;
+    stockMap.set(key, ps.stockQuantity);
+  }
+  const allProductKeys = /* @__PURE__ */ new Set([...allProductsWithStock.map((p) => `${p.productId}:${p.productSize}`), ...salesByProduct.keys(), ...purchasesByProduct.keys()]);
   for (const key of allProductKeys) {
     const sales = salesByProduct.get(key);
     const purchases = purchasesByProduct.get(key);
+    const stock = stockMap.get(key) ?? 0;
+    const productName = sales?.name ?? purchases?.name ?? allProductsWithStock.find((p) => `${p.productId}:${p.productSize}` === key)?.productName ?? "";
+    const productSize = sales?.size ?? purchases?.size ?? allProductsWithStock.find((p) => `${p.productId}:${p.productSize}` === key)?.productSize ?? "";
     productSummaryRows.push([
-      sales?.name ?? purchases?.name ?? "",
-      sales?.size ?? purchases?.size ?? "",
+      productName,
+      productSize,
       sales?.qty ?? 0,
       sales?.revenue ?? 0,
       purchases?.qty ?? 0,
       purchases?.cost ?? 0,
-      ""
-      // Current inventory is shown in dashboard, not calculated here per product
+      stock
     ]);
   }
   const productSummaryWs = sheetOf(productSummaryRows);
@@ -6368,11 +6453,39 @@ var exportStats = asyncHandler(async (req, res) => {
   }
   productSummaryWs["!cols"] = [{ wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }];
   XLSX.utils.book_append_sheet(wb, productSummaryWs, "\u0645\u0644\u062E\u0635 \u0627\u0644\u0645\u0646\u062A\u062C\u0627\u062A");
+  if (dailyMovement.length > 0) {
+    const dailyRows = [
+      ["\u0627\u0644\u062A\u0627\u0631\u064A\u062E", "\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0646\u0648\u0639/\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0628\u0627\u0639\u0629", "\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A", "\u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629", "\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A"]
+    ];
+    for (const d of dailyMovement) {
+      dailyRows.push([
+        d.date,
+        d.productName,
+        d.productSize,
+        d.soldQty,
+        d.salesRevenue,
+        d.purchasedQty,
+        d.purchaseCost
+      ]);
+    }
+    const dailyWs = sheetOf(dailyRows);
+    for (let r = 1; r < dailyRows.length; r++) {
+      setFormat(dailyWs, r, 3, COUNT);
+      setFormat(dailyWs, r, 4, MONEY);
+      setFormat(dailyWs, r, 5, COUNT);
+      setFormat(dailyWs, r, 6, MONEY);
+    }
+    dailyWs["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, dailyWs, "\u0627\u0644\u062D\u0631\u0643\u0629 \u0627\u0644\u064A\u0648\u0645\u064A\u0629");
+  }
   const periodLabel = period === "today" ? "\u0627\u0644\u064A\u0648\u0645" : period === "week" ? "\u0647\u0630\u0627 \u0627\u0644\u0623\u0633\u0628\u0648\u0639" : period === "month" ? "\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631" : "\u0641\u062A\u0631\u0629 \u0645\u062E\u0635\u0635\u0629";
   const periodDateRange = `${iso(periodStart)} \u2192 ${iso(periodEnd)}`;
+  const msPerDay = 864e5;
+  const calendarDays = Math.round((periodEnd.getTime() - periodStart.getTime()) / msPerDay) + 1;
   const financialRows = [
     ["\u0627\u0644\u0645\u0624\u0634\u0631", "\u0627\u0644\u0642\u064A\u0645\u0629"],
     ["\u0641\u062A\u0631\u0629 \u0627\u0644\u062A\u0642\u0631\u064A\u0631", `${periodLabel} (${periodDateRange})`],
+    ["\u0639\u062F\u062F \u0623\u064A\u0627\u0645 \u0627\u0644\u062A\u0642\u0648\u064A\u0645", calendarDays],
     ["", ""],
     ["\u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A / \u0627\u0644\u0625\u064A\u0631\u0627\u062F\u0627\u062A", ""],
     ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0625\u064A\u0631\u0627\u062F\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", salesStats.salesValue],

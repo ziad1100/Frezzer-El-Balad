@@ -472,3 +472,114 @@ export const getSalesStats = async (
     byProduct,
   };
 };
+
+/** Get daily product movement (sales + purchases) for a date range. */
+export const getDailyProductMovement = async (
+  startDate: string,
+  endDate: string,
+): Promise<Array<{
+  date: string;
+  productId: string;
+  productName: string;
+  productSize: string;
+  soldQty: number;
+  salesRevenue: number;
+  purchasedQty: number;
+  purchaseCost: number;
+}>> => {
+  // Sales by day and product
+  const salesRows = await query<{
+    date: string; productId: string; productName: string; productSize: string;
+    soldQty: number; salesRevenue: number;
+  }>(
+    `SELECT o."createdAt"::date::text AS "date",
+            oi."productId"::text AS "productId",
+            oi.name AS "productName",
+            oi.size AS "productSize",
+            SUM(oi.qty)::int AS "soldQty",
+            SUM(oi."lineTotal")::float8 AS "salesRevenue"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     WHERE o."createdAt" >= $1::timestamptz AND o."createdAt" <= $2::timestamptz
+       AND o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')
+     GROUP BY o."createdAt"::date, oi."productId", oi.name, oi.size
+     ORDER BY o."createdAt"::date, oi.name`,
+    [startDate, endDate],
+  );
+
+  // Purchases by day and product
+  const purchaseRows = await query<{
+    date: string; productId: string; productName: string; productSize: string;
+    purchasedQty: number; purchaseCost: number;
+  }>(
+    `SELECT "purchaseDate"::date::text AS "date",
+            "productId"::text AS "productId",
+            "productName",
+            "productSize",
+            SUM(quantity)::int AS "purchasedQty",
+            SUM("totalCost")::float8 AS "purchaseCost"
+     FROM purchases
+     WHERE "purchaseDate" >= $1::timestamptz AND "purchaseDate" <= $2::timestamptz
+     GROUP BY "purchaseDate"::date, "productId", "productName", "productSize"
+     ORDER BY "purchaseDate"::date, "productName"`,
+    [startDate, endDate],
+  );
+
+  // Merge sales and purchases by date+product
+  const merged = new Map<string, {
+    date: string; productId: string; productName: string; productSize: string;
+    soldQty: number; salesRevenue: number; purchasedQty: number; purchaseCost: number;
+  }>();
+
+  for (const s of salesRows) {
+    const key = `${s.date}:${s.productId}:${s.productSize}`;
+    merged.set(key, {
+      date: s.date, productId: s.productId, productName: s.productName,
+      productSize: s.productSize, soldQty: s.soldQty, salesRevenue: s.salesRevenue,
+      purchasedQty: 0, purchaseCost: 0,
+    });
+  }
+  for (const p of purchaseRows) {
+    const key = `${p.date}:${p.productId}:${p.productSize}`;
+    const existing = merged.get(key);
+    if (existing) {
+      existing.purchasedQty = p.purchasedQty;
+      existing.purchaseCost = p.purchaseCost;
+    } else {
+      merged.set(key, {
+        date: p.date, productId: p.productId, productName: p.productName,
+        productSize: p.productSize, soldQty: 0, salesRevenue: 0,
+        purchasedQty: p.purchasedQty, purchaseCost: p.purchaseCost,
+      });
+    }
+  }
+
+  return Array.from(merged.values()).sort((a, b) => a.date.localeCompare(b.date) || a.productName.localeCompare(b.productName));
+};
+
+/** Get all products with stock for export (includes products with no activity). */
+export const getAllProductsWithStock = async (): Promise<Array<{
+  productId: string; productName: string; productSize: string; stockQuantity: number;
+}>> => {
+  // Products without sizes
+  const productRows = await query<{
+    productId: string; productName: string; productSize: string; stockQuantity: number;
+  }>(
+    `SELECT id::text AS "productId", name AS "productName", '' AS "productSize", "stockQuantity"
+     FROM products
+     WHERE "trackInventory" = true AND (sizes IS NULL OR jsonb_array_length(sizes) = 0)`,
+  );
+
+  // Products with sizes
+  const sizeRows = await query<{
+    productId: string; productName: string; productSize: string; stockQuantity: number;
+  }>(
+    `SELECT p.id::text AS "productId", p.name AS "productName",
+            ps.name AS "productSize", ps."stockQuantity"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     WHERE p."trackInventory" = true`,
+  );
+
+  return [...productRows, ...sizeRows];
+};
