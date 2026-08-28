@@ -1,0 +1,326 @@
+/**
+ * Admin Payment Verification Page
+ *
+ * Shows pending manual payments (Vodafone Cash, Bank Transfer, InstaPay)
+ * for admin review and verification.
+ */
+
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle, XCircle, Eye, AlertCircle, FileText } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  adminListPendingPayments,
+  adminApprovePayment,
+  adminRejectPayment,
+  type PendingPaymentItem,
+} from '@/api/payment';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, Skeleton } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
+import { PageHeader, Pagination } from '@/components/admin/primitives';
+import { formatPrice } from '@/lib/utils';
+
+export function AdminPaymentsPage() {
+  const { i18n } = useTranslation();
+  const lang = i18n.language;
+  const isAr = lang === 'ar';
+  const queryClient = useQueryClient();
+
+  const [page, setPage] = useState(1);
+  const [selectedTransaction, setSelectedTransaction] = useState<PendingPaymentItem | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<PendingPaymentItem | null>(null);
+
+  const pendingPayments = useQuery({
+    queryKey: ['admin', 'pending-payments', page],
+    queryFn: () => adminListPendingPayments({ page, limit: 20 }),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => adminApprovePayment(id),
+    onSuccess: () => {
+      toast.success(isAr ? 'تم تأكيد الدفع' : 'Payment approved');
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
+      setSelectedTransaction(null);
+    },
+    onError: () => toast.error(isAr ? 'فشل تأكيد الدفع' : 'Failed to approve payment'),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => adminRejectPayment(id, reason),
+    onSuccess: () => {
+      toast.success(isAr ? 'تم رفض الدفع' : 'Payment rejected');
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+      setRejectTarget(null);
+      setRejectReason('');
+      setShowRejectDialog(false);
+    },
+    onError: () => toast.error(isAr ? 'فشل رفض الدفع' : 'Failed to reject payment'),
+  });
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleString(isAr ? 'ar-EG' : 'en-GB', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+
+  const paymentMethodLabel = (method: string) => {
+    const labels: Record<string, { ar: string; en: string }> = {
+      vodafone_cash: { ar: 'فودافون كاش', en: 'Vodafone Cash' },
+      bank_transfer: { ar: 'تحويل بنكي', en: 'Bank Transfer' },
+      instapay: { ar: 'انستاباي', en: 'InstaPay' },
+    };
+    return labels[method]?.[isAr ? 'ar' : 'en'] ?? method;
+  };
+
+  return (
+    <div>
+      <PageHeader title={isAr ? 'تحقق من المدفوعات' : 'Payment Verification'} />
+
+      {pendingPayments.isLoading ? (
+        <Skeleton className="h-96" />
+      ) : pendingPayments.data && pendingPayments.data.items.length > 0 ? (
+        <>
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-night-800 text-left text-xs font-bold uppercase tracking-wider text-night-500">
+                      <th className="px-4 py-3">{isAr ? 'رقم الطلب' : 'Order'}</th>
+                      <th className="px-4 py-3">{isAr ? 'العميل' : 'Customer'}</th>
+                      <th className="px-4 py-3">{isAr ? 'المبلغ' : 'Amount'}</th>
+                      <th className="px-4 py-3">{isAr ? 'طريقة الدفع' : 'Method'}</th>
+                      <th className="px-4 py-3">{isAr ? 'رقم العملية' : 'Reference'}</th>
+                      <th className="px-4 py-3">{isAr ? 'رقم الهاتف' : 'Phone'}</th>
+                      <th className="px-4 py-3">{isAr ? 'التاريخ' : 'Date'}</th>
+                      <th className="px-4 py-3 text-end">{isAr ? 'إجراءات' : 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingPayments.data.items.map((item) => (
+                      <tr key={item.id} className="border-b border-night-800/50 transition-colors hover:bg-night-800/30">
+                        <td className="px-4 py-3 font-bold text-night-50">#{item.orderNo}</td>
+                        <td className="px-4 py-3">
+                          <p className="text-night-100">{item.customerName}</p>
+                          <p className="text-xs text-night-500" dir="ltr">{item.phone}</p>
+                        </td>
+                        <td className="px-4 py-3 font-bold text-night-50">
+                          {formatPrice(item.amount, lang)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="rounded-md bg-brand-500/15 px-2 py-0.5 text-xs font-bold text-brand-400">
+                            {paymentMethodLabel(item.paymentMethod)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-night-300">
+                          {item.transactionReference || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-night-400" dir="ltr">
+                          {item.senderPhone || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-night-500">
+                          {fmtDate(item.createdAt)}
+                        </td>
+                        <td className="px-4 py-3 text-end">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setSelectedTransaction(item)}
+                              title={isAr ? 'عرض التفاصيل' : 'View details'}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-emerald-400 hover:bg-emerald-500/10"
+                              loading={approveMutation.isPending}
+                              onClick={() => approveMutation.mutate(item.id)}
+                              title={isAr ? 'تأكيد الدفع' : 'Approve payment'}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-400 hover:bg-red-500/10"
+                              onClick={() => { setRejectTarget(item); setShowRejectDialog(true); setRejectReason(''); }}
+                              title={isAr ? 'رفض الدفع' : 'Reject payment'}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+          <Pagination
+            page={pendingPayments.data.page}
+            pages={pendingPayments.data.pages}
+            onPage={setPage}
+          />
+        </>
+      ) : (
+        <Card>
+          <CardContent className="py-14 text-center">
+            <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-500/50" />
+            <p className="text-sm text-night-500">
+              {isAr ? 'لا توجد مدفوعات تنتظر التحقق' : 'No pending payments to verify'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Transaction Detail Modal */}
+      <Modal
+        open={Boolean(selectedTransaction)}
+        onClose={() => setSelectedTransaction(null)}
+        title={isAr ? 'تفاصيل الدفع' : 'Payment Details'}
+        size="lg"
+      >
+        {selectedTransaction && (
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-night-800 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-night-500">
+                  {isAr ? 'رقم الطلب' : 'Order'}
+                </p>
+                <p className="mt-1 text-lg font-extrabold text-night-50">#{selectedTransaction.orderNo}</p>
+              </div>
+              <div className="rounded-xl border border-night-800 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-night-500">
+                  {isAr ? 'المبلغ' : 'Amount'}
+                </p>
+                <p className="mt-1 text-lg font-extrabold text-brand-400">
+                  {formatPrice(selectedTransaction.amount, lang)}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-night-800 p-4 text-sm">
+              <div className="flex justify-between">
+                <span className="text-night-400">{isAr ? 'العميل' : 'Customer'}</span>
+                <span className="font-bold text-night-100">{selectedTransaction.customerName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-night-400">{isAr ? 'رقم الهاتف' : 'Phone'}</span>
+                <span className="text-night-100" dir="ltr">{selectedTransaction.phone}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-night-400">{isAr ? 'طريقة الدفع' : 'Payment Method'}</span>
+                <span className="font-bold text-night-100">{paymentMethodLabel(selectedTransaction.paymentMethod)}</span>
+              </div>
+              {selectedTransaction.transactionReference && (
+                <div className="flex justify-between">
+                  <span className="text-night-400">{isAr ? 'رقم العملية' : 'Transaction Reference'}</span>
+                  <span className="font-mono text-night-100">{selectedTransaction.transactionReference}</span>
+                </div>
+              )}
+              {selectedTransaction.senderPhone && (
+                <div className="flex justify-between">
+                  <span className="text-night-400">{isAr ? 'هاتف المحول' : 'Sender Phone'}</span>
+                  <span className="text-night-100" dir="ltr">{selectedTransaction.senderPhone}</span>
+                </div>
+              )}
+              {selectedTransaction.senderName && (
+                <div className="flex justify-between">
+                  <span className="text-night-400">{isAr ? 'اسم المحول' : 'Sender Name'}</span>
+                  <span className="text-night-100">{selectedTransaction.senderName}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-night-400">{isAr ? 'التاريخ' : 'Date'}</span>
+                <span className="text-night-100">{fmtDate(selectedTransaction.createdAt)}</span>
+              </div>
+            </div>
+
+            {/* Proof */}
+            {selectedTransaction.proofUrl && (
+              <div className="rounded-xl border border-night-800 p-4">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-night-500">
+                  <FileText className="mr-1 inline h-3 w-3" />
+                  {isAr ? 'إثبات التحويل' : 'Transfer Proof'}
+                </p>
+                <p className="text-sm text-night-300">{selectedTransaction.proofUrl}</p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => approveMutation.mutate(selectedTransaction.id)}
+                loading={approveMutation.isPending}
+                className="flex-1"
+              >
+                <CheckCircle className="h-4 w-4" />
+                {isAr ? 'تأكيد الدفع' : 'Approve Payment'}
+              </Button>
+              <Button
+                variant="outline"
+                className="border-red-500/40 text-red-400"
+                onClick={() => { setRejectTarget(selectedTransaction); setShowRejectDialog(true); setRejectReason(''); setSelectedTransaction(null); }}
+              >
+                <XCircle className="h-4 w-4" />
+                {isAr ? 'رفض' : 'Reject'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Reject Reason Dialog */}
+      <Modal
+        open={showRejectDialog}
+        onClose={() => setShowRejectDialog(false)}
+        title={isAr ? 'سبب رفض الدفع' : 'Rejection Reason'}
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+            <p className="text-sm text-red-300">
+              {isAr
+                ? 'أدخل سبب رفض الدفع. سيتم إبلاغ العميل.'
+                : 'Enter the rejection reason. The customer will be notified.'}
+            </p>
+          </div>
+          <Input
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder={isAr ? 'سبب الرفض' : 'Rejection reason'}
+          />
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowRejectDialog(false)}
+            >
+              {isAr ? 'إلغاء' : 'Cancel'}
+            </Button>
+            <Button
+              variant="primary"
+              loading={rejectMutation.isPending}
+              disabled={!rejectReason.trim()}
+              onClick={() => {
+                if (rejectTarget && rejectReason.trim()) {
+                  rejectMutation.mutate({ id: rejectTarget.id, reason: rejectReason.trim() });
+                }
+              }}
+            >
+              {isAr ? 'رفض الدفع' : 'Reject Payment'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}

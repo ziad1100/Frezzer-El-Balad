@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Boxes,
   ChevronRight,
+  CreditCard,
   FileText,
   Home,
   Image as ImageIcon,
@@ -61,6 +62,7 @@ const navGroups: { label: string; items: { to: string; icon: typeof LayoutDashbo
     label: 'admin.nav.commerce',
     items: [
       { to: '/admin/orders', icon: ShoppingCart, label: 'admin.nav.orders' },
+      { to: '/admin/payments', icon: CreditCard, label: 'admin.nav.payments' },
       { to: '/admin/purchases', icon: Package, label: 'admin.nav.purchases' },
       { to: '/admin/reviews', icon: Star, label: 'admin.nav.reviews' },
       { to: '/admin/users', icon: Users, label: 'admin.nav.users' },

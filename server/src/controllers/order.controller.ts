@@ -115,6 +115,15 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
 
   const method = Object.values(PAYMENT_METHODS).includes(paymentMethod) ? paymentMethod : PAYMENT_METHODS.CASH;
 
+  // Determine initial payment status based on payment method
+  // Cash: payment is pending until delivery
+  // Vodafone Cash / Bank Transfer: payment requires verification
+  // Card: payment is pending until gateway confirms
+  let initialPaymentStatus = 'pending';
+  if (method === 'vodafone_cash' || method === 'bank_transfer' || method === 'instapay') {
+    initialPaymentStatus = 'pending_verification';
+  }
+
   // Admin/manager/employee-created orders are auto-confirmed and skip the customer confirmation workflow.
   const initialStatus = isAdmin ? ORDER_STATUS.CONFIRMED : ORDER_STATUS.PENDING;
 
@@ -141,6 +150,7 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
         notes: notes ?? '',
         statusHistory,
         initialStatus,
+        initialPaymentStatus,
       });
       break;
     } catch (err) {

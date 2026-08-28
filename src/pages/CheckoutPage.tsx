@@ -8,6 +8,10 @@ import { z } from 'zod';
 import { Lock, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { createOrder, getSettings } from '@/api/orders';
+import { getPaymentSettings, type PaymentSettings } from '@/api/payment';
+import { VodafoneCashFlow } from '@/components/payment/VodafoneCashFlow';
+import { CardPaymentFlow } from '@/components/payment/CardPaymentFlow';
+import { BankTransferFlow } from '@/components/payment/BankTransferFlow';
 import { validateCoupon } from '@/api/coupons';
 import { clearCoupon, clearCart, selectSubtotal, setCoupon } from '@/store/slices/cartSlice';
 import { useAppDispatch, useAppSelector } from '@/hooks';
@@ -30,9 +34,13 @@ export function CheckoutPage() {
   const couponCode = useAppSelector((state) => state.cart.couponCode);
   const couponDiscount = useAppSelector((state) => state.cart.couponDiscount);
   const note = useAppSelector((state) => state.cart.note);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | 'vodafone_cash'>('cash');
+  type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'bank_transfer' | 'instapay';
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('cash');
+  // Track whether we've created the order and are now in the payment flow
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
 
   const settings = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const paymentSettings = useQuery({ queryKey: ['payment-settings'], queryFn: getPaymentSettings });
   const deliveryFee = useMemo(
     () => Number((settings.data?.deliveryFee ?? 0) as number),
     [settings.data],
@@ -186,24 +194,39 @@ export function CheckoutPage() {
     };
   };
 
+  const isManualPayment = selectedPaymentMethod === 'vodafone_cash' || selectedPaymentMethod === 'bank_transfer' || selectedPaymentMethod === 'instapay';
+  const isCardPayment = selectedPaymentMethod === 'card';
+
   const orderMutation = useMutation({
     mutationFn: (values: FormValues) => createOrder(buildOrderPayload(values)),
-    onSuccess: () => {
-      dispatch(clearCoupon());
-      dispatch(clearCart());
-      toast.success(t('checkout.orderSuccess'));
-      navigate(isAdmin ? '/admin/orders' : '/orders', { replace: true });
+    onSuccess: (order) => {
+      if (isManualPayment || isCardPayment) {
+        // For manual/card payments: show the payment flow instead of navigating away
+        setCreatedOrderId(order._id);
+        toast.success(t('checkout.orderSuccess'));
+      } else {
+        // Cash on delivery: clear cart and navigate
+        dispatch(clearCoupon());
+        dispatch(clearCart());
+        toast.success(t('checkout.orderSuccess'));
+        navigate(isAdmin ? '/admin/orders' : '/orders', { replace: true });
+      }
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const adminOrderMutation = useMutation({
     mutationFn: (values: AdminFormValues) => createOrder(buildOrderPayload(values)),
-    onSuccess: () => {
-      dispatch(clearCoupon());
-      dispatch(clearCart());
-      toast.success(t('checkout.orderSuccess'));
-      navigate('/admin/orders', { replace: true });
+    onSuccess: (order) => {
+      if (isManualPayment || isCardPayment) {
+        setCreatedOrderId(order._id);
+        toast.success(t('checkout.orderSuccess'));
+      } else {
+        dispatch(clearCoupon());
+        dispatch(clearCart());
+        toast.success(t('checkout.orderSuccess'));
+        navigate('/admin/orders', { replace: true });
+      }
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
@@ -344,7 +367,7 @@ export function CheckoutPage() {
                 </Section>
 
                 <Section title={t('checkout.paymentMethod')}>
-                  <PaymentMethodSelector lang={i18n.language} value={selectedPaymentMethod} onChange={setSelectedPaymentMethod} />
+                  <PaymentMethodSelector lang={i18n.language} value={selectedPaymentMethod} onChange={setSelectedPaymentMethod} paymentSettings={paymentSettings.data} />
                 </Section>
 
                 <Button type="submit" size="lg" className="w-full" loading={adminOrderMutation.isPending}>
@@ -395,7 +418,7 @@ export function CheckoutPage() {
                 </Section>
 
                 <Section title={t('checkout.paymentMethod')}>
-                  <PaymentMethodSelector lang={i18n.language} value={selectedPaymentMethod} onChange={setSelectedPaymentMethod} />
+                  <PaymentMethodSelector lang={i18n.language} value={selectedPaymentMethod} onChange={setSelectedPaymentMethod} paymentSettings={paymentSettings.data} />
                 </Section>
 
                 <Button type="submit" size="lg" className="w-full" loading={orderMutation.isPending}>
@@ -472,6 +495,58 @@ export function CheckoutPage() {
         </Card>
       </div>
 
+      {/* Payment Flow — shown after order is created for manual/card payments */}
+      {createdOrderId && (
+        <div className="mt-8">
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="mb-4 text-xl font-bold text-night-50">
+                {i18n.language === 'ar' ? 'إتمام الدفع' : 'Complete Payment'}
+              </h2>
+              {selectedPaymentMethod === 'vodafone_cash' && paymentSettings.data?.vodafoneCash && (
+                <VodafoneCashFlow
+                  orderId={createdOrderId}
+                  amount={Math.max(0, total)}
+                  settings={paymentSettings.data.vodafoneCash}
+                  onSuccess={() => {
+                    dispatch(clearCoupon());
+                    dispatch(clearCart());
+                    navigate(isAdmin ? '/admin/orders' : '/orders', { replace: true });
+                  }}
+                  onCancel={() => setCreatedOrderId(null)}
+                />
+              )}
+              {selectedPaymentMethod === 'bank_transfer' && paymentSettings.data?.bankTransfer && (
+                <BankTransferFlow
+                  orderId={createdOrderId}
+                  amount={Math.max(0, total)}
+                  settings={paymentSettings.data.bankTransfer}
+                  onSuccess={() => {
+                    dispatch(clearCoupon());
+                    dispatch(clearCart());
+                    navigate(isAdmin ? '/admin/orders' : '/orders', { replace: true });
+                  }}
+                  onCancel={() => setCreatedOrderId(null)}
+                />
+              )}
+              {selectedPaymentMethod === 'card' && (
+                <CardPaymentFlow
+                  orderId={createdOrderId}
+                  amount={Math.max(0, total)}
+                  provider={paymentSettings.data?.card?.provider ?? 'none'}
+                  onSuccess={() => {
+                    dispatch(clearCoupon());
+                    dispatch(clearCart());
+                    navigate(isAdmin ? '/admin/orders' : '/orders', { replace: true });
+                  }}
+                  onCancel={() => setCreatedOrderId(null)}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Product Search Dialog (Admin only) */}
       {isAdmin && (
         <ProductSearchDialog
@@ -506,16 +581,34 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
   );
 }
 
-const PAYMENT_METHODS = [
-  { value: 'cash' as const, icon: '💵', labelAr: 'الدفع عند الاستلام', labelEn: 'Cash on Delivery' },
-  { value: 'card' as const, icon: '💳', labelAr: 'بطاقة ائتمان', labelEn: 'Credit Card' },
-  { value: 'vodafone_cash' as const, icon: '📱', labelAr: 'فودافون كاش', labelEn: 'Vodafone Cash' },
+type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'bank_transfer' | 'instapay';
+
+const PAYMENT_METHODS: Array<{ value: PaymentMethod; icon: string; labelAr: string; labelEn: string; requiresSettings?: keyof PaymentSettings }> = [
+  { value: 'cash', icon: '💵', labelAr: 'الدفع عند الاستلام', labelEn: 'Cash on Delivery', requiresSettings: 'cashOnDelivery' },
+  { value: 'vodafone_cash', icon: '📱', labelAr: 'فودافون كاش', labelEn: 'Vodafone Cash', requiresSettings: 'vodafoneCash' },
+  { value: 'bank_transfer', icon: '🏦', labelAr: 'تحويل بنكي', labelEn: 'Bank Transfer', requiresSettings: 'bankTransfer' },
+  { value: 'instapay', icon: '⚡', labelAr: 'انستاباي', labelEn: 'InstaPay', requiresSettings: 'instapay' },
+  { value: 'card', icon: '💳', labelAr: 'بطاقة ائتمان', labelEn: 'Credit Card', requiresSettings: 'card' },
 ];
 
-function PaymentMethodSelector({ lang, value, onChange }: { lang: string; value: 'cash' | 'card' | 'vodafone_cash'; onChange: (v: 'cash' | 'card' | 'vodafone_cash') => void }) {
+function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
+  lang: string;
+  value: PaymentMethod;
+  onChange: (v: PaymentMethod) => void;
+  paymentSettings?: PaymentSettings;
+}) {
+  const enabledMethods = PAYMENT_METHODS.filter((method) => {
+    if (!paymentSettings || !method.requiresSettings) return true;
+    const config = paymentSettings[method.requiresSettings];
+    if (config && typeof config === 'object' && 'enabled' in config) {
+      return config.enabled;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-2">
-      {PAYMENT_METHODS.map((method) => (
+      {enabledMethods.map((method) => (
         <label
           key={method.value}
           className={cn(
