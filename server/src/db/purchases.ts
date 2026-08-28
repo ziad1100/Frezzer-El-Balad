@@ -13,6 +13,11 @@ export interface PurchaseInput {
   notes: string;
   purchaseDate: string;
   createdBy: string;
+  // Weight system
+  weightGrams?: number;
+  weightMode?: 'fixed' | 'custom';
+  weightDisplay?: string;
+  categoryId?: string | null;
 }
 
 interface Page<T> {
@@ -32,6 +37,10 @@ const PURCHASE_COLS = `
   pu."productId"::text AS "productId",
   pu."productName",
   pu."productSize",
+  pu."weightGrams",
+  pu."weightMode",
+  pu."weightDisplay",
+  pu."categoryId"::text AS "categoryId",
   pu.quantity,
   pu."unitCost"::float8 AS "unitCost",
   pu."totalCost"::float8 AS "totalCost",
@@ -51,11 +60,14 @@ export const createPurchase = async (data: PurchaseInput): Promise<Record<string
       // Insert purchase record
       const inserted = await tx.query<{ id: string }>(
         `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
+           "weightGrams", "weightMode", "weightDisplay", "categoryId",
            quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
-         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
+         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::uuid)
          RETURNING id`,
         [
           data.productId, data.sizeId || null, data.productName, data.productSize,
+          data.weightGrams ?? 0, data.weightMode ?? 'fixed', data.weightDisplay ?? '',
+          data.categoryId || null,
           data.quantity, data.unitCost, data.totalCost,
           data.supplier, data.notes, data.purchaseDate, data.createdBy,
         ],

@@ -396,6 +396,9 @@ export interface Purchase {
   productId: string;
   productName: string;
   productSize: string;
+  weightGrams?: number;
+  weightMode?: 'fixed' | 'custom';
+  weightDisplay?: string;
   quantity: number;
   unitCost: number;
   totalCost: number;
@@ -435,6 +438,10 @@ export const createPurchase = (data: {
   supplier?: string;
   notes?: string;
   purchaseDate?: string;
+  weightGrams?: number;
+  weightMode?: 'fixed' | 'custom';
+  weightDisplay?: string;
+  categoryId?: string;
 }): Promise<Purchase> =>
   unwrap(api.post<ApiEnvelope<Purchase>>('/purchases', data));
 

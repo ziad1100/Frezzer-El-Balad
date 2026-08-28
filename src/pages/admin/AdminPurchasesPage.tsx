@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Calendar } from 'lucide-react';
+import { Plus, Trash2, Calendar, Weight } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  adminSearchProducts,
   createPurchase,
   deletePurchase,
   listPurchases,
@@ -16,7 +15,8 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Input, Label, Textarea } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { PageHeader, Pagination, TableWrap, Td, Th } from '@/components/admin/primitives';
-import { formatPrice } from '@/lib/utils';
+import { ProductSelect } from '@/components/admin/ProductSelect';
+import { cn, formatPrice } from '@/lib/utils';
 
 type DateFilter = 'today' | 'week' | 'month' | 'custom';
 
@@ -164,6 +164,7 @@ export function AdminPurchasesPage() {
                   <tr className="border-b border-night-800 text-left text-xs uppercase tracking-wider text-night-500">
                     <Th>{lang === 'ar' ? 'التاريخ' : 'Date'}</Th>
                     <Th>{lang === 'ar' ? 'المنتج' : 'Product'}</Th>
+                    <Th>{lang === 'ar' ? 'الوزن' : 'Weight'}</Th>
                     <Th>{lang === 'ar' ? 'الكمية' : 'Qty'}</Th>
                     <Th>{lang === 'ar' ? 'سعر الوحدة' : 'Unit Cost'}</Th>
                     <Th>{lang === 'ar' ? 'الإجمالي' : 'Total'}</Th>
@@ -177,7 +178,9 @@ export function AdminPurchasesPage() {
                       <Td>{new Date(p.purchaseDate).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</Td>
                       <Td>
                         <span className="font-semibold text-night-100">{p.productName}</span>
-                        {p.productSize && <span className="ms-1 text-night-500">({p.productSize})</span>}
+                      </Td>
+                      <Td className="text-xs text-night-400">
+                        {p.weightDisplay || p.productSize || '—'}
                       </Td>
                       <Td>{p.quantity}</Td>
                       <Td>{formatPrice(p.unitCost, lang)}</Td>
@@ -215,151 +218,291 @@ export function AdminPurchasesPage() {
   );
 }
 
+type WeightMode = 'fixed' | 'custom';
+
+/** Convert grams to display string */
+function formatWeightDisplay(grams: number, lang: string): string {
+  if (grams === 0) return '';
+  if (grams >= 1000) {
+    const kg = grams / 1000;
+    return kg === Math.floor(kg)
+      ? `${kg} ${lang === 'ar' ? 'كيلو' : 'kg'}`
+      : `${kg.toFixed(1)} ${lang === 'ar' ? 'كيلو' : 'kg'}`;
+  }
+  return `${grams} ${lang === 'ar' ? 'جم' : 'g'}`;
+}
+
 function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void; lang: string; queryClient: ReturnType<typeof useQueryClient> }) {
-  const [searchQuery, setSearchQuery] = useState('');
+  const isAr = lang === 'ar';
   const [selectedProduct, setSelectedProduct] = useState<AdminSearchProduct | null>(null);
   const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null);
+  const [weightMode, setWeightMode] = useState<WeightMode>('fixed');
+  const [customWeightValue, setCustomWeightValue] = useState('');
+  const [customWeightUnit, setCustomWeightUnit] = useState<'g' | 'kg'>('g');
   const [quantity, setQuantity] = useState('');
   const [unitCost, setUnitCost] = useState('');
   const [supplier, setSupplier] = useState('');
   const [notes, setNotes] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const searchResults = useQuery({
-    queryKey: ['admin', 'productSearch', searchQuery],
-    queryFn: () => adminSearchProducts(searchQuery),
-    enabled: searchQuery.length >= 2,
-  });
+  // Calculate weight in grams
+  const weightGrams = useMemo(() => {
+    if (weightMode === 'fixed' && selectedSizeId) {
+      const size = selectedProduct?.sizes?.find((s) => s._id === selectedSizeId);
+      if (size) {
+        // Try to parse weight from size name (e.g., "500 جم", "1 كيلو")
+        const name = (size.nameEn || size.name).toLowerCase();
+        const match500 = name.includes('500');
+        const match1kilo = name.includes('1') && (name.includes('kilo') || name.includes('كيلو') || name.includes('1kg'));
+        if (match500) return 500;
+        if (match1kilo) return 1000;
+        // Default for known sizes
+        return 500;
+      }
+    }
+    if (weightMode === 'custom') {
+      const val = parseFloat(customWeightValue);
+      if (isNaN(val) || val <= 0) return 0;
+      return customWeightUnit === 'kg' ? val * 1000 : val;
+    }
+    return 0;
+  }, [weightMode, selectedSizeId, selectedProduct, customWeightValue, customWeightUnit]);
+
+  const weightDisplay = useMemo(() => {
+    if (weightMode === 'fixed' && selectedSizeId) {
+      const size = selectedProduct?.sizes?.find((s) => s._id === selectedSizeId);
+      if (size) return isAr ? size.name : (size.nameEn || size.name);
+    }
+    if (weightMode === 'custom' && weightGrams > 0) {
+      return formatWeightDisplay(weightGrams, lang);
+    }
+    return '';
+  }, [weightMode, selectedSizeId, selectedProduct, weightGrams, isAr, lang]);
+
+  const totalCost = (Number(quantity) || 0) * (Number(unitCost) || 0);
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!selectedProduct) newErrors.product = isAr ? 'من فضلك اختر المنتج' : 'Please select a product';
+    if (weightMode === 'fixed' && !selectedSizeId) newErrors.weight = isAr ? 'من فضلك حدد الوزن' : 'Please select a weight';
+    if (weightMode === 'custom' && weightGrams <= 0) newErrors.weight = isAr ? 'من فضلك أدخل وزنًا صحيحًا' : 'Please enter a valid weight';
+    if (!quantity || Number(quantity) <= 0) newErrors.quantity = isAr ? 'الكمية يجب أن تكون أكبر من صفر' : 'Quantity must be greater than 0';
+    if (!unitCost || Number(unitCost) < 0) newErrors.unitCost = isAr ? 'من فضلك أدخل سعر الشراء' : 'Please enter purchase price';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const createMutation = useMutation({
     mutationFn: createPurchase,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'purchases'] });
-      toast.success(lang === 'ar' ? 'تم تسجيل المشتريات' : 'Purchase recorded');
+      toast.success(isAr ? 'تم تسجيل المشتريات' : 'Purchase recorded');
       onClose();
     },
-    onError: () => toast.error(lang === 'ar' ? 'فشل التسجيل' : 'Failed to record purchase'),
+    onError: () => toast.error(isAr ? 'فشل التسجيل' : 'Failed to record purchase'),
   });
 
-  const totalCost = (Number(quantity) || 0) * (Number(unitCost) || 0);
-
   const handleSubmit = () => {
-    if (!selectedProduct) return;
+    if (!validate() || !selectedProduct) return;
     createMutation.mutate({
       productId: selectedProduct._id,
-      sizeId: selectedSizeId || undefined,
+      sizeId: weightMode === 'fixed' ? (selectedSizeId || undefined) : undefined,
       productName: selectedProduct.name,
-      productSize: selectedProduct.sizes?.find((s) => s._id === selectedSizeId)?.name || '',
+      productSize: weightDisplay,
       quantity: Number(quantity),
       unitCost: Number(unitCost),
       supplier,
       notes,
       purchaseDate: new Date(purchaseDate).toISOString(),
+      weightGrams,
+      weightMode,
+      weightDisplay,
+      categoryId: selectedProduct.category?._id,
     });
   };
 
-  const productName = (p: AdminSearchProduct) => lang === 'ar' ? p.name : (p.nameEn || p.name);
+  const productName = (p: AdminSearchProduct) => isAr ? p.name : (p.nameEn || p.name);
 
   return (
     <Modal open onClose={onClose}>
       <div className="w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-bold text-night-50">
-          {lang === 'ar' ? 'إضافة مشتريات' : 'Add Purchase'}
+          {isAr ? 'إضافة مشتريات' : 'Add Purchase'}
         </h2>
 
-        {/* Product Search */}
-        {!selectedProduct ? (
-          <div>
-            <Label>{lang === 'ar' ? 'بحث عن منتج' : 'Search Product'}</Label>
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={lang === 'ar' ? 'اكتب اسم المنتج...' : 'Type product name...'}
-            />
-            {searchResults.data && searchResults.data.length > 0 && (
-              <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-night-700">
-                {searchResults.data.map((p) => (
-                  <button
-                    key={p._id}
-                    onClick={() => { setSelectedProduct(p); setSearchQuery(''); }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-night-800"
-                  >
-                    <span className="text-night-100">{productName(p)}</span>
-                    <span className="ms-auto text-xs text-night-500">{formatPrice(p.basePrice, lang)}</span>
-                  </button>
-                ))}
-              </div>
+        {/* Product Select — Searchable Combobox */}
+        <div>
+          <Label>{isAr ? 'المنتج' : 'Product'}</Label>
+          <ProductSelect
+            value={selectedProduct}
+            onSelect={(p) => { setSelectedProduct(p); setSelectedSizeId(null); setWeightMode('fixed'); }}
+            onClear={() => { setSelectedProduct(null); setSelectedSizeId(null); }}
+            placeholder={isAr ? 'اختر المنتج...' : 'Select product...'}
+          />
+          {errors.product && <p className="mt-1 text-xs text-red-400">{errors.product}</p>}
+        </div>
+
+        {/* Selected Product Info */}
+        {selectedProduct && (
+          <div className="rounded-lg border border-night-700 bg-night-900/50 p-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-night-100">{productName(selectedProduct)}</span>
+              {selectedProduct.basePrice > 0 && (
+                <span className="text-xs text-night-500">• {formatPrice(selectedProduct.basePrice, lang)}</span>
+              )}
+            </div>
+            {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
+              <p className="mt-1 text-xs text-night-500">
+                {isAr ? 'الأوزان المتاحة:' : 'Available variants:'}{' '}
+                {selectedProduct.sizes.map((s) => isAr ? s.name : (s.nameEn || s.name)).join(' • ')}
+              </p>
             )}
           </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-2 rounded-lg border border-night-700 bg-night-900 p-3">
-              <span className="text-night-100">{productName(selectedProduct)}</span>
-              <button onClick={() => setSelectedProduct(null)} className="ms-auto text-night-500 hover:text-night-300">✕</button>
-            </div>
+        )}
 
-            {/* Size Selection */}
-            {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
-              <div>
-                <Label>{lang === 'ar' ? 'النوع / الوزن' : 'Variant / Weight'}</Label>
+        {/* Weight Selection */}
+        {selectedProduct && (
+          <div>
+            <Label>{isAr ? 'الوزن' : 'Weight'}</Label>
+            <div className="space-y-3">
+              {/* Predefined variants */}
+              {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {selectedProduct.sizes.map((size) => (
                     <button
                       key={size._id}
-                      onClick={() => setSelectedSizeId(size._id)}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
-                        selectedSizeId === size._id
+                      onClick={() => { setSelectedSizeId(size._id); setWeightMode('fixed'); }}
+                      className={cn(
+                        'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                        weightMode === 'fixed' && selectedSizeId === size._id
                           ? 'border-brand-500 bg-brand-500/20 text-brand-400'
-                          : 'border-night-700 text-night-300 hover:border-night-500'
-                      }`}
+                          : 'border-night-700 text-night-300 hover:border-night-500',
+                      )}
                     >
-                      {lang === 'ar' ? size.name : (size.nameEn || size.name)}
+                      {isAr ? size.name : (size.nameEn || size.name)}
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>{lang === 'ar' ? 'الكمية' : 'Quantity'}</Label>
-                <Input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+              {/* Custom weight toggle */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setWeightMode('custom'); setSelectedSizeId(null); }}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                    weightMode === 'custom'
+                      ? 'border-brand-500 bg-brand-500/20 text-brand-400'
+                      : 'border-night-700 text-night-300 hover:border-night-500',
+                  )}
+                >
+                  {isAr ? 'وزن مخصص' : 'Custom Weight'}
+                </button>
               </div>
-              <div>
-                <Label>{lang === 'ar' ? 'سعر الوحدة' : 'Unit Cost (EGP)'}</Label>
-                <Input type="number" min="0" step="0.01" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} />
-              </div>
+
+              {/* Custom weight input */}
+              {weightMode === 'custom' && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    step="0.1"
+                    value={customWeightValue}
+                    onChange={(e) => setCustomWeightValue(e.target.value)}
+                    placeholder={isAr ? 'أدخل الوزن' : 'Enter weight'}
+                    className="flex-1"
+                    dir="ltr"
+                  />
+                  <select
+                    value={customWeightUnit}
+                    onChange={(e) => setCustomWeightUnit(e.target.value as 'g' | 'kg')}
+                    className="rounded-lg border border-night-700 bg-night-900 px-3 py-2.5 text-sm text-night-100 outline-none"
+                  >
+                    <option value="g">{isAr ? 'جم' : 'g'}</option>
+                    <option value="kg">{isAr ? 'كيلو' : 'kg'}</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Weight display */}
+              {weightGrams > 0 && (
+                <div className="flex items-center gap-2 text-xs text-night-500">
+                  <Weight className="h-3 w-3" />
+                  <span>{isAr ? 'الوزن:' : 'Weight:'} {formatWeightDisplay(weightGrams, lang)}</span>
+                </div>
+              )}
+              {errors.weight && <p className="text-xs text-red-400">{errors.weight}</p>}
             </div>
+          </div>
+        )}
 
-            <div className="rounded-lg border border-night-700 bg-night-900 p-3 text-center">
-              <span className="text-sm text-night-400">{lang === 'ar' ? 'الإجمالي' : 'Total'}: </span>
-              <span className="text-lg font-bold text-brand-400">{formatPrice(totalCost, lang)}</span>
-            </div>
-
+        {/* Quantity & Price */}
+        {selectedProduct && (
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>{lang === 'ar' ? 'المورد (اختياري)' : 'Supplier (optional)'}</Label>
-              <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} />
+              <Label>{isAr ? 'الكمية (عدد الحبات)' : 'Quantity (units)'}</Label>
+              <Input
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                error={Boolean(errors.quantity)}
+              />
+              {errors.quantity && <p className="mt-1 text-xs text-red-400">{errors.quantity}</p>}
             </div>
-
             <div>
-              <Label>{lang === 'ar' ? 'ملاحظات (اختياري)' : 'Notes (optional)'}</Label>
+              <Label>{isAr ? 'سعر الوحدة' : 'Unit Cost (EGP)'}</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={unitCost}
+                onChange={(e) => setUnitCost(e.target.value)}
+                dir="ltr"
+                error={Boolean(errors.unitCost)}
+              />
+              {errors.unitCost && <p className="mt-1 text-xs text-red-400">{errors.unitCost}</p>}
+            </div>
+          </div>
+        )}
+
+        {/* Total */}
+        {selectedProduct && quantity && unitCost && (
+          <div className="rounded-lg border border-night-700 bg-night-900 p-3 text-center">
+            <span className="text-sm text-night-400">{isAr ? 'الإجمالي' : 'Total'}: </span>
+            <span className="text-lg font-bold text-brand-400">{formatPrice(totalCost, lang)}</span>
+          </div>
+        )}
+
+        {/* Supplier & Notes */}
+        {selectedProduct && (
+          <>
+            <div>
+              <Label>{isAr ? 'المورد (اختياري)' : 'Supplier (optional)'}</Label>
+              <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder={isAr ? 'اسم المورد' : 'Supplier name'} />
+            </div>
+            <div>
+              <Label>{isAr ? 'ملاحظات (اختياري)' : 'Notes (optional)'}</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
-
             <div>
-              <Label>{lang === 'ar' ? 'تاريخ الشراء' : 'Purchase Date'}</Label>
+              <Label>{isAr ? 'تاريخ الشراء' : 'Purchase Date'}</Label>
               <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
             </div>
-
-            <Button
-              onClick={handleSubmit}
-              loading={createMutation.isPending}
-              disabled={!quantity || !unitCost || Number(quantity) <= 0}
-              className="w-full"
-            >
-              {lang === 'ar' ? 'تسجيل المشتريات' : 'Record Purchase'}
-            </Button>
           </>
+        )}
+
+        {/* Submit */}
+        {selectedProduct && (
+          <Button
+            onClick={handleSubmit}
+            loading={createMutation.isPending}
+            disabled={!quantity || !unitCost || Number(quantity) <= 0 || weightGrams <= 0}
+            className="w-full"
+          >
+            {isAr ? 'تسجيل المشتريات' : 'Record Purchase'}
+          </Button>
         )}
       </div>
     </Modal>
