@@ -3,7 +3,11 @@
   "rewrites": [
     {
       "source": "/api/v1/:path*",
-      "destination": "/api/app"
+      "destination": "https://frezzer-el-balad.onrender.com/api/v1/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://frezzer-el-balad.onrender.com/health"
     },
     {
       "source": "/((?!api/|uploads/|assets/|images/|favicon|.*\\.(?:js|css|svg|png|jpe?g|webp|gif|avif|ico|woff2?|json|txt)$).*)",
