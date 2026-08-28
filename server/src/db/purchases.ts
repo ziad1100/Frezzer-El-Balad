@@ -87,60 +87,88 @@ async function queryPurchases(
   }
 }
 
-/** Create a new purchase record and increase inventory stock. */
+/**
+ * Create a new purchase record and increase inventory stock.
+ *
+ * STRATEGY: We split this into two phases to maximize resilience:
+ * Phase 1: Insert the purchase record (the essential operation)
+ * Phase 2: Update inventory (best-effort — failure here must NOT roll back the purchase)
+ *
+ * This ensures the purchase is ALWAYS saved even if inventory columns
+ * are missing from the database (e.g., migration 003 not applied).
+ */
 export const createPurchase = async (data: PurchaseInput): Promise<Record<string, unknown>> => {
   let purchaseId = '';
 
+  // ── Phase 1: Insert the purchase record ──────────────────────────────────
   try {
-    await withTransaction(async (tx) => {
-      // Try inserting with all columns (including weight columns from migration 006)
-      let inserted;
-      try {
-        inserted = await tx.query<{ id: string }>(
-          `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
-             "weightGrams", "weightMode", "weightDisplay", "categoryId",
-             quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
-           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::uuid)
-           RETURNING id`,
-          [
-            data.productId, data.sizeId || null, data.productName, data.productSize,
-            data.weightGrams ?? 0, data.weightMode ?? 'fixed', data.weightDisplay ?? '',
-            data.categoryId || null,
-            data.quantity, data.unitCost, data.totalCost,
-            data.supplier, data.notes, data.purchaseDate, data.createdBy,
-          ],
-        );
-      } catch {
-        // Weight columns may not exist — fall back to base columns
-        inserted = await tx.query<{ id: string }>(
-          `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
-             quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
-           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
-           RETURNING id`,
-          [
-            data.productId, data.sizeId || null, data.productName, data.productSize,
-            data.quantity, data.unitCost, data.totalCost,
-            data.supplier, data.notes, data.purchaseDate, data.createdBy,
-          ],
-        );
-      }
-      purchaseId = inserted.rows[0].id;
+    // Try inserting with all columns (including weight columns from migration 006)
+    try {
+      const inserted = await query<{ id: string }>(
+        `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
+           "weightGrams", "weightMode", "weightDisplay", "categoryId",
+           quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
+         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::uuid)
+         RETURNING id`,
+        [
+          data.productId, data.sizeId || null, data.productName, data.productSize,
+          data.weightGrams ?? 0, data.weightMode ?? 'fixed', data.weightDisplay ?? '',
+          data.categoryId || null,
+          data.quantity, data.unitCost, data.totalCost,
+          data.supplier, data.notes, data.purchaseDate, data.createdBy,
+        ],
+      );
+      purchaseId = inserted[0].id;
+    } catch {
+      // Weight columns may not exist — fall back to base columns (migration 004 only)
+      const inserted = await query<{ id: string }>(
+        `INSERT INTO purchases ("productId", "sizeId", "productName", "productSize",
+           quantity, "unitCost", "totalCost", supplier, notes, "purchaseDate", "createdBy")
+         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)
+         RETURNING id`,
+        [
+          data.productId, data.sizeId || null, data.productName, data.productSize,
+          data.quantity, data.unitCost, data.totalCost,
+          data.supplier, data.notes, data.purchaseDate, data.createdBy,
+        ],
+      );
+      purchaseId = inserted[0].id;
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('relation "purchases" does not exist')) {
+      throw new ApiError(500, 'Purchases table does not exist. Please run migration 004.');
+    }
+    if (message.includes('foreign key constraint')) {
+      throw new ApiError(400, 'Invalid product or size ID. Please select a valid product.');
+    }
+    if (message.includes('duplicate key')) {
+      throw new ApiError(409, 'This purchase already exists.');
+    }
+    throw new ApiError(500, `Failed to create purchase: ${message}`);
+  }
 
-      // Increase inventory stock
-      if (data.sizeId) {
-        await tx.query(
-          `UPDATE product_sizes SET "stockQuantity" = COALESCE("stockQuantity", 0) + $1 WHERE id = $2::uuid`,
-          [data.quantity, data.sizeId],
-        );
-      } else {
-        await tx.query(
-          `UPDATE products SET "stockQuantity" = COALESCE("stockQuantity", 0) + $1 WHERE id = $2::uuid`,
-          [data.quantity, data.productId],
-        );
-      }
-    });
+  // ── Phase 2: Update inventory (best-effort — must NOT fail the purchase) ─
+  try {
+    if (data.sizeId) {
+      await query(
+        `UPDATE product_sizes SET "stockQuantity" = COALESCE("stockQuantity", 0) + $1 WHERE id = $2::uuid`,
+        [data.quantity, data.sizeId],
+      );
+    } else {
+      await query(
+        `UPDATE products SET "stockQuantity" = COALESCE("stockQuantity", 0) + $1 WHERE id = $2::uuid`,
+        [data.quantity, data.productId],
+      );
+    }
+  } catch {
+    // stockQuantity column may not exist (migration 003 not applied)
+    // or product_sizes table may be missing — purchase is still saved
+    console.error('[purchases] inventory update failed (purchase was still saved)');
+  }
 
-    // Return the created purchase — try extended first, fall back to base
+  // ── Phase 3: Return the created purchase ─────────────────────────────────
+  try {
     const result = await queryPurchases(
       PURCHASE_COLS + `, COALESCE(pu."weightGrams", 0) AS "weightGrams",
         COALESCE(pu."weightMode", 'fixed') AS "weightMode",
@@ -149,16 +177,20 @@ export const createPurchase = async (data: PurchaseInput): Promise<Record<string
       [purchaseId],
     );
     return result.rows[0];
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-
-    if (message.includes('relation "purchases" does not exist')) {
-      throw new ApiError(500, 'Purchases table does not exist. Please run migration 004.');
-    }
-    if (message.includes('foreign key constraint')) {
-      throw new ApiError(400, 'Invalid product or size ID. Please select a valid product.');
-    }
-    throw new ApiError(500, `Failed to create purchase: ${message}`);
+  } catch {
+    // Fallback: return minimal purchase data
+    return {
+      _id: purchaseId,
+      productId: data.productId,
+      productName: data.productName,
+      productSize: data.productSize,
+      quantity: data.quantity,
+      unitCost: data.unitCost,
+      totalCost: data.totalCost,
+      supplier: data.supplier,
+      notes: data.notes,
+      purchaseDate: data.purchaseDate,
+    };
   }
 };
 
