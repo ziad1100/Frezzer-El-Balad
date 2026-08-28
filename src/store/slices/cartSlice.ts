@@ -16,6 +16,8 @@ export interface CartLine {
   customPrice?: number;
   /** Whether this line is using a custom price. */
   isCustomPrice?: boolean;
+  /** Admin-only: custom weight, e.g. { grams: 750, display: '750 جم' }. */
+  customWeight?: { grams: number; display: string };
 }
 
 export interface CartState {
@@ -44,8 +46,12 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     addLine: (state, action: PayloadAction<CartLine>) => {
+      const pw = action.payload.customWeight?.grams ?? null;
       const existing = state.lines.find(
-        (l) => l.productId === action.payload.productId && l.size === action.payload.size,
+        (l) =>
+          l.productId === action.payload.productId &&
+          l.size === action.payload.size &&
+          (l.customWeight?.grams ?? null) === pw,
       );
       if (existing) {
         existing.qty += action.payload.qty;

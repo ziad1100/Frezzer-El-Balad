@@ -171,14 +171,16 @@ export function CheckoutPage() {
     return {
       items: lines.map((line) => ({
         product: line.productId,
-        size: line.size,
-        sizeName: line.sizeName,
+        size: line.customWeight ? null : line.size,
+        sizeName: line.customWeight ? line.customWeight.display : line.sizeName,
         extras: line.extras.map((e) => ({ name: e.name, price: e.price })),
         qty: line.qty,
         // Admin-only: include customPrice if set
         ...(isAdmin && line.isCustomPrice && typeof line.customPrice === 'number'
           ? { customPrice: line.customPrice }
           : {}),
+        // Admin-only: include customWeight if set
+        ...(line.customWeight ? { customWeight: line.customWeight } : {}),
       })),
       couponCode: couponCode || undefined,
       ...(hasAddress

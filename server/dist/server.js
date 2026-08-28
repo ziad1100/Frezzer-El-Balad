@@ -6044,13 +6044,8 @@ var listPurchases = async (page, limit, startDate, endDate, productId) => {
   const extendedCols = PURCHASE_COLS + `, COALESCE(pu."weightGrams", 0) AS "weightGrams",
     COALESCE(pu."weightMode", 'fixed') AS "weightMode",
     COALESCE(pu."weightDisplay", '') AS "weightDisplay"`;
-  try {
-    const result = await queryPurchases(extendedCols, where, values, limit, offset);
-    return toPage7(result.rows, limit);
-  } catch {
-    console.error("[purchases] listPurchases failed \u2014 purchases table may not exist");
-    return { items: [], total: 0, pages: 1 };
-  }
+  const result = await queryPurchases(extendedCols, where, values, limit, offset);
+  return toPage7(result.rows, limit);
 };
 var deletePurchase = async (id) => {
   let deleted = false;
@@ -6101,20 +6096,14 @@ var getPurchaseStats = async (startDate, endDate) => {
     conds.push(`"purchaseDate" <= $${nxt()}::timestamptz`);
   }
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-  let rows = [];
-  try {
-    rows = await query(
-      `SELECT
-         COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
-         COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
-         count(*)::int AS "purchaseCount"
-       FROM purchases ${where}`,
-      values
-    );
-  } catch {
-    console.error("[purchases] getPurchaseStats main query failed");
-    return { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] };
-  }
+  const rows = await query(
+    `SELECT
+       COALESCE(SUM("totalCost"), 0)::float8 AS "totalCost",
+       COALESCE(SUM(quantity), 0)::int AS "totalQuantity",
+       count(*)::int AS "purchaseCount"
+     FROM purchases ${where}`,
+    values
+  );
   let byProduct = [];
   try {
     byProduct = await query(
@@ -6126,7 +6115,8 @@ var getPurchaseStats = async (startDate, endDate) => {
        ORDER BY "totalCost" DESC`,
       values
     );
-  } catch {
+  } catch (err) {
+    console.error("[purchases] getPurchaseStats byProduct query failed:", err);
     byProduct = [];
   }
   return {

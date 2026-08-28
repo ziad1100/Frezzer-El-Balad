@@ -245,6 +245,8 @@ export interface CartItemInput {
   sizeName?: string;
   extras: { name: string; price: number }[];
   qty: number;
+  /** Admin-only: custom weight info for the item. */
+  customWeight?: { grams: number; display: string };
 }
 
 export interface CouponResult {
