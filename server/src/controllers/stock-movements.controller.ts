@@ -45,6 +45,9 @@ export const recordMovement = asyncHandler(async (req: AuthRequest, res: Respons
     createdBy: req.user!.id,
   });
 
+  if (!movement) {
+    throw new ApiError(500, 'Stock movements table is not available. Please run migration 007.');
+  }
   res.status(201).json(new ApiResponse(201, movement, 'Movement recorded'));
 });
 

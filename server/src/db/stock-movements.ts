@@ -105,34 +105,40 @@ export interface MovementReportDetail {
 
 /**
  * Record a stock movement.
+ * Gracefully handles missing stock_movements table.
  */
-export async function recordMovement(input: CreateMovementInput): Promise<StockMovement> {
-  const rows = await query<StockMovement>(
-    `INSERT INTO stock_movements (
-      "productId", "sizeId", "productName", "productSize", "categoryId",
-      "movementType", quantity,
-      "unitSellingPrice", "totalSellingPrice",
-      "unitPurchasePrice", "totalPurchasePrice",
-      "referenceType", "referenceId",
-      "orderNo", "customerName", "paymentMethod", "supplier",
-      reason, notes, "movementDate", "createdBy"
-    ) VALUES (
-      $1::uuid, $2, $3, $4, $5,
-      $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
-    ) RETURNING *`,
-    [
-      input.productId, input.sizeId || null, input.productName, input.productSize || '',
-      input.categoryId || null,
-      input.movementType, input.quantity,
-      input.unitSellingPrice ?? null, input.totalSellingPrice ?? null,
-      input.unitPurchasePrice ?? null, input.totalPurchasePrice ?? null,
-      input.referenceType || '', input.referenceId || '',
-      input.orderNo || '', input.customerName || '', input.paymentMethod || '',
-      input.supplier || '', input.reason || '', input.notes || '',
-      input.movementDate || new Date().toISOString(), input.createdBy || null,
-    ],
-  );
-  return rows[0];
+export async function recordMovement(input: CreateMovementInput): Promise<StockMovement | null> {
+  try {
+    const rows = await query<StockMovement>(
+      `INSERT INTO stock_movements (
+        "productId", "sizeId", "productName", "productSize", "categoryId",
+        "movementType", quantity,
+        "unitSellingPrice", "totalSellingPrice",
+        "unitPurchasePrice", "totalPurchasePrice",
+        "referenceType", "referenceId",
+        "orderNo", "customerName", "paymentMethod", "supplier",
+        reason, notes, "movementDate", "createdBy"
+      ) VALUES (
+        $1::uuid, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+      ) RETURNING *`,
+      [
+        input.productId, input.sizeId || null, input.productName, input.productSize || '',
+        input.categoryId || null,
+        input.movementType, input.quantity,
+        input.unitSellingPrice ?? null, input.totalSellingPrice ?? null,
+        input.unitPurchasePrice ?? null, input.totalPurchasePrice ?? null,
+        input.referenceType || '', input.referenceId || '',
+        input.orderNo || '', input.customerName || '', input.paymentMethod || '',
+        input.supplier || '', input.reason || '', input.notes || '',
+        input.movementDate || new Date().toISOString(), input.createdBy || null,
+      ],
+    );
+    return rows[0];
+  } catch {
+    // stock_movements table may not exist yet
+    return null;
+  }
 }
 
 /**
@@ -151,7 +157,7 @@ export async function recordSale(params: {
   customerName?: string;
   paymentMethod?: string;
   createdBy?: string | null;
-}): Promise<StockMovement> {
+}): Promise<StockMovement | null> {
   return recordMovement({
     productId: params.productId,
     sizeId: params.sizeId,
@@ -184,7 +190,7 @@ export async function recordPurchase(params: {
   totalCost: number;
   supplier?: string;
   createdBy?: string | null;
-}): Promise<StockMovement> {
+}): Promise<StockMovement | null> {
   return recordMovement({
     productId: params.productId,
     sizeId: params.sizeId,
@@ -213,7 +219,7 @@ export async function recordGift(params: {
   customerName?: string;
   reason?: string;
   createdBy?: string | null;
-}): Promise<StockMovement> {
+}): Promise<StockMovement | null> {
   return recordMovement({
     productId: params.productId,
     sizeId: params.sizeId,
@@ -242,7 +248,7 @@ export async function recordReturn(params: {
   customerName?: string;
   reason?: string;
   createdBy?: string | null;
-}): Promise<StockMovement> {
+}): Promise<StockMovement | null> {
   return recordMovement({
     productId: params.productId,
     sizeId: params.sizeId,
@@ -269,7 +275,7 @@ export async function recordWaste(params: {
   quantity: number;
   reason: string;
   createdBy?: string | null;
-}): Promise<StockMovement> {
+}): Promise<StockMovement | null> {
   return recordMovement({
     productId: params.productId,
     sizeId: params.sizeId,
@@ -293,7 +299,7 @@ export async function recordAdjustment(params: {
   quantity: number; // Can be positive (add) or negative (remove)
   reason: string;
   createdBy?: string | null;
-}): Promise<StockMovement> {
+}): Promise<StockMovement | null> {
   return recordMovement({
     productId: params.productId,
     sizeId: params.sizeId,
@@ -308,6 +314,7 @@ export async function recordAdjustment(params: {
 
 /**
  * Get comprehensive item-by-item movement report for a date range.
+ * Gracefully handles missing stock_movements table.
  */
 export async function getMovementReport(
   startDate: string,
@@ -316,8 +323,7 @@ export async function getMovementReport(
   summary: MovementReportItem[];
   details: MovementReportDetail[];
 }> {
-  // Get all movements in the period with product info
-  const movementRows = await query<{
+  let movementRows: Array<{
     productId: string;
     productName: string;
     productSize: string;
@@ -336,33 +342,58 @@ export async function getMovementReport(
     reason: string;
     notes: string;
     movementDate: string;
-  }>(
-    `SELECT
-      sm."productId"::text AS "productId",
-      sm."productName",
-      sm."productSize",
-      sm."categoryId"::text AS "categoryId",
-      COALESCE(c.name, '') AS "categoryName",
-      sm."movementType",
-      sm.quantity,
-      sm."unitSellingPrice"::float8 AS "unitSellingPrice",
-      sm."totalSellingPrice"::float8 AS "totalSellingPrice",
-      sm."unitPurchasePrice"::float8 AS "unitPurchasePrice",
-      sm."totalPurchasePrice"::float8 AS "totalPurchasePrice",
-      sm."paymentMethod",
-      sm."orderNo",
-      sm."customerName",
-      sm.supplier,
-      sm.reason,
-      sm.notes,
-      sm."movementDate"::text AS "movementDate"
-    FROM stock_movements sm
-    LEFT JOIN categories c ON c.id = sm."categoryId"
-    WHERE sm."movementDate" >= $1::timestamptz
-      AND sm."movementDate" <= $2::timestamptz
-    ORDER BY sm."movementDate", sm."productName"`,
-    [startDate, endDate],
-  );
+  }> = [];
+  try {
+    movementRows = await query<{
+      productId: string;
+      productName: string;
+      productSize: string;
+      categoryId: string | null;
+      categoryName: string;
+      movementType: string;
+      quantity: number;
+      unitSellingPrice: number | null;
+      totalSellingPrice: number | null;
+      unitPurchasePrice: number | null;
+      totalPurchasePrice: number | null;
+      paymentMethod: string;
+      orderNo: string;
+      customerName: string;
+      supplier: string;
+      reason: string;
+      notes: string;
+      movementDate: string;
+    }>(
+      `SELECT
+        sm."productId"::text AS "productId",
+        sm."productName",
+        sm."productSize",
+        sm."categoryId"::text AS "categoryId",
+        COALESCE(c.name, '') AS "categoryName",
+        sm."movementType",
+        sm.quantity,
+        sm."unitSellingPrice"::float8 AS "unitSellingPrice",
+        sm."totalSellingPrice"::float8 AS "totalSellingPrice",
+        sm."unitPurchasePrice"::float8 AS "unitPurchasePrice",
+        sm."totalPurchasePrice"::float8 AS "totalPurchasePrice",
+        sm."paymentMethod",
+        sm."orderNo",
+        sm."customerName",
+        sm.supplier,
+        sm.reason,
+        sm.notes,
+        sm."movementDate"::text AS "movementDate"
+      FROM stock_movements sm
+      LEFT JOIN categories c ON c.id = sm."categoryId"
+      WHERE sm."movementDate" >= $1::timestamptz
+        AND sm."movementDate" <= $2::timestamptz
+      ORDER BY sm."movementDate", sm."productName"`,
+      [startDate, endDate],
+    );
+  } catch {
+    // stock_movements table may not exist yet
+    movementRows = [];
+  }
 
   // Build summary by product
   const summaryMap = new Map<string, MovementReportItem>();
@@ -418,23 +449,33 @@ export async function getMovementReport(
     }
   }
 
-  // Get current stock for all products
-  const stockRows = await query<{
+  // Get current stock for all products (gracefully handle missing columns)
+  let stockRows: Array<{
     productId: string;
     productName: string;
     productSize: string;
     stockQuantity: number;
-  }>(
-    `SELECT
-      p.id::text AS "productId",
-      p.name AS "productName",
-      COALESCE(ps.name, '') AS "productSize",
-      COALESCE(ps."stockQuantity", p."stockQuantity", 0)::int AS "stockQuantity"
-    FROM products p
-    LEFT JOIN product_sizes ps ON ps."productId" = p.id
-    WHERE p."isAvailable" = true
-    ORDER BY p.name, ps."sortOrder"`,
-  );
+  }> = [];
+  try {
+    stockRows = await query<{
+      productId: string;
+      productName: string;
+      productSize: string;
+      stockQuantity: number;
+    }>(
+      `SELECT
+        p.id::text AS "productId",
+        p.name AS "productName",
+        COALESCE(ps.name, '') AS "productSize",
+        COALESCE(ps."stockQuantity", p."stockQuantity", 0)::int AS "stockQuantity"
+      FROM products p
+      LEFT JOIN product_sizes ps ON ps."productId" = p.id
+      WHERE p."isAvailable" = true
+      ORDER BY p.name, ps."sortOrder"`,
+    );
+  } catch {
+    stockRows = [];
+  }
 
   // Update current stock in summary
   for (const stock of stockRows) {

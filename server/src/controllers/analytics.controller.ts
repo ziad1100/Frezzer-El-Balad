@@ -180,6 +180,14 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
     periodEnd = today;
   }
 
+  // Use Promise.allSettled so one failing query doesn't kill the entire export.
+  // Each query is wrapped with a default fallback in case the table/column is missing.
+  const safe = <T>(p: Promise<T>, fallback: T): Promise<T> =>
+    p.catch((err) => {
+      console.error('[export] query failed:', err?.message ?? err);
+      return fallback;
+    });
+
   const [
     totals,
     recent,
@@ -203,27 +211,27 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
     dailyMovement,
     allProductsWithStock,
   ] = await Promise.all([
-    analyticsRepo.totals(),
-    analyticsRepo.recent(daysAgo(30)),
-    analyticsRepo.statusBreakdown(),
-    analyticsRepo.topProducts(),
-    analyticsRepo.periodStats(todayStart),
-    analyticsRepo.periodStats(weekStart),
-    analyticsRepo.periodStats(monthStart),
-    analyticsRepo.trend(daysAgo(30)),
-    analyticsRepo.dayStats(selectedDate),
-    analyticsRepo.categorySales(),
-    reviewsRepo.adminStats(),
-    ordersRepo.adminList(1, 500, '', ''),
-    productsRepo.adminList(1, 1000, '', '', ''),
-    analyticsRepo.customersBreakdown(),
-    reviewsRepo.adminList(1, 500, '', '', '', '', '', 'newest', ''),
-    purchasesRepo.listPurchases(1, 1000, periodStart.toISOString(), periodEnd.toISOString()),
-    purchasesRepo.getPurchaseStats(periodStart.toISOString(), periodEnd.toISOString()),
-    inventoryRepo.getInventoryStats(),
-    inventoryRepo.getSalesStats(periodStart.toISOString(), periodEnd.toISOString()),
-    inventoryRepo.getDailyProductMovement(periodStart.toISOString(), periodEnd.toISOString()),
-    inventoryRepo.getAllProductsWithStock(),
+    safe(analyticsRepo.totals(), { revenue: 0, netRevenue: 0, grossRevenue: 0, discounts: 0, deliveryFees: 0, orders: 0, customers: 0, products: 0, completedOrders: 0, cancelledOrders: 0, refundedOrders: 0, complimentaryOrders: 0 }),
+    safe(analyticsRepo.recent(daysAgo(30)), { revenue: 0, orders: 0, customers: 0 }),
+    safe(analyticsRepo.statusBreakdown(), []),
+    safe(analyticsRepo.topProducts(), []),
+    safe(analyticsRepo.periodStats(todayStart), { revenue: 0, orders: 0, unitsSold: 0, customers: 0, topProducts: [] }),
+    safe(analyticsRepo.periodStats(weekStart), { revenue: 0, orders: 0, unitsSold: 0, customers: 0, topProducts: [] }),
+    safe(analyticsRepo.periodStats(monthStart), { revenue: 0, orders: 0, unitsSold: 0, customers: 0, topProducts: [] }),
+    safe(analyticsRepo.trend(daysAgo(30)), []),
+    safe(analyticsRepo.dayStats(selectedDate), { revenue: 0, orders: 0, completed: 0, cancelled: 0, refunded: 0, complimentary: 0, grossRevenue: 0, discounts: 0, deliveryFees: 0 }),
+    safe(analyticsRepo.categorySales(), []),
+    safe(reviewsRepo.adminStats(), { total: 0, average: 0, today: 0, pending: 0, fiveStar: 0, oneStar: 0, restaurantAverage: 0, restaurantTotal: 0 }),
+    safe(ordersRepo.adminList(1, 500, '', ''), { items: [], total: 0, pages: 1 }),
+    safe(productsRepo.adminList(1, 1000, '', '', ''), { items: [], total: 0, pages: 1 }),
+    safe(analyticsRepo.customersBreakdown(), []),
+    safe(reviewsRepo.adminList(1, 500, '', '', '', '', '', 'newest', ''), { items: [], total: 0, pages: 1 }),
+    safe(purchasesRepo.listPurchases(1, 1000, periodStart.toISOString(), periodEnd.toISOString()), { items: [], total: 0, pages: 1 }),
+    safe(purchasesRepo.getPurchaseStats(periodStart.toISOString(), periodEnd.toISOString()), { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] }),
+    safe(inventoryRepo.getInventoryStats(), { totalProducts: 0, trackableProducts: 0, totalStockQuantity: 0, lowStockCount: 0, outOfStockCount: 0, lowStockProducts: [], outOfStockProducts: [] }),
+    safe(inventoryRepo.getSalesStats(periodStart.toISOString(), periodEnd.toISOString()), { salesValue: 0, salesQuantity: 0, orderCount: 0, byProduct: [] }),
+    safe(inventoryRepo.getDailyProductMovement(periodStart.toISOString(), periodEnd.toISOString()), []),
+    safe(inventoryRepo.getAllProductsWithStock(), []),
   ]);
 
   const reviewStats = reviewData as Record<string, unknown>;
