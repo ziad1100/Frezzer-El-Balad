@@ -69,6 +69,9 @@ interface ProductFormState {
   isBestSeller: boolean;
   isOffer: boolean;
   labelIds: string[];
+  trackInventory: boolean;
+  stockQuantity: string;
+  lowStockThreshold: string;
 }
 
 const defaultForm = (): ProductFormState => ({
@@ -91,6 +94,9 @@ const defaultForm = (): ProductFormState => ({
   isBestSeller: false,
   isOffer: false,
   labelIds: [],
+  trackInventory: false,
+  stockQuantity: '0',
+  lowStockThreshold: '5',
 });
 
 const fromProduct = (p: ProductListItem): ProductFormState => ({
@@ -112,6 +118,9 @@ const fromProduct = (p: ProductListItem): ProductFormState => ({
   isAvailable: p.isAvailable,
   isBestSeller: p.isBestSeller,
   isOffer: p.isOffer,
+  trackInventory: p.trackInventory ?? false,
+  stockQuantity: String(p.stockQuantity ?? 0),
+  lowStockThreshold: String(p.lowStockThreshold ?? 5),
   labelIds: (p.labels ?? []).map((l) => l._id),
 });
 
@@ -250,6 +259,9 @@ export function AdminProductsPage() {
         isBestSeller: form.isBestSeller,
         isOffer: form.isOffer,
         labelIds: form.labelIds,
+        trackInventory: form.trackInventory,
+        stockQuantity: form.trackInventory ? Number(form.stockQuantity) : 0,
+        lowStockThreshold: form.trackInventory ? Number(form.lowStockThreshold) : 5,
       };
       if (editing) {
         await updateProduct(editing._id, payload);
@@ -493,6 +505,50 @@ export function AdminProductsPage() {
               <Label htmlFor="p-price">{t('admin.basePrice')}</Label>
               <Input id="p-price" type="number" min={0} value={form.basePrice} onChange={(e) => setField('basePrice', e.target.value)} />
             </div>
+          </div>
+
+          {/* Inventory / Stock */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="p-track"
+                checked={form.trackInventory}
+                onChange={(e) => setField('trackInventory', e.target.checked)}
+                className="h-4 w-4 rounded border-night-600 bg-night-800 text-brand-500 focus:ring-brand-500"
+              />
+              <Label htmlFor="p-track">
+                {lang === 'ar' ? 'تتبع المخزون' : 'Track Inventory'}
+              </Label>
+            </div>
+            {form.trackInventory && (
+              <>
+                <div>
+                  <Label htmlFor="p-stock">
+                    {lang === 'ar' ? 'كمية المخزون' : 'Stock Quantity'}
+                  </Label>
+                  <Input
+                    id="p-stock"
+                    type="number"
+                    min={0}
+                    value={form.stockQuantity}
+                    onChange={(e) => setField('stockQuantity', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="p-threshold">
+                    {lang === 'ar' ? 'حد المخزون المنخفض' : 'Low Stock Threshold'}
+                  </Label>
+                  <Input
+                    id="p-threshold"
+                    type="number"
+                    min={0}
+                    value={form.lowStockThreshold}
+                    onChange={(e) => setField('lowStockThreshold', e.target.value)}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">

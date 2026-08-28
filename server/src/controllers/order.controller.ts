@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import * as ordersRepo from '../db/orders';
 import * as usersRepo from '../db/users';
 import * as analyticsRepo from '../db/analytics';
+import * as inventoryRepo from '../db/inventory';
 import { apiErrorFromPg, query } from '../db';
 import { PUBLIC_COLS } from '../db/products';
 import { sendToUsers } from '../db/notifications';
@@ -152,6 +153,24 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
   }
   if (!order) throw new ApiError(500, 'Could not create order');
 
+  // Stock deduction: admin-created orders are auto-confirmed → deduct immediately
+  if (isAdmin) {
+    const orderItemsForStock = orderItems.map((item, i) => ({
+      id: (order.items as Array<{ _id: string }>)[i]?._id ?? '',
+      productId: item.productId,
+      sizeName: item.size,
+      qty: item.qty,
+    }));
+    // Deduct stock inside try-catch to avoid failing the order if stock logic errors
+    try {
+      await inventoryRepo.deductStock(order._id as string, orderItemsForStock);
+    } catch (stockErr) {
+      // If stock deduction fails (e.g., insufficient stock), still create the order
+      // but log the error. The order is confirmed but stock may need manual adjustment.
+      console.error('[inventory] stock deduction failed for order', order.orderNo, stockErr);
+    }
+  }
+
   const senderEmail = (await usersRepo.getById(userId))?.email ?? '';
   void enqueueOrderConfirmation(senderEmail, (order.orderNo as string) ?? '', (order.total as number) ?? total).catch(() => undefined);
 
@@ -187,6 +206,33 @@ export const updateStatus = asyncHandler(async (req: AuthRequest, res: Response)
     [{ status, changedBy: req.user!.id, at: new Date() }],
   );
   if (!order) throw new ApiError(404, 'Order not found');
+
+  // Stock management: deduct on confirmation, restore on cancellation/refund
+  const items = (order.items as Array<{ _id: string; product: string; name: string; size?: string; qty: number }>) ?? [];
+  const stockItems = items.map((item) => ({
+    id: item._id,
+    productId: item.product,
+    sizeName: item.size ?? '',
+    qty: item.qty,
+  }));
+
+  // Deduct stock when order is confirmed (not auto-confirmed admin orders)
+  if (status === ORDER_STATUS.CONFIRMED && current.status !== ORDER_STATUS.CONFIRMED) {
+    try {
+      await inventoryRepo.deductStock(req.params.id, stockItems);
+    } catch (err) {
+      console.error('[inventory] stock deduction failed for order', order.orderNo, err);
+    }
+  }
+
+  // Restore stock when order is cancelled, refunded, or delivery failed
+  if ([ORDER_STATUS.CANCELLED, ORDER_STATUS.REFUNDED, ORDER_STATUS.DELIVERY_FAILED].includes(status)) {
+    try {
+      await inventoryRepo.restoreStock(req.params.id, stockItems);
+    } catch (err) {
+      console.error('[inventory] stock restoration failed for order', order.orderNo, err);
+    }
+  }
   const [labelAr, labelEn] = ORDER_STATUS_LABELS[status] ?? [status, status];
   await sendToUsers({
     userIds: [order.user as string],

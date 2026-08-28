@@ -473,7 +473,7 @@ var disconnectCache = async () => {
 };
 
 // src/routes/index.ts
-import { Router as Router27 } from "express";
+import { Router as Router28 } from "express";
 
 // src/routes/auth.routes.ts
 import { Router } from "express";
@@ -1492,7 +1492,10 @@ var productCreateSchema = z6.object({
   calories: z6.coerce.number().min(0).max(1e4).optional(),
   isAvailable: z6.boolean().optional(),
   isBestSeller: z6.boolean().optional(),
-  isOffer: z6.boolean().optional()
+  isOffer: z6.boolean().optional(),
+  trackInventory: z6.boolean().optional(),
+  stockQuantity: z6.coerce.number().int().min(0).optional(),
+  lowStockThreshold: z6.coerce.number().int().min(0).optional()
 });
 var sizeUpdate = z6.object({
   name: z6.string().trim().min(1, "Size name is required").max(50),
@@ -1524,7 +1527,10 @@ var productUpdateSchema = z6.object({
   isAvailable: z6.boolean().optional(),
   isBestSeller: z6.boolean().optional(),
   isOffer: z6.boolean().optional(),
-  labelIds: z6.array(z6.string()).optional()
+  labelIds: z6.array(z6.string()).optional(),
+  trackInventory: z6.boolean().optional(),
+  stockQuantity: z6.coerce.number().int().min(0).optional(),
+  lowStockThreshold: z6.coerce.number().int().min(0).optional()
 });
 
 // src/schemas/category.ts
@@ -2131,8 +2137,9 @@ var create2 = async (data) => {
     const inserted = await tx.query(
       `INSERT INTO products (name, "nameEn", slug, description, "descriptionEn", "basePrice", images,
         ingredients, "ingredientsEn", tags, "categoryId", "isAvailable", "isBestSeller", "isOffer",
-        discount, "preparationTime", calories, "sortOrder")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid,$12,$13,$14,$15,$16,$17,$18)
+        discount, "preparationTime", calories, "sortOrder",
+        "trackInventory", "stockQuantity", "lowStockThreshold")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING id`,
       [
         data.name,
@@ -2152,7 +2159,10 @@ var create2 = async (data) => {
         Number(data.discount) || 0,
         Number(data.preparationTime) || 20,
         Number(data.calories) || 0,
-        Number(data.sortOrder) || 0
+        Number(data.sortOrder) || 0,
+        data.trackInventory ?? false,
+        Number(data.stockQuantity) || 0,
+        Number(data.lowStockThreshold) || 5
       ]
     );
     id = inserted.rows[0].id;
@@ -2194,6 +2204,9 @@ var update2 = async (id, data) => {
     if (data.discount !== void 0) push("discount", Number(data.discount));
     if (data.preparationTime !== void 0) push("preparationTime", Number(data.preparationTime));
     if (data.calories !== void 0) push("calories", Number(data.calories));
+    if (data.trackInventory !== void 0) push("trackInventory", data.trackInventory);
+    if (data.stockQuantity !== void 0) push("stockQuantity", Number(data.stockQuantity));
+    if (data.lowStockThreshold !== void 0) push("lowStockThreshold", Number(data.lowStockThreshold));
     if (sets.length) {
       const result = await tx.query(`UPDATE products SET ${sets.join(", ")} WHERE id = $1 RETURNING id`, values);
       updated = result.rowCount !== null && result.rowCount > 0;
@@ -4108,6 +4121,299 @@ var customersBreakdown = async () => {
   );
 };
 
+// src/db/inventory.ts
+var getStock = async (productId, sizeId) => {
+  if (sizeId) {
+    const rows2 = await query(
+      `SELECT ps."stockQuantity", ps."lowStockThreshold", p."trackInventory"
+       FROM product_sizes ps
+       JOIN products p ON p.id = ps."productId"
+       WHERE ps.id = $1::uuid AND ps."productId" = $2::uuid`,
+      [sizeId, productId]
+    );
+    return rows2[0] ?? null;
+  }
+  const rows = await query(
+    `SELECT "stockQuantity", "lowStockThreshold", "trackInventory"
+     FROM products WHERE id = $1::uuid`,
+    [productId]
+  );
+  return rows[0] ?? null;
+};
+var updateStock = async (productId, stockQuantity, sizeId) => {
+  if (sizeId) {
+    await query(
+      `UPDATE product_sizes SET "stockQuantity" = $1 WHERE id = $2::uuid AND "productId" = $3::uuid`,
+      [stockQuantity, sizeId, productId]
+    );
+  } else {
+    await query(
+      `UPDATE products SET "stockQuantity" = $1 WHERE id = $2::uuid`,
+      [stockQuantity, productId]
+    );
+  }
+};
+var setTrackInventory = async (productId, track) => {
+  await query(
+    `UPDATE products SET "trackInventory" = $1 WHERE id = $2::uuid`,
+    [track, productId]
+  );
+};
+var deductStock = async (orderId, orderItems) => {
+  let deductedCount = 0;
+  await withTransaction(async (tx) => {
+    for (const item2 of orderItems) {
+      const existing = await tx.query(
+        `SELECT id FROM stock_deductions WHERE "orderItemId" = $1::uuid AND type = 'deduct'`,
+        [item2.id]
+      );
+      if (existing.rows.length > 0) continue;
+      let sizeId = null;
+      if (item2.sizeName) {
+        const sizeRow = await tx.query(
+          `SELECT id FROM product_sizes WHERE "productId" = $1::uuid AND name = $2 LIMIT 1`,
+          [item2.productId, item2.sizeName]
+        );
+        sizeId = sizeRow.rows[0]?.id ?? null;
+      }
+      const stockInfo = await getStockForDeduction(tx, item2.productId, sizeId);
+      if (!stockInfo?.trackInventory) continue;
+      if (stockInfo.stockQuantity < item2.qty) {
+        throw new ApiError(
+          400,
+          `Insufficient stock for product. Available: ${stockInfo.stockQuantity}, Requested: ${item2.qty}`
+        );
+      }
+      if (sizeId) {
+        await tx.query(
+          `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" - $1 WHERE id = $2::uuid`,
+          [item2.qty, sizeId]
+        );
+      } else {
+        await tx.query(
+          `UPDATE products SET "stockQuantity" = "stockQuantity" - $1 WHERE id = $2::uuid`,
+          [item2.qty, item2.productId]
+        );
+      }
+      await tx.query(
+        `INSERT INTO stock_deductions ("orderId", "orderItemId", "productId", "sizeId", quantity, type)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, 'deduct')
+         ON CONFLICT ("orderItemId", type) DO NOTHING`,
+        [orderId, item2.id, item2.productId, sizeId, item2.qty]
+      );
+      deductedCount++;
+    }
+  });
+  return deductedCount;
+};
+var restoreStock = async (orderId, orderItems) => {
+  let restoredCount = 0;
+  await withTransaction(async (tx) => {
+    for (const item2 of orderItems) {
+      const existing = await tx.query(
+        `SELECT id FROM stock_deductions WHERE "orderItemId" = $1::uuid AND type = 'restore'`,
+        [item2.id]
+      );
+      if (existing.rows.length > 0) continue;
+      const deduction = await tx.query(
+        `SELECT quantity FROM stock_deductions WHERE "orderItemId" = $1::uuid AND type = 'deduct'`,
+        [item2.id]
+      );
+      if (deduction.rows.length === 0) continue;
+      let sizeId = null;
+      if (item2.sizeName) {
+        const sizeRow = await tx.query(
+          `SELECT id FROM product_sizes WHERE "productId" = $1::uuid AND name = $2 LIMIT 1`,
+          [item2.productId, item2.sizeName]
+        );
+        sizeId = sizeRow.rows[0]?.id ?? null;
+      }
+      const restoreQty = deduction.rows[0].quantity;
+      if (sizeId) {
+        await tx.query(
+          `UPDATE product_sizes SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
+          [restoreQty, sizeId]
+        );
+      } else {
+        await tx.query(
+          `UPDATE products SET "stockQuantity" = "stockQuantity" + $1 WHERE id = $2::uuid`,
+          [restoreQty, item2.productId]
+        );
+      }
+      await tx.query(
+        `INSERT INTO stock_deductions ("orderId", "orderItemId", "productId", "sizeId", quantity, type)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, 'restore')
+         ON CONFLICT ("orderItemId", type) DO NOTHING`,
+        [orderId, item2.id, item2.productId, sizeId, restoreQty]
+      );
+      restoredCount++;
+    }
+  });
+  return restoredCount;
+};
+var getStockForDeduction = async (tx, productId, sizeId) => {
+  if (sizeId) {
+    const result2 = await tx.query(
+      `SELECT ps."stockQuantity", p."trackInventory"
+       FROM product_sizes ps
+       JOIN products p ON p.id = ps."productId"
+       WHERE ps.id = $1::uuid`,
+      [sizeId]
+    );
+    const row2 = result2.rows[0];
+    return row2 ?? null;
+  }
+  const result = await tx.query(
+    `SELECT "stockQuantity", "trackInventory" FROM products WHERE id = $1::uuid`,
+    [productId]
+  );
+  const row = result.rows[0];
+  return row ?? null;
+};
+var getInventoryStats = async () => {
+  const productStats = await query(
+    `SELECT
+       count(*)::int AS "total",
+       count(*) FILTER (WHERE "trackInventory" = true)::int AS "trackable",
+       COALESCE(sum("stockQuantity") FILTER (WHERE "trackInventory" = true), 0)::int AS "totalStock"
+     FROM products`
+  );
+  const sizeStats = await query(
+    `SELECT COALESCE(sum(ps."stockQuantity"), 0)::int AS "totalStock"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     WHERE p."trackInventory" = true`
+  );
+  const lowStockProducts = await query(
+    `SELECT p.id::text AS "_id", p.name, p."nameEn", p."stockQuantity",
+            p."lowStockThreshold",
+            COALESCE(c.name, '') AS "category"
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."trackInventory" = true
+       AND p."stockQuantity" > 0
+       AND p."stockQuantity" <= p."lowStockThreshold"`
+  );
+  const outOfStockProducts = await query(
+    `SELECT p.id::text AS "_id", p.name, p."nameEn", p."stockQuantity",
+            COALESCE(c.name, '') AS "category"
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."trackInventory" = true AND p."stockQuantity" = 0`
+  );
+  const lowStockSizes = await query(
+    `SELECT ps."productId", ps.name, ps."nameEn", ps."stockQuantity", ps."lowStockThreshold",
+            p.name AS "productName", p."nameEn" AS "productNameEn",
+            COALESCE(c.name, '') AS "category"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."trackInventory" = true
+       AND ps."stockQuantity" > 0
+       AND ps."stockQuantity" <= ps."lowStockThreshold"`
+  );
+  const outOfStockSizes = await query(
+    `SELECT ps."productId", ps.name, ps."nameEn", ps."stockQuantity",
+            p.name AS "productName", p."nameEn" AS "productNameEn",
+            COALESCE(c.name, '') AS "category"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p."trackInventory" = true AND ps."stockQuantity" = 0`
+  );
+  const totalStock = (productStats[0]?.totalStock ?? 0) + (sizeStats[0]?.totalStock ?? 0);
+  const lowStockMap = /* @__PURE__ */ new Map();
+  for (const row of lowStockProducts) {
+    lowStockMap.set(row._id, {
+      _id: row._id,
+      name: row.name,
+      nameEn: row.nameEn,
+      stockQuantity: row.stockQuantity,
+      lowStockThreshold: row.lowStockThreshold,
+      category: row.category,
+      sizes: []
+    });
+  }
+  for (const row of lowStockSizes) {
+    const existing = lowStockMap.get(row.productId);
+    if (existing) {
+      existing.sizes.push({ name: row.name, nameEn: row.nameEn, stockQuantity: row.stockQuantity });
+    } else {
+      lowStockMap.set(row.productId, {
+        _id: row.productId,
+        name: row.productName,
+        nameEn: row.productNameEn,
+        stockQuantity: 0,
+        lowStockThreshold: row.lowStockThreshold,
+        category: row.category,
+        sizes: [{ name: row.name, nameEn: row.nameEn, stockQuantity: row.stockQuantity }]
+      });
+    }
+  }
+  const outOfStockMap = /* @__PURE__ */ new Map();
+  for (const row of outOfStockProducts) {
+    outOfStockMap.set(row._id, {
+      _id: row._id,
+      name: row.name,
+      nameEn: row.nameEn,
+      stockQuantity: 0,
+      category: row.category,
+      sizes: []
+    });
+  }
+  for (const row of outOfStockSizes) {
+    const existing = outOfStockMap.get(row.productId);
+    if (existing) {
+      existing.sizes.push({ name: row.name, nameEn: row.nameEn, stockQuantity: 0 });
+    } else {
+      outOfStockMap.set(row.productId, {
+        _id: row.productId,
+        name: row.productName,
+        nameEn: row.productNameEn,
+        stockQuantity: 0,
+        category: row.category,
+        sizes: [{ name: row.name, nameEn: row.nameEn, stockQuantity: 0 }]
+      });
+    }
+  }
+  return {
+    totalProducts: productStats[0]?.total ?? 0,
+    trackableProducts: productStats[0]?.trackable ?? 0,
+    totalStockQuantity: totalStock,
+    lowStockCount: lowStockMap.size,
+    outOfStockCount: outOfStockMap.size,
+    lowStockProducts: Array.from(lowStockMap.values()),
+    outOfStockProducts: Array.from(outOfStockMap.values())
+  };
+};
+var getSalesStats = async (startDate, endDate) => {
+  const conds = [
+    `o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')`
+  ];
+  const values = [];
+  const nxt = () => values.length;
+  if (startDate) {
+    values.push(startDate);
+    conds.push(`o."createdAt" >= $${nxt()}::timestamptz`);
+  }
+  if (endDate) {
+    values.push(endDate);
+    conds.push(`o."createdAt" <= $${nxt()}::timestamptz`);
+  }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const rows = await query(
+    `SELECT
+       COALESCE(SUM(oi."lineTotal"), 0)::float8 AS "salesValue",
+       COALESCE(SUM(oi.qty), 0)::int AS "salesQuantity",
+       (SELECT count(DISTINCT o.id)::int FROM orders o ${where}) AS "orderCount"
+     FROM order_items oi
+     JOIN orders o ON o.id = oi."orderId"
+     ${where}`,
+    values
+  );
+  return rows[0] ?? { salesValue: 0, salesQuantity: 0, orderCount: 0 };
+};
+
 // src/db/notifications.ts
 var NOTIFICATION_COLS = `
   n.id::text AS "_id",
@@ -4416,6 +4722,19 @@ var createOrder = asyncHandler(async (req, res) => {
     }
   }
   if (!order) throw new ApiError(500, "Could not create order");
+  if (isAdmin) {
+    const orderItemsForStock = orderItems.map((item2, i) => ({
+      id: order.items[i]?._id ?? "",
+      productId: item2.productId,
+      sizeName: item2.size,
+      qty: item2.qty
+    }));
+    try {
+      await deductStock(order._id, orderItemsForStock);
+    } catch (stockErr) {
+      console.error("[inventory] stock deduction failed for order", order.orderNo, stockErr);
+    }
+  }
   const senderEmail = (await getById(userId))?.email ?? "";
   void enqueueOrderConfirmation(senderEmail, order.orderNo ?? "", order.total ?? total).catch(() => void 0);
   await bumpDailyStats((/* @__PURE__ */ new Date()).toISOString().slice(0, 10), order.total ?? total);
@@ -4447,6 +4766,27 @@ var updateStatus2 = asyncHandler(async (req, res) => {
     [{ status, changedBy: req.user.id, at: /* @__PURE__ */ new Date() }]
   );
   if (!order) throw new ApiError(404, "Order not found");
+  const items = order.items ?? [];
+  const stockItems = items.map((item2) => ({
+    id: item2._id,
+    productId: item2.product,
+    sizeName: item2.size ?? "",
+    qty: item2.qty
+  }));
+  if (status === ORDER_STATUS.CONFIRMED && current.status !== ORDER_STATUS.CONFIRMED) {
+    try {
+      await deductStock(req.params.id, stockItems);
+    } catch (err) {
+      console.error("[inventory] stock deduction failed for order", order.orderNo, err);
+    }
+  }
+  if ([ORDER_STATUS.CANCELLED, ORDER_STATUS.REFUNDED, ORDER_STATUS.DELIVERY_FAILED].includes(status)) {
+    try {
+      await restoreStock(req.params.id, stockItems);
+    } catch (err) {
+      console.error("[inventory] stock restoration failed for order", order.orderNo, err);
+    }
+  }
   const [labelAr, labelEn] = ORDER_STATUS_LABELS[status] ?? [status, status];
   await sendToUsers({
     userIds: [order.user],
@@ -6511,8 +6851,53 @@ router25.get("/product/:productId", requirePermission("products", "read"), getPr
 router25.put("/product/:productId", requirePermission("products", "update"), setProductLabels);
 var label_routes_default = router25;
 
-// src/routes/paymentWebhook.routes.ts
+// src/routes/inventory.routes.ts
 import { Router as Router26 } from "express";
+
+// src/controllers/inventory.controller.ts
+var getInventoryStats2 = asyncHandler(async (_req, res) => {
+  const stats3 = await getInventoryStats();
+  res.json(new ApiResponse(200, stats3));
+});
+var getSalesStats2 = asyncHandler(async (req, res) => {
+  const { startDate, endDate } = req.query;
+  const stats3 = await getSalesStats(startDate, endDate);
+  res.json(new ApiResponse(200, stats3));
+});
+var updateStock2 = asyncHandler(async (req, res) => {
+  const { productId, sizeId, stockQuantity } = req.body;
+  if (!productId) throw new ApiError(400, "Product ID is required");
+  if (typeof stockQuantity !== "number" || stockQuantity < 0) {
+    throw new ApiError(400, "Stock quantity must be a non-negative number");
+  }
+  await updateStock(productId, stockQuantity, sizeId || null);
+  res.json(new ApiResponse(200, null, "Stock updated"));
+});
+var setTrackInventory2 = asyncHandler(async (req, res) => {
+  const { productId, track } = req.body;
+  if (!productId) throw new ApiError(400, "Product ID is required");
+  await setTrackInventory(productId, Boolean(track));
+  res.json(new ApiResponse(200, null, "Inventory tracking updated"));
+});
+var getStock2 = asyncHandler(async (req, res) => {
+  const { productId, sizeId } = req.query;
+  if (!productId) throw new ApiError(400, "Product ID is required");
+  const stock = await getStock(productId, sizeId);
+  res.json(new ApiResponse(200, stock));
+});
+
+// src/routes/inventory.routes.ts
+var router26 = Router26();
+router26.use(requireAuth);
+router26.get("/stats", requirePermission("products", "read"), getInventoryStats2);
+router26.get("/sales", requirePermission("orders", "read"), getSalesStats2);
+router26.get("/stock", requirePermission("products", "read"), getStock2);
+router26.patch("/stock", requirePermission("products", "update"), updateStock2);
+router26.patch("/track", requirePermission("products", "update"), setTrackInventory2);
+var inventory_routes_default = router26;
+
+// src/routes/paymentWebhook.routes.ts
+import { Router as Router27 } from "express";
 
 // src/services/payment/paymentAdapter.ts
 var PaymentManager = class {
@@ -6654,40 +7039,41 @@ var handleGenericWebhook = asyncHandler(async (req, res) => {
 });
 
 // src/routes/paymentWebhook.routes.ts
-var router26 = Router26();
-router26.post("/webhook/:provider", handleWebhook);
-router26.post("/webhook", handleGenericWebhook);
-var paymentWebhook_routes_default = router26;
+var router27 = Router27();
+router27.post("/webhook/:provider", handleWebhook);
+router27.post("/webhook", handleGenericWebhook);
+var paymentWebhook_routes_default = router27;
 
 // src/routes/index.ts
-var router27 = Router27();
-router27.use("/auth", auth_routes_default);
-router27.use("/users/me", user_routes_default);
-router27.use("/products", product_routes_default);
-router27.use("/categories", category_routes_default);
-router27.use("/reviews", review_routes_default);
-router27.use("/wishlist", wishlist_routes_default);
-router27.use("/cart", cart_routes_default);
-router27.use("/orders", order_routes_default);
-router27.use("/coupons", coupon_routes_default);
-router27.use("/offers", offer_routes_default);
-router27.use("/banners", banner_routes_default);
-router27.use("/gallery", gallery_routes_default);
-router27.use("/branches", branch_routes_default);
-router27.use("/contacts", contact_routes_default);
-router27.use("/newsletter", newsletter_routes_default);
-router27.use("/settings", setting_routes_default);
-router27.use("/notifications", notification_routes_default);
-router27.use("/analytics", analytics_routes_default);
-router27.use("/upload", upload_routes_default);
-router27.use("/posts", post_routes_default);
-router27.use("/admin/users", adminApiLimiter, adminUser_routes_default);
-router27.use("/system", systemReset_routes_default);
-router27.use("/print", print_routes_default);
-router27.use("/service-tokens", serviceToken_routes_default);
-router27.use("/labels", label_routes_default);
-router27.use("/payments", paymentWebhook_routes_default);
-var routes_default = router27;
+var router28 = Router28();
+router28.use("/auth", auth_routes_default);
+router28.use("/users/me", user_routes_default);
+router28.use("/products", product_routes_default);
+router28.use("/categories", category_routes_default);
+router28.use("/reviews", review_routes_default);
+router28.use("/wishlist", wishlist_routes_default);
+router28.use("/cart", cart_routes_default);
+router28.use("/orders", order_routes_default);
+router28.use("/coupons", coupon_routes_default);
+router28.use("/offers", offer_routes_default);
+router28.use("/banners", banner_routes_default);
+router28.use("/gallery", gallery_routes_default);
+router28.use("/branches", branch_routes_default);
+router28.use("/contacts", contact_routes_default);
+router28.use("/newsletter", newsletter_routes_default);
+router28.use("/settings", setting_routes_default);
+router28.use("/notifications", notification_routes_default);
+router28.use("/analytics", analytics_routes_default);
+router28.use("/upload", upload_routes_default);
+router28.use("/posts", post_routes_default);
+router28.use("/admin/users", adminApiLimiter, adminUser_routes_default);
+router28.use("/system", systemReset_routes_default);
+router28.use("/print", print_routes_default);
+router28.use("/service-tokens", serviceToken_routes_default);
+router28.use("/labels", label_routes_default);
+router28.use("/inventory", inventory_routes_default);
+router28.use("/payments", paymentWebhook_routes_default);
+var routes_default = router28;
 
 // src/app.ts
 var app = express();

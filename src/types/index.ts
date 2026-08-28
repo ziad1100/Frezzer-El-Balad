@@ -71,6 +71,8 @@ export interface ProductSize {
   nameEn: string;
   price: number;
   isAvailable: boolean;
+  stockQuantity?: number;
+  lowStockThreshold?: number;
 }
 
 export interface ProductExtra {
@@ -102,6 +104,9 @@ export interface Product {
   isAvailable: boolean;
   isBestSeller: boolean;
   isOffer: boolean;
+  trackInventory?: boolean;
+  stockQuantity?: number;
+  lowStockThreshold?: number;
   tags: string[];
   labels?: Label[];
   createdAt: string;
@@ -468,6 +473,9 @@ export interface ProductPayload {
   isOffer?: boolean;
   tags?: string[];
   labelIds?: string[];
+  trackInventory?: boolean;
+  stockQuantity?: number;
+  lowStockThreshold?: number;
 }
 
 export interface SettingsMap {

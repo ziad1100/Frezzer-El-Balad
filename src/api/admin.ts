@@ -336,3 +336,48 @@ export const getProductLabels = (productId: string): Promise<Label[]> =>
 
 export const setProductLabels = (productId: string, labelIds: string[]): Promise<Label[]> =>
   unwrap(api.put<ApiEnvelope<Label[]>>(`/labels/product/${productId}`, { labelIds }));
+
+// ── Inventory ─────────────────────────────────────────────────────────────
+
+export interface InventoryStats {
+  totalProducts: number;
+  trackableProducts: number;
+  totalStockQuantity: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  lowStockProducts: Array<{
+    _id: string;
+    name: string;
+    nameEn: string;
+    stockQuantity: number;
+    lowStockThreshold: number;
+    category: string;
+    sizes: Array<{ name: string; nameEn: string; stockQuantity: number }>;
+  }>;
+  outOfStockProducts: Array<{
+    _id: string;
+    name: string;
+    nameEn: string;
+    stockQuantity: number;
+    category: string;
+    sizes: Array<{ name: string; nameEn: string; stockQuantity: number }>;
+  }>;
+}
+
+export interface SalesStats {
+  salesValue: number;
+  salesQuantity: number;
+  orderCount: number;
+}
+
+export const getInventoryStats = (): Promise<InventoryStats> =>
+  unwrap(api.get<ApiEnvelope<InventoryStats>>('/inventory/stats'));
+
+export const getSalesStats = (params: { startDate?: string; endDate?: string } = {}): Promise<SalesStats> =>
+  unwrap(api.get<ApiEnvelope<SalesStats>>('/inventory/sales', { params }));
+
+export const updateProductStock = (data: { productId: string; sizeId?: string; stockQuantity: number }): Promise<null> =>
+  unwrap(api.patch<ApiEnvelope<null>>('/inventory/stock', data));
+
+export const setTrackInventory = (data: { productId: string; track: boolean }): Promise<null> =>
+  unwrap(api.patch<ApiEnvelope<null>>('/inventory/track', data));

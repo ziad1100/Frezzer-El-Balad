@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Banknote, CalendarDays, Download, Eraser, Package, RefreshCw, ShoppingBag, Star, TrendingUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, refreshDashboard, systemReset } from '@/api/admin';
+import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, getInventoryStats, getSalesStats, refreshDashboard, systemReset } from '@/api/admin';
 import { getErrorMessage } from '@/lib/api';
 import { Card, CardContent, EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -33,6 +33,8 @@ export function AdminIndexPage() {
   });
 
   const reviewStats = useQuery({ queryKey: ['admin', 'reviews', 'stats'], queryFn: adminReviewStats });
+  const inventoryStats = useQuery({ queryKey: ['admin', 'inventory'], queryFn: getInventoryStats });
+  const salesStats = useQuery({ queryKey: ['admin', 'sales'], queryFn: () => getSalesStats() });
 
   const [period, setPeriod] = useState<PeriodKey>('today');
   const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
@@ -238,6 +240,87 @@ export function AdminIndexPage() {
           ))}
         </div>
       )}
+
+      {/* Sales / Outgoing & Inventory Stats */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Sales / Outgoing Value */}
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600/15 text-emerald-500">
+              <TrendingUp className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-sm text-night-400">
+                {lang === 'ar' ? 'المبيعات / المنصرف' : 'Sales / Outgoing'}
+              </p>
+              <p className="mt-0.5 text-2xl font-extrabold text-night-50">
+                {salesStats.data ? formatPrice(salesStats.data.salesValue, lang) : '—'}
+              </p>
+              {salesStats.data && (
+                <p className="text-xs text-night-500">
+                  {salesStats.data.salesQuantity} {lang === 'ar' ? 'وحدة' : 'units'}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Available Stock */}
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600/15 text-blue-500">
+              <Package className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-sm text-night-400">
+                {lang === 'ar' ? 'المخزون المتاح' : 'Available Stock'}
+              </p>
+              <p className="mt-0.5 text-2xl font-extrabold text-night-50">
+                {inventoryStats.data ? inventoryStats.data.totalStockQuantity : '—'}
+              </p>
+              {inventoryStats.data && (
+                <p className="text-xs text-night-500">
+                  {inventoryStats.data.trackableProducts} {lang === 'ar' ? 'منتج يتتبع' : 'tracked products'}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Low Stock */}
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-600/15 text-amber-500">
+              <Package className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-sm text-night-400">
+                {lang === 'ar' ? 'مخزون منخفض' : 'Low Stock'}
+              </p>
+              <p className="mt-0.5 text-2xl font-extrabold text-amber-400">
+                {inventoryStats.data ? inventoryStats.data.lowStockCount : '—'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Out of Stock */}
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-600/15 text-red-500">
+              <Package className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-sm text-night-400">
+                {lang === 'ar' ? 'غير متوفر' : 'Out of Stock'}
+              </p>
+              <p className="mt-0.5 text-2xl font-extrabold text-red-400">
+                {inventoryStats.data ? inventoryStats.data.outOfStockCount : '—'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>

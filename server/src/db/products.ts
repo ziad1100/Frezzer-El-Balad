@@ -271,20 +271,25 @@ export const create = async (data: {
   extras?: Array<{ name: string; nameEn?: string; price: number }>;
   sortOrder?: number;
   labelIds?: string[];
+  trackInventory?: boolean;
+  stockQuantity?: number;
+  lowStockThreshold?: number;
 }): Promise<Record<string, unknown>> => {
   let id = '';
   await withTransaction(async (tx) => {
     const inserted = await tx.query<{ id: string }>(
       `INSERT INTO products (name, "nameEn", slug, description, "descriptionEn", "basePrice", images,
         ingredients, "ingredientsEn", tags, "categoryId", "isAvailable", "isBestSeller", "isOffer",
-        discount, "preparationTime", calories, "sortOrder")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid,$12,$13,$14,$15,$16,$17,$18)
+        discount, "preparationTime", calories, "sortOrder",
+        "trackInventory", "stockQuantity", "lowStockThreshold")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING id`,
       [data.name, data.nameEn ?? '', data.slug, data.description ?? '', data.descriptionEn ?? '',
        Number(data.basePrice), data.images ?? [], data.ingredients ?? [], data.ingredientsEn ?? [],
        data.tags ?? [], data.category ?? null, data.isAvailable ?? true, data.isBestSeller ?? false,
        data.isOffer ?? false, Number(data.discount) || 0, Number(data.preparationTime) || 20,
-       Number(data.calories) || 0, Number(data.sortOrder) || 0],
+       Number(data.calories) || 0, Number(data.sortOrder) || 0,
+       data.trackInventory ?? false, Number(data.stockQuantity) || 0, Number(data.lowStockThreshold) || 5],
     );
     id = inserted.rows[0].id;
     await syncSizes(tx.query.bind(tx), id, data.sizes);
@@ -310,6 +315,7 @@ export const update = async (
     sizes?: Array<{ name: string; nameEn?: string; price: number; isAvailable?: boolean }>;
     extras?: Array<{ name: string; nameEn?: string; price: number }>;
     labelIds?: string[];
+    trackInventory?: boolean; stockQuantity?: number; lowStockThreshold?: number;
   },
 ): Promise<Record<string, unknown> | null> => {
   let updated = false;
@@ -335,6 +341,9 @@ export const update = async (
     if (data.discount !== undefined) push('discount', Number(data.discount));
     if (data.preparationTime !== undefined) push('preparationTime', Number(data.preparationTime));
     if (data.calories !== undefined) push('calories', Number(data.calories));
+    if (data.trackInventory !== undefined) push('trackInventory', data.trackInventory);
+    if (data.stockQuantity !== undefined) push('stockQuantity', Number(data.stockQuantity));
+    if (data.lowStockThreshold !== undefined) push('lowStockThreshold', Number(data.lowStockThreshold));
 
     if (sets.length) {
       const result = await tx.query(`UPDATE products SET ${sets.join(', ')} WHERE id = $1 RETURNING id`, values);

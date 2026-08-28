@@ -36,6 +36,9 @@ export const productCreateSchema = z.object({
   isAvailable: z.boolean().optional(),
   isBestSeller: z.boolean().optional(),
   isOffer: z.boolean().optional(),
+  trackInventory: z.boolean().optional(),
+  stockQuantity: z.coerce.number().int().min(0).optional(),
+  lowStockThreshold: z.coerce.number().int().min(0).optional(),
 });
 
 // ── Update schemas (lenient — existing products may have legacy 0-prices,
@@ -75,4 +78,7 @@ export const productUpdateSchema = z.object({
   isBestSeller: z.boolean().optional(),
   isOffer: z.boolean().optional(),
   labelIds: z.array(z.string()).optional(),
+  trackInventory: z.boolean().optional(),
+  stockQuantity: z.coerce.number().int().min(0).optional(),
+  lowStockThreshold: z.coerce.number().int().min(0).optional(),
 });
