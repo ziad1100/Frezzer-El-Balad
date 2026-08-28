@@ -54,12 +54,21 @@ const PURCHASE_COLS = `
 /**
  * Try extended query first (with weight columns from migration 006),
  * fall back to base query if columns don't exist.
+ *
+ * IMPORTANT: whereParams must contain ONLY the WHERE-clause parameters.
+ * limit and offset are appended separately to avoid placeholder index bugs.
  */
 async function queryPurchases(
   selectCols: string,
   whereClause: string,
-  params: unknown[],
+  whereParams: unknown[],
+  limit: number,
+  offset: number,
 ): Promise<{ rows: Array<Record<string, unknown>>; usedExtended: boolean }> {
+  const allParams = [...whereParams, limit, offset];
+  const limitIdx = whereParams.length + 1;
+  const offsetIdx = whereParams.length + 2;
+
   // Try with extended columns first
   try {
     const rows = await query(
@@ -68,22 +77,27 @@ async function queryPurchases(
        LEFT JOIN users u ON u.id = pu."createdBy"
        ${whereClause}
        ORDER BY pu."purchaseDate" DESC, pu.id
-       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-      params,
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      allParams,
     ) as unknown as Array<Record<string, unknown>>;
     return { rows, usedExtended: true };
-  } catch {
+  } catch (err) {
     // Extended columns may not exist — fall back to base columns
-    const rows = await query(
-      `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
-       FROM purchases pu
-       LEFT JOIN users u ON u.id = pu."createdBy"
-       ${whereClause}
-       ORDER BY pu."purchaseDate" DESC, pu.id
-       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-      params,
-    ) as unknown as Array<Record<string, unknown>>;
-    return { rows, usedExtended: false };
+    try {
+      const rows = await query(
+        `SELECT count(*) OVER()::int AS __total, ${PURCHASE_COLS}
+         FROM purchases pu
+         LEFT JOIN users u ON u.id = pu."createdBy"
+         ${whereClause}
+         ORDER BY pu."purchaseDate" DESC, pu.id
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        allParams,
+      ) as unknown as Array<Record<string, unknown>>;
+      return { rows, usedExtended: false };
+    } catch (innerErr) {
+      console.error('[purchases] queryPurchases fallback also failed:', innerErr);
+      throw innerErr;
+    }
   }
 }
 
@@ -136,6 +150,7 @@ export const createPurchase = async (data: PurchaseInput): Promise<Record<string
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
+    console.error('[purchases] Phase 1 INSERT failed:', message);
     if (message.includes('relation "purchases" does not exist')) {
       throw new ApiError(500, 'Purchases table does not exist. Please run migration 004.');
     }
@@ -164,34 +179,56 @@ export const createPurchase = async (data: PurchaseInput): Promise<Record<string
   } catch {
     // stockQuantity column may not exist (migration 003 not applied)
     // or product_sizes table may be missing — purchase is still saved
-    console.error('[purchases] inventory update failed (purchase was still saved)');
+    console.error('[purchases] inventory update failed (purchase was still saved), purchaseId:', purchaseId);
   }
 
   // ── Phase 3: Return the created purchase ─────────────────────────────────
   try {
-    const result = await queryPurchases(
-      PURCHASE_COLS + `, COALESCE(pu."weightGrams", 0) AS "weightGrams",
-        COALESCE(pu."weightMode", 'fixed') AS "weightMode",
-        COALESCE(pu."weightDisplay", '') AS "weightDisplay"`,
-      'WHERE pu.id = $1::uuid',
+    // Use query() directly for a single-row lookup — avoids queryPurchases complexity
+    const extendedRows = await query(
+      `SELECT ${PURCHASE_COLS},
+              COALESCE(pu."weightGrams", 0) AS "weightGrams",
+              COALESCE(pu."weightMode", 'fixed') AS "weightMode",
+              COALESCE(pu."weightDisplay", '') AS "weightDisplay"
+       FROM purchases pu
+       LEFT JOIN users u ON u.id = pu."createdBy"
+       WHERE pu.id = $1::uuid
+       LIMIT 1`,
       [purchaseId],
     );
-    return result.rows[0];
+    if (extendedRows.length > 0) return extendedRows[0];
   } catch {
-    // Fallback: return minimal purchase data
-    return {
-      _id: purchaseId,
-      productId: data.productId,
-      productName: data.productName,
-      productSize: data.productSize,
-      quantity: data.quantity,
-      unitCost: data.unitCost,
-      totalCost: data.totalCost,
-      supplier: data.supplier,
-      notes: data.notes,
-      purchaseDate: data.purchaseDate,
-    };
+    // Weight columns may not exist — try base columns
   }
+
+  try {
+    // Fallback: base columns only
+    const baseRows = await query(
+      `SELECT ${PURCHASE_COLS}
+       FROM purchases pu
+       LEFT JOIN users u ON u.id = pu."createdBy"
+       WHERE pu.id = $1::uuid
+       LIMIT 1`,
+      [purchaseId],
+    );
+    if (baseRows.length > 0) return baseRows[0];
+  } catch {
+    // Even base query failed — return minimal data
+  }
+
+  // Ultimate fallback: return what we know
+  return {
+    _id: purchaseId,
+    productId: data.productId,
+    productName: data.productName,
+    productSize: data.productSize,
+    quantity: data.quantity,
+    unitCost: data.unitCost,
+    totalCost: data.totalCost,
+    supplier: data.supplier,
+    notes: data.notes,
+    purchaseDate: data.purchaseDate,
+  };
 };
 
 /** List purchases with pagination and optional date range filter. */
@@ -211,7 +248,7 @@ export const listPurchases = async (
   if (productId) { values.push(productId); conds.push(`pu."productId" = $${nxt()}::uuid`); }
 
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-  const params = [...values, limit, (page - 1) * limit];
+  const offset = (page - 1) * limit;
 
   // Try extended columns first, fall back to base columns
   const extendedCols = PURCHASE_COLS + `, COALESCE(pu."weightGrams", 0) AS "weightGrams",
@@ -219,10 +256,11 @@ export const listPurchases = async (
     COALESCE(pu."weightDisplay", '') AS "weightDisplay"`;
 
   try {
-    const result = await queryPurchases(extendedCols, where, params);
+    const result = await queryPurchases(extendedCols, where, values, limit, offset);
     return toPage(result.rows, limit);
   } catch {
     // purchases table may not exist yet in production
+    console.error('[purchases] listPurchases failed — purchases table may not exist');
     return { items: [], total: 0, pages: 1 };
   }
 };
@@ -243,17 +281,21 @@ export const deletePurchase = async (id: string): Promise<boolean> => {
       if (rows.length === 0) throw new ApiError(404, 'Purchase not found');
       const purchase = rows[0];
 
-      // Decrease inventory stock
-      if (purchase.sizeId) {
-        await tx.query(
-          `UPDATE product_sizes SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
-          [purchase.quantity, purchase.sizeId],
-        );
-      } else {
-        await tx.query(
-          `UPDATE products SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
-          [purchase.quantity, purchase.productId],
-        );
+      // Decrease inventory stock (best-effort)
+      try {
+        if (purchase.sizeId) {
+          await tx.query(
+            `UPDATE product_sizes SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+            [purchase.quantity, purchase.sizeId],
+          );
+        } else {
+          await tx.query(
+            `UPDATE products SET "stockQuantity" = GREATEST(0, "stockQuantity" - $1) WHERE id = $2::uuid`,
+            [purchase.quantity, purchase.productId],
+          );
+        }
+      } catch {
+        console.error('[purchases] inventory decrease failed during delete (purchase still deleted)');
       }
 
       // Delete the purchase record
@@ -264,6 +306,7 @@ export const deletePurchase = async (id: string): Promise<boolean> => {
     return deleted;
   } catch (err) {
     if (err instanceof ApiError) throw err;
+    console.error('[purchases] deletePurchase failed:', err);
     throw new ApiError(500, 'Failed to delete purchase');
   }
 };
@@ -308,7 +351,7 @@ export const getPurchaseStats = async (
       values,
     );
   } catch {
-    // purchases table may not exist yet in production
+    console.error('[purchases] getPurchaseStats main query failed');
     return { totalCost: 0, totalQuantity: 0, purchaseCount: 0, byProduct: [] };
   }
 
@@ -356,7 +399,7 @@ export const getProductReport = async (productId: string): Promise<{
   const productRows = await query<{
     _id: string; name: string; nameEn: string; basePrice: number; stockQuantity: number;
   }>(
-    `SELECT id::text AS "_id", name, "nameEn", "basePrice"::float8 AS "basePrice", "stockQuantity"
+    `SELECT id::text AS "_id", name, "nameEn", "basePrice"::float8 AS "basePrice", COALESCE("stockQuantity", 0) AS "stockQuantity"
      FROM products WHERE id = $1::uuid`,
     [productId],
   );
