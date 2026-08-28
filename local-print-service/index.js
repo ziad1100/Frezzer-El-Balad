@@ -31,8 +31,7 @@
  *   MAX_RETRIES    — Max retries before marking failed (default: 3)
  */
 
-import { EscPos } from 'escpos';
-import EscPosImage from 'escpos-image';
+import EscPos from 'escpos';
 import EscposUSB from 'escpos-usb';
 import EscposNetwork from 'escpos-network';
 import fetch from 'node-fetch';
@@ -227,9 +226,7 @@ class USBPrinterAdapter {
   async printImage(base64Data) {
     if (!this.printer) throw new Error(ErrorCode.PRINTER_NOT_FOUND);
     const base64 = base64Data.replace(/^data:image\/png;base64,/, '');
-    const buffer = Buffer.from(base64, 'base64');
-    const image = new EscPosImage(buffer);
-
+    const buffer = Buffer.from(base64, 'base64');    const image = new EscPos.Image(buffer);
     return new Promise((resolve, reject) => {
       this.printer.open((err) => {
         if (err) {
@@ -362,9 +359,7 @@ class NetworkPrinterAdapter {
   async printImage(base64Data) {
     if (!this.printer) throw new Error(ErrorCode.PRINTER_NOT_FOUND);
     const base64 = base64Data.replace(/^data:image\/png;base64,/, '');
-    const buffer = Buffer.from(base64, 'base64');
-    const image = new EscPosImage(buffer);
-
+    const buffer = Buffer.from(base64, 'base64');    const image = new EscPos.Image(buffer);
     return new Promise((resolve, reject) => {
       this.printer.open((err) => {
         if (err) {
@@ -1364,6 +1359,57 @@ function startHealthServer(adapter) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ reachable: false, error: err.message }));
       }
+    } else if (req.url === '/print/direct' && req.method === 'POST') {
+      // Direct print — accepts receipt data and prints immediately (no polling)
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const receipt = JSON.parse(body);
+          if (!receipt || !receipt.orderNo) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'Invalid receipt data — orderNo required' }));
+            return;
+          }
+
+          log('info', 'DIRECT', `Direct print request for order #${receipt.orderNo}`);
+
+          // Build ESC/POS data from receipt
+          const escposData = buildEscpos(receipt);
+
+          // Print directly through the adapter
+          const status = await adapter.getStatus();
+          if (!status.connected) {
+            log('error', 'DIRECT', 'Printer not connected', { code: ErrorCode.PRINTER_OFFLINE });
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              success: false,
+              error: 'Printer not connected',
+              code: ErrorCode.PRINTER_OFFLINE,
+            }));
+            return;
+          }
+
+          await adapter.printRaw(escposData);
+
+          log('info', 'DIRECT', `Direct print completed for order #${receipt.orderNo}`);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: true,
+            message: 'Print completed',
+            orderNo: receipt.orderNo,
+            connectionType: adapter.connectionType,
+          }));
+        } catch (err) {
+          log('error', 'DIRECT', 'Direct print failed', { error: err.message, code: ErrorCode.PRINT_JOB_FAILED });
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            error: err.message,
+            code: err.message in ErrorCode ? err.message : ErrorCode.PRINT_JOB_FAILED,
+          }));
+        }
+      });
     } else if (req.url === '/discover' && req.method === 'GET') {
       // Universal printer discovery — scans USB, LAN, Windows, Bluetooth
       log('info', 'HEALTH', 'Universal printer discovery requested');
@@ -1518,6 +1564,7 @@ function startHealthServer(adapter) {
     log('info', 'HEALTH', `  GET  http://localhost:${CONFIG.healthPort}/discover`);
     log('info', 'HEALTH', `  POST http://localhost:${CONFIG.healthPort}/test`);
     log('info', 'HEALTH', `  POST http://localhost:${CONFIG.healthPort}/printers/{name}/test`);
+    log('info', 'HEALTH', `  POST http://localhost:${CONFIG.healthPort}/print/direct`);
   });
 
   return server;

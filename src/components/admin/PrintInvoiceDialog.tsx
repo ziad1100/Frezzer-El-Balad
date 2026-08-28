@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Printer, Eye, Send, Image, Search } from 'lucide-react';
+import { Printer, Eye, Send, Image, Search, Monitor, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Select, Label } from '@/components/ui/Input';
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import type { ReceiptData } from '@/lib/receiptFormatter';
 import { generateReceiptText } from '@/lib/receiptFormatter';
 import { renderReceiptToCanvas, canvasToDataURL, hasArabic } from '@/lib/receiptImage';
+import { checkLocalAgent, printViaLocalAgent } from '@/lib/browserPrint';
 
 export interface PrinterConfig {
   id: string;
@@ -29,6 +30,7 @@ interface PrintInvoiceDialogProps {
   printers: PrinterConfig[];
   onPrint: (printerId: string, paperWidth: '58' | '80', copies: number) => void;
   onBrowserPrint: (paperWidth: '58' | '80') => void;
+  onDirectPrint?: (receipt: ReceiptData) => void;
   printLoading?: boolean;
 }
 
@@ -40,6 +42,7 @@ export function PrintInvoiceDialog({
   printers,
   onPrint,
   onBrowserPrint,
+  onDirectPrint,
   printLoading = false,
 }: PrintInvoiceDialogProps) {
   const { i18n } = useTranslation();
@@ -47,6 +50,20 @@ export function PrintInvoiceDialog({
 
   const activePrinters = printers.filter((p) => p.isActive);
   const defaultPrinter = activePrinters.find((p) => p.isDefault) ?? activePrinters[0];
+
+  // Local print agent detection
+  const [agentStatus, setAgentStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [directPrinting, setDirectPrinting] = useState(false);
+  const [directPrintResult, setDirectPrintResult] = useState<'success' | 'error' | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    checkLocalAgent().then((url) => {
+      if (!cancelled) setAgentStatus(url ? 'online' : 'offline');
+    });
+    return () => { cancelled = true; };
+  }, [open]);
 
   const [selectedPrinterId, setSelectedPrinterId] = useState(defaultPrinter?.id ?? '');
   const [paperWidth, setPaperWidth] = useState<'58' | '80'>(defaultPrinter?.paperWidth ?? '80');
@@ -86,6 +103,28 @@ export function PrintInvoiceDialog({
 
   const handleBrowserPrint = () => {
     onBrowserPrint(paperWidth);
+  };
+
+  const handleDirectPrint = async () => {
+    setDirectPrinting(true);
+    setDirectPrintResult(null);
+    try {
+      const receiptForPaper = { ...receipt, paperWidth };
+      for (let i = 0; i < copies; i++) {
+        const result = await printViaLocalAgent(receiptForPaper);
+        if (!result.success) {
+          setDirectPrintResult('error');
+          return;
+        }
+      }
+      setDirectPrintResult('success');
+      // Call the optional callback (for marking order as printed etc.)
+      if (onDirectPrint) onDirectPrint(receipt);
+    } catch {
+      setDirectPrintResult('error');
+    } finally {
+      setDirectPrinting(false);
+    }
   };
 
   const selectedPrinter = activePrinters.find((p) => p.id === selectedPrinterId);
@@ -283,25 +322,77 @@ export function PrintInvoiceDialog({
           </div>
         )}
 
+        {/* Agent Status */}
+        {agentStatus === 'checking' && (
+          <div className="flex items-center gap-2 rounded-lg border border-night-700 bg-night-900 px-3 py-2 text-sm text-night-400">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            {lang === 'ar' ? 'جاري البحث عن خدمة الطباعة...' : 'Detecting local print service...'}
+          </div>
+        )}
+        {agentStatus === 'online' && (
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+            <CheckCircle className="h-3.5 w-3.5" />
+            {lang === 'ar' ? 'خدمة الطباعة المحلية متصلة — طباعة مباشرة متاحة' : 'Local print service connected — direct printing available'}
+          </div>
+        )}
+        {agentStatus === 'offline' && (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-400">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {lang === 'ar' ? 'خدمة الطباعة المحلية غير متصلة — سيتم استخدام طباعة المتصفح' : 'Local print service offline — falling back to browser print'}
+          </div>
+        )}
+
+        {/* Direct Print Result */}
+        {directPrintResult === 'success' && (
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+            <CheckCircle className="h-3.5 w-3.5" />
+            {lang === 'ar' ? '✓ تمت الطباعة بنجاح' : '✓ Print sent successfully'}
+          </div>
+        )}
+        {directPrintResult === 'error' && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {lang === 'ar' ? '✗ فشلت الطباعة — تأكد من اتصال الطابعة' : '✗ Print failed — check printer connection'}
+          </div>
+        )}
+
         {/* Print Buttons */}
         <div className="flex flex-wrap gap-3">
+          {/* Primary: Direct print via local agent */}
           <Button
-            onClick={handlePrint}
-            loading={printLoading}
+            onClick={handleDirectPrint}
+            loading={directPrinting || printLoading}
+            disabled={agentStatus !== 'online' || directPrinting}
             className="flex-1"
           >
             <Printer className="h-4 w-4" />
-            {selectedPrinter
-              ? (lang === 'ar' ? `طباعة على ${selectedPrinter.name}` : `Print to ${selectedPrinter.name}`)
-              : (lang === 'ar' ? 'طباعة الفاتورة' : 'Print Invoice')}
+            {directPrinting
+              ? (lang === 'ar' ? 'جاري الطباعة...' : 'Printing...')
+              : selectedPrinter
+                ? (lang === 'ar' ? `طباعة مباشرة على ${selectedPrinter.name}` : `Direct Print to ${selectedPrinter.name}`)
+                : (lang === 'ar' ? 'طباعة مباشرة' : 'Direct Print')}
             {copies > 1 ? ` ×${copies}` : ''}
           </Button>
+
+          {/* Secondary: Backend print job (via Render API → local agent polling) */}
+          <Button
+            onClick={handlePrint}
+            loading={printLoading}
+            variant="outline"
+          >
+            <Send className="h-4 w-4" />
+            {selectedPrinter
+              ? (lang === 'ar' ? `طباعة على ${selectedPrinter.name}` : `Print to ${selectedPrinter.name}`)
+              : (lang === 'ar' ? 'إرسال للطابعة' : 'Send to Printer')}
+          </Button>
+
+          {/* Tertiary: Browser print fallback */}
           <Button
             variant="outline"
             onClick={handleBrowserPrint}
             loading={printLoading}
           >
-            <Send className="h-4 w-4" />
+            <Monitor className="h-4 w-4" />
             {lang === 'ar' ? 'طباعة من المتصفح' : 'Browser Print'}
           </Button>
         </div>

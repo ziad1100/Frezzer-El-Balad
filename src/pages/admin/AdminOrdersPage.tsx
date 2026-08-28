@@ -210,6 +210,18 @@ export function AdminOrdersPage() {
     }
   };
 
+  /** Direct print via local agent (no about:blank, no browser dialog) */
+  const handleDirectPrintFromDialog = async (): Promise<void> => {
+    if (!printDialogOrder) return;
+    try {
+      await markOrderPrinted(printDialogOrder._id);
+      void invalidateAll();
+      await fetchPrintJobs(printDialogOrder._id);
+    } catch {
+      // non-critical
+    }
+  };
+
   const complimentaryMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) => adminMarkComplimentary(id, reason),
     onSuccess: (order) => {
@@ -600,6 +612,7 @@ export function AdminOrdersPage() {
           printers={printers}
           onPrint={handlePrintFromDialog}
           onBrowserPrint={handleBrowserPrintFromDialog}
+          onDirectPrint={handleDirectPrintFromDialog}
           printLoading={printLoading}
         />
       ) : null}

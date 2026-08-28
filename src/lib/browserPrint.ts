@@ -1,8 +1,8 @@
 /**
- * Browser Print Fallback
+ * Print Service — Local Agent Communication + Browser Fallback
  *
- * Opens a printer-friendly receipt in a new window and triggers the browser's
- * native print dialog. Used when the local print service is unavailable.
+ * 1. Direct printing via the local print agent (no about:blank)
+ * 2. Browser print fallback when the local agent is unavailable
  *
  * For Arabic text, renders the receipt as a canvas image to ensure correct
  * display on printers without native Arabic support.
@@ -11,6 +11,116 @@
 import type { ReceiptData } from './receiptFormatter';
 import { generateReceiptText } from './receiptFormatter';
 import { renderReceiptToCanvas, canvasToDataURL, hasArabic } from './receiptImage';
+
+// ─── Local Print Agent ───────────────────────────────────────────────────────
+
+const AGENT_PORTS = [9200, 9201, 9202];
+const AGENT_TIMEOUT_MS = 2000;
+let cachedAgentUrl: string | null = null;
+
+/**
+ * Detect if the Local Print Agent is running on this machine.
+ * Checks common ports and caches the result for 30 seconds.
+ * Returns the agent URL if found, null otherwise.
+ */
+export async function checkLocalAgent(): Promise<string | null> {
+  // Return cached result if still valid
+  if (cachedAgentUrl) {
+    try {
+      const res = await fetch(`${cachedAgentUrl}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(1000),
+      });
+      if (res.ok) return cachedAgentUrl;
+    } catch {
+      cachedAgentUrl = null;
+    }
+  }
+
+  for (const port of AGENT_PORTS) {
+    try {
+      const url = `http://localhost:${port}`;
+      const res = await fetch(`${url}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
+      });
+      if (res.ok) {
+        cachedAgentUrl = url;
+        return url;
+      }
+    } catch {
+      // try next port
+    }
+  }
+  return null;
+}
+
+/**
+ * Send a receipt directly to the Local Print Agent for immediate printing.
+ * Does NOT open about:blank or the browser print dialog.
+ * Returns { success, error? }.
+ */
+export async function printViaLocalAgent(
+  receipt: ReceiptData,
+  agentUrl?: string | null,
+): Promise<{ success: boolean; error?: string }> {
+  const url = agentUrl || cachedAgentUrl || await checkLocalAgent();
+  if (!url) {
+    return { success: false, error: 'Local print agent not available' };
+  }
+
+  // For Arabic text, render as image data URL
+  const isArabic = receipt.language === 'ar' || hasArabic(receipt.storeNameAr);
+  const payload = { ...receipt };
+  if (isArabic) {
+    try {
+      const canvas = renderReceiptToCanvas(receipt);
+      (payload as Record<string, unknown>).imageDataUrl = canvasToDataURL(canvas);
+    } catch {
+      // proceed without image fallback
+    }
+  }
+
+  try {
+    const res = await fetch(`${url}/print/direct`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      return { success: true };
+    }
+    return { success: false, error: data.error || `HTTP ${res.status}` };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Discover available printers from the Local Print Agent.
+ */
+export async function discoverLocalPrinters(
+  agentUrl?: string | null,
+): Promise<Array<{ name: string; connection: string; status: string; ip?: string; port?: string; paperWidth?: string }>> {
+  const url = agentUrl || cachedAgentUrl || await checkLocalAgent();
+  if (!url) return [];
+
+  try {
+    const res = await fetch(`${url}/discover`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    return data.printers || [];
+  } catch {
+    return [];
+  }
+}
 
 const RECEIPT_STYLES = `
   @page {
