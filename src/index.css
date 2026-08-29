@@ -1,34 +1,34 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand colors — same in both modes */
-  --color-brand-50: #E0F2FE;
-  --color-brand-100: #bae6fd;
-  --color-brand-200: #7dd3fc;
-  --color-brand-300: #38bdf8;
-  --color-brand-400: #2563EB;
+  /* ── Brand: Deep Navy / Freezer Blue ──────────────────────────────── */
+  --color-brand-50: #EFF6FF;
+  --color-brand-100: #DBEAFE;
+  --color-brand-200: #BFDBFE;
+  --color-brand-300: #93C5FD;
+  --color-brand-400: #3B82F6;
   --color-brand-500: #2563EB;
-  --color-brand-600: #1d4ed8;
-  --color-brand-700: #1e40af;
-  --color-brand-800: #1e3a8a;
-  --color-brand-900: #0f172a;
+  --color-brand-600: #1D4ED8;
+  --color-brand-700: #1E40AF;
+  --color-brand-800: #1E3A8A;
+  --color-brand-900: #172554;
 
-  /* Gold = Fresh Green */
-  --color-gold-50: #f0fdf4;
-  --color-gold-100: #dcfce7;
-  --color-gold-200: #bbf7d0;
-  --color-gold-300: #86efac;
-  --color-gold-400: #4ade80;
-  --color-gold-500: #22c55e;
-  --color-gold-600: #16a34a;
-  --color-gold-700: #15803d;
+  /* ── Gold / Fresh Green (success, availability) ───────────────────── */
+  --color-gold-50: #F0FDF4;
+  --color-gold-100: #DCFCE7;
+  --color-gold-200: #BBF7D0;
+  --color-gold-300: #86EFAC;
+  --color-gold-400: #4ADE80;
+  --color-gold-500: #22C55E;
+  --color-gold-600: #16A34A;
+  --color-gold-700: #15803D;
 
-  /* Semantic tokens */
+  /* ── Semantic tokens ──────────────────────────────────────────────── */
   --color-discount: #F97316;
   --color-fresh: #22C55E;
-  --color-ice: #E0F2FE;
+  --color-ice: #EFF6FF;
 
-  /* Night palette — dynamically themed via CSS vars */
+  /* ── Night palette (dark mode default) ────────────────────────────── */
   --color-night-50: var(--tw-night-50);
   --color-night-100: var(--tw-night-100);
   --color-night-200: var(--tw-night-200);
@@ -42,23 +42,25 @@
   --color-night-900: var(--tw-night-900);
   --color-night-950: var(--tw-night-950);
 
+  /* ── Typography ───────────────────────────────────────────────────── */
   --font-sans: "Inter", "Cairo", ui-sans-serif, system-ui, sans-serif;
   --font-arabic: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --animate-fade-in: fade-in 0.4s ease both;
-  --animate-slide-up: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-scale-in: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* ── Animations ───────────────────────────────────────────────────── */
+  --animate-fade-in: fade-in 0.3s ease both;
+  --animate-slide-up: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-scale-in: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 
   @keyframes fade-in {
     from { opacity: 0; }
     to { opacity: 1; }
   }
   @keyframes slide-up {
-    from { opacity: 0; transform: translateY(24px); }
+    from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: translateY(0); }
   }
   @keyframes scale-in {
-    from { opacity: 0; transform: scale(0.96); }
+    from { opacity: 0; transform: scale(0.97); }
     to { opacity: 1; transform: scale(1); }
   }
 }
@@ -66,7 +68,7 @@
 /* ── Dark Mode (default) ─────────────────────────────────────────────── */
 :root,
 [data-theme="dark"] {
-  --tw-night-50: #F8FAFC;
+  --tw-night-50: #F1F5F9;
   --tw-night-100: #CBD5E1;
   --tw-night-200: #94A3B8;
   --tw-night-300: #94A3B8;
@@ -83,7 +85,7 @@
 /* ── Light Mode ──────────────────────────────────────────────────────── */
 [data-theme="light"] {
   --tw-night-50: #0F172A;
-  --tw-night-100: #0F172A;
+  --tw-night-100: #1E293B;
   --tw-night-200: #334155;
   --tw-night-300: #475569;
   --tw-night-400: #64748B;
@@ -99,25 +101,26 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply font-sans antialiased;
-    background: var(--tw-night-950, #0F172A);
+    @apply font-sans;
+    background: var(--tw-night-950, #0B1120);
     color: var(--tw-night-100, #CBD5E1);
+    line-height: 1.6;
   }
 
-  /* Dark mode body */
   :root body,
   [data-theme="dark"] body {
-    background: #0F172A;
+    background: #0B1120;
     color: #CBD5E1;
   }
 
-  /* Light mode body */
   [data-theme="light"] body {
     background: #F8FAFC;
-    color: #0F172A;
+    color: #1E293B;
   }
 
   button:not(:disabled) {
@@ -139,8 +142,8 @@
   }
 
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-thumb {

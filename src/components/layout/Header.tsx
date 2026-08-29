@@ -61,16 +61,16 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-night-800 bg-night-950/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-night-800/60 bg-night-950/95 backdrop-blur-xl">
       <div className="container-px flex h-16 items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2" aria-label={i18n.t('nav.brand')}>
-          <Logo className="h-10 w-10 rounded-xl" />
-          <span className="hidden text-xl font-extrabold tracking-tight text-night-50 min-[344px]:inline">
+        <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label={i18n.t('nav.brand')}>
+          <Logo className="h-9 w-9 rounded-lg" />
+          <span className="hidden text-lg font-bold tracking-tight text-night-50 min-[344px]:inline">
             {i18n.t('nav.brand')}
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-1 lg:flex">
+        <nav className="hidden items-center gap-0.5 lg:flex">
           {navLinks.map((link) => (
             <NavLink
               key={link.to}
@@ -78,8 +78,8 @@ export function Header() {
               end={link.to === '/'}
               className={({ isActive }) =>
                 cn(
-                  'rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
-                  isActive ? 'text-brand-500' : 'text-night-200 hover:text-night-50',
+                  'rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors',
+                  isActive ? 'bg-brand-600/15 text-brand-400' : 'text-night-300 hover:bg-night-800/60 hover:text-night-50',
                 )
               }
             >
@@ -88,10 +88,10 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <button
             onClick={toggleLanguage}
-            className="flex h-10 items-center gap-1 rounded-xl px-2.5 text-sm font-bold text-night-200 transition-colors hover:bg-night-800 hover:text-night-50"
+            className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-bold text-night-300 transition-colors hover:bg-night-800/60 hover:text-night-50"
             aria-label="language"
           >
             <Languages className="h-4 w-4" />
@@ -99,7 +99,7 @@ export function Header() {
           </button>
           <button
             onClick={toggleTheme}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-night-200 transition-colors hover:bg-night-800 hover:text-night-50"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-night-300 transition-colors hover:bg-night-800/60 hover:text-night-50"
             aria-label="theme"
           >
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -107,7 +107,7 @@ export function Header() {
 
           <button
             onClick={() => dispatch(setCartOpen(true))}
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl text-night-200 transition-colors hover:bg-night-800 hover:text-night-50"
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-night-300 transition-colors hover:bg-night-800/60 hover:text-night-50"
             aria-label="cart"
           >
             <ShoppingCart className="h-5 w-5" />

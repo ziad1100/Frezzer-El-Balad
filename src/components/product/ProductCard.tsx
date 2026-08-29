@@ -59,9 +59,9 @@ export function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <div className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-night-800 bg-night-900 transition-all duration-300 hover:-translate-y-1 hover:border-night-600 hover:shadow-xl hover:shadow-night-950">
+    <div className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-night-800/60 bg-night-900/80 transition-all duration-200 hover:-translate-y-0.5 hover:border-night-700 hover:shadow-lg hover:shadow-black/20">
       <Link to={`/product/${product.slug}`} className="flex flex-1 flex-col">
-        <div className="relative aspect-4/3 overflow-hidden bg-night-800">
+        <div className="relative aspect-[4/3] overflow-hidden bg-night-800/60">
           {image ? (
             <img
               src={image}
@@ -103,8 +103,8 @@ export function ProductCard({ product }: { product: Product }) {
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col gap-2 p-4">
-          <h3 className="line-clamp-1 font-bold text-night-50 transition-colors group-hover:text-brand-500">
+        <div className="flex flex-1 flex-col gap-1.5 p-3.5">
+          <h3 className="line-clamp-1 text-sm font-semibold text-night-50 transition-colors group-hover:text-brand-400">
             {i18n.language === 'ar' ? product.name : product.nameEn || product.name}
           </h3>
           {product.labels && product.labels.length > 0 ? (
@@ -146,10 +146,10 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </Link>
 
-      <div className="px-4 pb-4">
-        <div className="flex items-center justify-between pt-2">
+      <div className="px-3.5 pb-3.5">
+        <div className="flex items-center justify-between pt-1.5">
           <div>
-            <span className="text-base font-extrabold text-brand-500">
+            <span className="text-sm font-extrabold text-brand-400">
               {formatPrice(price, i18n.language)}
             </span>
             <span className="ms-1 text-xs text-night-500">{commonT('common.from')}</span>
@@ -158,14 +158,14 @@ export function ProductCard({ product }: { product: Product }) {
             <button
               onClick={handleSub}
               disabled={inCartQty === 0}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-night-700 text-night-300 transition-colors hover:border-night-500 hover:text-night-50 disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-night-700/60 text-night-300 transition-colors hover:border-night-500 hover:text-night-50 disabled:cursor-not-allowed disabled:opacity-30"
               aria-label={commonT('cart.remove')}
             >
               <Minus className="h-5 w-5" />
             </button>
             <button
               onClick={handleAdd}
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white transition-colors hover:bg-brand-700"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white transition-colors hover:bg-brand-700"
               aria-label={commonT('menu.addToCart')}
             >
               <Plus className="h-5 w-5" />

@@ -30,28 +30,28 @@ export function Footer() {
   ];
 
   return (
-    <footer className="border-t border-night-800 bg-night-950">
-      <div className="container-px grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-4">
+    <footer className="border-t border-night-800/60 bg-night-950">
+      <div className="container-px grid gap-8 py-12 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <Link to="/" className="flex items-center gap-2">
-            <Logo className="h-10 w-10 rounded-xl" />
-            <span className="text-xl font-extrabold text-brand-500">
+            <Logo className="h-9 w-9 rounded-lg" />
+            <span className="text-lg font-bold text-brand-500">
               {t('nav.brand')}
             </span>
           </Link>
-          <p className="mt-4 max-w-xs text-sm leading-relaxed text-night-400">{t('footer.tagline')}</p>
+          <p className="mt-3 max-w-xs text-sm leading-relaxed text-night-400">{t('footer.tagline')}</p>
         </div>
 
         <div>
-          <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-night-300">
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-night-300">
             {t('footer.quickLinks')}
           </h3>
-          <ul className="space-y-2.5">
+          <ul className="space-y-2">
             {nav.map((item) => (
               <li key={item.to}>
                 <Link
                   to={item.to}
-                  className="text-sm text-night-400 transition-colors hover:text-brand-500"
+                  className="text-sm text-night-400 transition-colors hover:text-brand-400"
                 >
                   {t(`nav.${item.key}`)}
                 </Link>
@@ -61,10 +61,10 @@ export function Footer() {
         </div>
 
         <div>
-          <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-night-300">
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-night-300">
             {t('footer.contact')}
           </h3>
-          <ul className="space-y-3 text-sm text-night-400">
+          <ul className="space-y-2.5 text-sm text-night-400">
             <li className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-brand-500" />
               <span>{t('footer.hoursValue')}</span>
@@ -73,7 +73,7 @@ export function Footer() {
         </div>
 
         <div>
-          <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-night-300">Social</h3>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-night-300">Social</h3>
           <div className="flex gap-2">
             {socials.map(({ label, href, path }) => (
               <a
@@ -82,7 +82,7 @@ export function Footer() {
                 target="_blank"
                 rel="noreferrer"
                 aria-label={label}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-night-800 text-night-300 transition-colors hover:border-brand-500 hover:text-brand-500"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-night-800/60 text-night-300 transition-colors hover:border-brand-500/60 hover:text-brand-400"
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden="true">
                   <path d={path} />

@@ -32,25 +32,25 @@ export function HomePage() {
 
   return (
     <div>
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden bg-gradient-to-br from-night-950 via-night-900 to-night-950">
         <div
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse at 20% 0%, rgba(227,30,36,0.18), transparent 55%), radial-gradient(ellipse at 90% 100%, rgba(246,177,0,0.1), transparent 50%)',
+              'radial-gradient(ellipse at 20% 0%, rgba(37,99,235,0.12), transparent 55%), radial-gradient(ellipse at 90% 100%, rgba(34,197,94,0.08), transparent 50%)',
           }}
         />
-        <div className="container-px relative grid items-center gap-10 py-20 lg:grid-cols-2 lg:py-28">
+        <div className="container-px relative grid items-center gap-10 py-16 lg:grid-cols-2 lg:py-24">
           <div className="animate-slide-up">
-            <span className="inline-flex items-center gap-2 rounded-full border border-brand-600/40 bg-brand-600/10 px-4 py-1.5 text-sm font-bold text-brand-400">
+            <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-1.5 text-sm font-semibold text-brand-400">
               <Leaf className="h-4 w-4" />
               {t('hero.badge')}
             </span>
-            <h1 className="mt-6 text-4xl font-extrabold leading-tight text-night-50 sm:text-5xl lg:text-6xl">
+            <h1 className="mt-5 text-3xl font-extrabold leading-tight text-night-50 sm:text-4xl lg:text-5xl">
               {t('hero.title')}
             </h1>
-            <p className="mt-4 max-w-xl text-lg leading-relaxed text-night-300">{t('hero.subtitle')}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <p className="mt-3 max-w-lg text-base leading-relaxed text-night-300">{t('hero.subtitle')}</p>
+            <div className="mt-7 flex flex-wrap gap-3">
               <Link to="/menu">
                 <Button variant="gold" size="lg">
                   {t('hero.ctaMenu')}
@@ -63,33 +63,33 @@ export function HomePage() {
                 </Button>
               </Link>
             </div>
-            <div className="mt-12 grid max-w-md grid-cols-3 gap-4">
+            <div className="mt-10 grid max-w-md grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-3xl font-extrabold text-gold-500">
+                <div className="text-2xl font-extrabold text-gold-500">
                   {productsCount.isLoading ? (
                     <Skeleton className="mx-auto inline-block h-9 w-12 align-middle" />
                   ) : (
                     productsCount.data ?? 0
                   )}
                 </div>
-                <p className="mt-1 text-sm text-night-400">{t('hero.statItems')}</p>
+                <p className="mt-1 text-xs text-night-400">{t('hero.statItems')}</p>
               </div>
               <div className="text-center">
-                <p className="flex items-center justify-center gap-1 text-3xl font-extrabold text-gold-500">
-                  <Clock className="h-6 w-6" />30
+                <p className="flex items-center justify-center gap-1 text-2xl font-extrabold text-gold-500">
+                  <Clock className="h-5 w-5" />30
                 </p>
-                <p className="mt-1 text-sm text-night-400">{t('hero.statDelivery')}</p>
+                <p className="mt-1 text-xs text-night-400">{t('hero.statDelivery')}</p>
               </div>
               <div className="text-center">
-                <div className="flex items-center justify-center gap-1 text-3xl font-extrabold text-gold-500">
-                  <Star className="h-6 w-6 fill-current" />
+                <div className="flex items-center justify-center gap-1 text-2xl font-extrabold text-gold-500">
+                  <Star className="h-5 w-5 fill-current" />
                   {restaurantRating.isLoading ? (
                     <Skeleton className="inline-block h-9 w-12 align-middle" />
                   ) : (
                     (restaurantRating.data?.average ?? 0).toFixed(1)
                   )}
                 </div>
-                <p className="mt-1 text-sm text-night-400">{t('hero.statRating')}</p>
+                <p className="mt-1 text-xs text-night-400">{t('hero.statRating')}</p>
               </div>
             </div>
           </div>
@@ -99,8 +99,8 @@ export function HomePage() {
 
       <ReviewPrompt />
 
-      <section className="border-y border-night-800 bg-night-900/60">
-        <div className="container-px flex flex-wrap items-center justify-center gap-x-8 gap-y-3 py-5">
+      <section className="border-y border-night-800/60 bg-night-900/40">
+        <div className="container-px flex flex-wrap items-center justify-center gap-x-8 gap-y-3 py-4">
           <span className="flex items-center gap-2 text-sm font-semibold text-night-200">
             <span className="flex text-gold-500">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -130,11 +130,11 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="container-px py-16">
+      <section className="container-px py-14">
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <h2 className="text-3xl font-extrabold text-night-50">{t('home.deals')}</h2>
-            <p className="mt-1 text-night-400">{t('offers.subtitle')}</p>
+            <h2 className="text-2xl font-extrabold text-night-50 sm:text-3xl">{t('home.deals')}</h2>
+            <p className="mt-1 text-sm text-night-400">{t('offers.subtitle')}</p>
           </div>
           <Link to="/offers" className="hidden text-sm font-bold text-brand-500 hover:text-brand-400 sm:block">
             {t('common.viewAll')}
@@ -173,10 +173,10 @@ export function HomePage() {
         )}
       </section>
 
-      <section className="bg-night-900 py-16">
+      <section className="bg-night-900/50 py-14">
         <div className="container-px">
           <div className="mb-8 text-center">
-            <h2 className="text-3xl font-extrabold text-night-50">{t('home.bestSellers')}</h2>
+            <h2 className="text-2xl font-extrabold text-night-50 sm:text-3xl">{t('home.bestSellers')}</h2>
           </div>
           {bestSellers.isLoading ? (
             <div className="grid grid-cols-1 justify-items-center gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
@@ -205,26 +205,26 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="container-px grid gap-8 py-16 md:grid-cols-3">
+      <section className="container-px grid gap-6 py-14 md:grid-cols-3">
         {features.map(({ icon: Icon, title, desc }) => (
           <div
             key={title}
-            className="rounded-2xl border border-night-800 bg-night-900 p-7 text-center transition-colors hover:border-brand-600/50"
+            className="rounded-xl border border-night-800/60 bg-night-900/60 p-6 text-center transition-colors hover:border-brand-600/40"
           >
-            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600/15 text-brand-500">
-              <Icon className="h-7 w-7" />
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600/15 text-brand-400">
+              <Icon className="h-6 w-6" />
             </span>
-            <h3 className="mt-4 text-lg font-bold text-night-50">{title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-night-400">{desc}</p>
+            <h3 className="mt-3 text-base font-bold text-night-50">{title}</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-night-400">{desc}</p>
           </div>
         ))}
       </section>
 
-      <section className="container-px pb-20">
-        <div className="relative overflow-hidden rounded-3xl border border-brand-800/40 bg-linear-to-br from-brand-700 via-brand-600 to-brand-800 p-10 text-center md:p-16">
-          <h2 className="text-3xl font-extrabold text-white md:text-4xl">{t('home.ctaTitle')}</h2>
-          <p className="mt-3 text-lg text-white/80">{t('home.ctaSubtitle')}</p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+      <section className="container-px pb-16">
+        <div className="relative overflow-hidden rounded-2xl border border-brand-700/30 bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 p-8 text-center md:p-14">
+          <h2 className="text-2xl font-extrabold text-white sm:text-3xl md:text-4xl">{t('home.ctaTitle')}</h2>
+          <p className="mt-2 text-base text-white/70">{t('home.ctaSubtitle')}</p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link to="/menu">
               <Button variant="gold" size="lg">
                 {t('home.ctaOrder')}
