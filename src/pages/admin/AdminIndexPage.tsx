@@ -538,6 +538,39 @@ export function AdminIndexPage() {
           ) : null}
         </div>
 
+        {/* Revenue Summary */}
+        {(() => {
+          const totalRevenue = dailyStats.filter((d) => {
+            if (period === 'custom' && customStart && customEnd) {
+              return d.date >= customStart && d.date <= customEnd;
+            }
+            return d.date >= periodStart;
+          }).reduce((sum, d) => sum + d.revenue, 0);
+          const totalCost = (purchasesForChart.data?.items ?? []).reduce((sum, p) => sum + p.totalCost, 0);
+          const netProfit = totalRevenue - totalCost;
+          const margin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
+          return (
+            <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي المبيعات' : 'Total Sales'}</p>
+                <p className="mt-1 text-xl font-extrabold text-brand-500">{formatPrice(totalRevenue, lang)}</p>
+              </div>
+              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي التكلفة' : 'Total Cost'}</p>
+                <p className="mt-1 text-xl font-extrabold text-violet-400">{formatPrice(totalCost, lang)}</p>
+              </div>
+              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'صافي الربح' : 'Net Profit'}</p>
+                <p className={cn('mt-1 text-xl font-extrabold', netProfit >= 0 ? 'text-fresh-400' : 'text-red-400')}>{formatPrice(netProfit, lang)}</p>
+              </div>
+              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'هامش الربح' : 'Margin'}</p>
+                <p className={cn('mt-1 text-xl font-extrabold', margin >= 0 ? 'text-fresh-400' : 'text-red-400')}>{margin.toFixed(1)}%</p>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Row 1: Sales + Purchases */}
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
