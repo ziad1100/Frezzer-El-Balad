@@ -204,14 +204,14 @@ export function AdminIndexPage() {
 
   const financial = dashboard.data
     ? [
-        { key: t('admin.totalOrders'), value: String(dashboard.data.orders), tone: 'text-night-50' },
+        { key: t('admin.totalOrders'), value: String(dashboard.data.orders), tone: 'text-[var(--tw-text)]' },
         { key: t('admin.completedOrders'), value: String(dashboard.data.completedOrders), tone: 'text-emerald-400' },
         { key: t('admin.cancelledOrders'), value: String(dashboard.data.cancelledOrders), tone: 'text-red-400' },
         { key: t('admin.refundedOrders'), value: String(dashboard.data.refundedOrders), tone: 'text-slate-300' },
         { key: t('admin.complimentaryOrders'), value: String(dashboard.data.complimentaryOrders), tone: 'text-gold-400' },
-        { key: t('admin.grossRevenue'), value: formatPrice(dashboard.data.grossRevenue, lang), tone: 'text-night-50' },
+        { key: t('admin.grossRevenue'), value: formatPrice(dashboard.data.grossRevenue, lang), tone: 'text-[var(--tw-text)]' },
         { key: t('admin.discounts'), value: formatPrice(dashboard.data.discounts, lang), tone: 'text-amber-400' },
-        { key: t('admin.deliveryFees'), value: formatPrice(dashboard.data.deliveryFees, lang), tone: 'text-night-50' },
+        { key: t('admin.deliveryFees'), value: formatPrice(dashboard.data.deliveryFees, lang), tone: 'text-[var(--tw-text)]' },
         { key: t('admin.netRevenue'), value: formatPrice(dashboard.data.netRevenue, lang), tone: 'text-emerald-400' },
       ]
     : [];
@@ -328,8 +328,8 @@ export function AdminIndexPage() {
                   <Icon className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-xs text-night-400">{key}</p>
-                  <p className="mt-0.5 text-xl font-extrabold text-night-50">{value}</p>
+                  <p className="text-xs text-[var(--tw-text-muted)]">{key}</p>
+                  <p className="mt-0.5 text-xl font-extrabold text-[var(--tw-text)]">{value}</p>
                 </div>
               </CardContent>
             </Card>
@@ -346,14 +346,14 @@ export function AdminIndexPage() {
               <TrendingUp className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-xs text-night-400">
+              <p className="text-xs text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'المبيعات / المنصرف' : 'Sales / Outgoing'}
               </p>
-              <p className="mt-0.5 text-xl font-extrabold text-night-50">
+              <p className="mt-0.5 text-xl font-extrabold text-[var(--tw-text)]">
                 {salesStats.data ? formatPrice(salesStats.data.salesValue, lang) : '—'}
               </p>
               {salesStats.data && (
-                <p className="text-xs text-night-500">
+                <p className="text-xs text-[var(--tw-text-muted)]">
                   {salesStats.data.salesQuantity} {lang === 'ar' ? 'وحدة' : 'units'}
                 </p>
               )}
@@ -368,14 +368,14 @@ export function AdminIndexPage() {
               <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-xs text-night-400">
+              <p className="text-xs text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'المشتريات' : 'Purchases'}
               </p>
-              <p className="mt-0.5 text-xl font-extrabold text-night-50">
+              <p className="mt-0.5 text-xl font-extrabold text-[var(--tw-text)]">
                 {purchaseStats.data ? formatPrice(purchaseStats.data.totalCost, lang) : '—'}
               </p>
               {purchaseStats.data && (
-                <p className="text-xs text-night-500">
+                <p className="text-xs text-[var(--tw-text-muted)]">
                   {purchaseStats.data.totalQuantity} {lang === 'ar' ? 'وحدة' : 'units'}
                 </p>
               )}
@@ -390,14 +390,14 @@ export function AdminIndexPage() {
               <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-xs text-night-400">
+              <p className="text-xs text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'المخزون المتاح' : 'Available Stock'}
               </p>
-              <p className="mt-0.5 text-xl font-extrabold text-night-50">
+              <p className="mt-0.5 text-xl font-extrabold text-[var(--tw-text)]">
                 {inventoryStats.data ? inventoryStats.data.totalStockQuantity : '—'}
               </p>
               {inventoryStats.data && (
-                <p className="text-xs text-night-500">
+                <p className="text-xs text-[var(--tw-text-muted)]">
                   {inventoryStats.data.trackableProducts} {lang === 'ar' ? 'منتج يتتبع' : 'tracked products'}
                 </p>
               )}
@@ -412,7 +412,7 @@ export function AdminIndexPage() {
               <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-xs text-night-400">
+              <p className="text-xs text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'مخزون منخفض' : 'Low Stock'}
               </p>
               <p className="mt-0.5 text-xl font-extrabold text-amber-400">
@@ -429,7 +429,7 @@ export function AdminIndexPage() {
               <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-xs text-night-400">
+              <p className="text-xs text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'غير متوفر' : 'Out of Stock'}
               </p>
               <p className="mt-0.5 text-xl font-extrabold text-red-400">
@@ -443,12 +443,12 @@ export function AdminIndexPage() {
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardContent className="p-4">
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.financialTitle')}</h3>
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.financialTitle')}</h3>
             {financial.length > 0 ? (
               <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
                 {financial.map(({ key, value, tone }) => (
                   <div key={key}>
-                    <dt className="text-[11px] text-night-500">{key}</dt>
+                    <dt className="text-[11px] text-[var(--tw-text-muted)]">{key}</dt>
                     <dd className={`mt-0.5 text-sm font-bold ${tone}`}>{value}</dd>
                   </div>
                 ))}
@@ -462,7 +462,7 @@ export function AdminIndexPage() {
         <Card>
           <CardContent className="p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.dailyTitle')}</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.dailyTitle')}</h3>
               <Input
                 type="date"
                 value={day}
@@ -484,11 +484,11 @@ export function AdminIndexPage() {
               <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
                 {dayRows.map(({ key, value }) => (
                   <div key={key}>
-                    <dt className="flex items-center gap-1.5 text-[11px] text-night-500">
+                    <dt className="flex items-center gap-1.5 text-[11px] text-[var(--tw-text-muted)]">
                       <CalendarDays className="h-3 w-3" />
                       {key}
                     </dt>
-                    <dd className="mt-0.5 text-sm font-bold text-night-50">{value}</dd>
+                    <dd className="mt-0.5 text-sm font-bold text-[var(--tw-text)]">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -502,7 +502,7 @@ export function AdminIndexPage() {
       <Card className="mt-5">
         <CardContent className="p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-night-400">
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
               <Star className="h-4 w-4 text-gold-400" />
               {t('admin.reviewsOverview')}
             </h3>
@@ -515,9 +515,9 @@ export function AdminIndexPage() {
           ) : reviewStats.data ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
               {reviewTiles.map(({ label, value, tone }) => (
-                <div key={label} className="rounded-lg border border-night-800/60 bg-night-950/40 px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-night-500">{label}</p>
-                  <p className={cn('mt-0.5 text-base font-bold text-night-50', tone)} dir="ltr">
+                <div key={label} className="rounded-lg border border-[var(--tw-border)] bg-[var(--tw-bg)]/40 px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{label}</p>
+                  <p className={cn('mt-0.5 text-base font-bold text-[var(--tw-text)]', tone)} dir="ltr">
                     {value}
                   </p>
                 </div>
@@ -529,15 +529,15 @@ export function AdminIndexPage() {
 
       <div className="mt-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-bold text-night-50">{t('admin.periodTitle')}</h2>
-          <div className="inline-flex rounded-lg border border-night-800/60 bg-night-900/80 p-0.5">
+          <h2 className="text-base font-bold text-[var(--tw-text)]">{t('admin.periodTitle')}</h2>
+          <div className="inline-flex rounded-lg border border-[var(--tw-border)] bg-[var(--tw-surface)] p-0.5">
             {(['today', 'week', 'month'] as PeriodKey[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={cn(
                   'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
-                  period === p ? 'bg-brand-600 text-white' : 'text-night-300 hover:text-night-50',
+                  period === p ? 'bg-brand-600 text-white' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
                 )}
               >
                 {t(PERIOD_KEYS[p])}
@@ -554,8 +554,8 @@ export function AdminIndexPage() {
                   <Icon className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-xs text-night-400">{key}</p>
-                  <p className="mt-0.5 text-xl font-extrabold text-night-50">{value}</p>
+                  <p className="text-xs text-[var(--tw-text-muted)]">{key}</p>
+                  <p className="mt-0.5 text-xl font-extrabold text-[var(--tw-text)]">{value}</p>
                 </div>
               </CardContent>
             </Card>
@@ -565,13 +565,13 @@ export function AdminIndexPage() {
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <Card>
             <CardContent className="p-4">
-              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.topProducts')}</h3>
+              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.topProducts')}</h3>
               {periodTop.length > 0 ? (
                 <ul className="space-y-2">
                   {periodTop.map((p) => (
                     <li key={`${p._id}-${p.name}`} className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-xs font-medium text-night-200">{p.name}</span>
-                      <span className="shrink-0 text-xs text-night-500">
+                      <span className="min-w-0 truncate text-xs font-medium text-[var(--tw-text-muted)]">{p.name}</span>
+                      <span className="shrink-0 text-xs text-[var(--tw-text-muted)]">
                         {p.count}× · {formatPrice(p.revenue, lang)}
                       </span>
                     </li>
@@ -585,7 +585,7 @@ export function AdminIndexPage() {
 
           <Card>
             <CardContent className="p-4">
-              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">
+              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                 {period === 'today' ? t('admin.unitsToday') : period === 'month' ? t('admin.unitsThisMonth') : t('admin.unitsTrend', { days: 7 })}
               </h3>
               {unitsWindow.length > 0 ? (
@@ -598,7 +598,7 @@ export function AdminIndexPage() {
                           className="w-full rounded-t-md bg-gradient-to-t from-brand-500 to-gold-400"
                           style={{ height: `${Math.max(4, (d.unitsSold / max) * 110)}px` }}
                         />
-                        <span className="text-[10px] text-night-500">{d.date.slice(8)}</span>
+                        <span className="text-[10px] text-[var(--tw-text-muted)]">{d.date.slice(8)}</span>
                       </div>
                     );
                   })}
@@ -615,7 +615,7 @@ export function AdminIndexPage() {
         {trendData.length > 0 ? (
           <Card className="lg:col-span-1">
             <CardContent className="p-4">
-              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.last7Days')}</h3>
+              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.last7Days')}</h3>
               <div className="flex h-40 items-end gap-2">
                 {trendData.map((d) => {
                   const max = Math.max(...trendData.map((x) => x.revenue), 1);
@@ -625,7 +625,7 @@ export function AdminIndexPage() {
                         className="w-full rounded-t-md bg-gradient-to-t from-brand-700 to-brand-500"
                         style={{ height: `${Math.max(4, (d.revenue / max) * 110)}px` }}
                       />
-                      <span className="text-[10px] text-night-500">{d.date.slice(8)}</span>
+                      <span className="text-[10px] text-[var(--tw-text-muted)]">{d.date.slice(8)}</span>
                     </div>
                   );
                 })}
@@ -636,13 +636,13 @@ export function AdminIndexPage() {
 
         <Card className="lg:col-span-1">
           <CardContent className="p-4">
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.statusTitle')}</h3>
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.statusTitle')}</h3>
             {statuses.length > 0 ? (
               <ul className="space-y-2">
                 {statuses.map((s) => (
                   <li key={s.status} className="flex items-center justify-between gap-3">
                     <StatusBadge status={s.status} />
-                    <span className="text-sm font-bold text-night-50">{s.count}</span>
+                    <span className="text-sm font-bold text-[var(--tw-text)]">{s.count}</span>
                   </li>
                 ))}
               </ul>
@@ -654,13 +654,13 @@ export function AdminIndexPage() {
 
         <Card className="lg:col-span-1">
           <CardContent className="p-4">
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.topProducts')}</h3>
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.topProducts')}</h3>
             {top.length > 0 ? (
               <ul className="space-y-2">
                 {top.map((p) => (
                   <li key={p._id} className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate text-sm font-semibold text-night-200">{p.name}</span>
-                    <span className="shrink-0 text-xs text-night-500">
+                    <span className="min-w-0 truncate text-sm font-semibold text-[var(--tw-text-muted)]">{p.name}</span>
+                    <span className="shrink-0 text-xs text-[var(--tw-text-muted)]">
                       {p.count}× · {formatPrice(p.revenue, lang)}
                     </span>
                   </li>
@@ -674,13 +674,13 @@ export function AdminIndexPage() {
       </div>
 
       <Modal open={confirmClear} onClose={closeClearModal} title={t('admin.systemResetTitle')} size="sm">
-        <div className="mb-4 rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-relaxed text-night-200">
+        <div className="mb-4 rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-relaxed text-[var(--tw-text-muted)]">
           <p className="mb-2 font-bold text-red-400">⚠️ {t('admin.systemResetWarning')}</p>
           <p>{t('admin.systemResetConfirm')}</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <div>
               <p className="mb-1 text-xs font-bold text-red-400">{t('admin.systemResetClearTitle')}</p>
-              <ul className="list-inside list-disc space-y-0.5 text-xs text-night-300">
+              <ul className="list-inside list-disc space-y-0.5 text-xs text-[var(--tw-text-muted)]">
                 {(t('admin.systemResetClearItems', { returnObjects: true }) as unknown as string[]).map((item) => (
                   <li key={item}>{item}</li>
                 ))}
@@ -688,7 +688,7 @@ export function AdminIndexPage() {
             </div>
             <div>
               <p className="mb-1 text-xs font-bold text-emerald-400">{t('admin.systemResetKeepTitle')}</p>
-              <ul className="list-inside list-disc space-y-0.5 text-xs text-night-300">
+              <ul className="list-inside list-disc space-y-0.5 text-xs text-[var(--tw-text-muted)]">
                 {(t('admin.systemResetKeepItems', { returnObjects: true }) as unknown as string[]).map((item) => (
                   <li key={item}>{item}</li>
                 ))}
@@ -697,7 +697,7 @@ export function AdminIndexPage() {
           </div>
         </div>
         <div className="mb-5">
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-night-500">
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
             {t('admin.systemResetTypeHint')}
           </label>
           <Input
@@ -727,18 +727,18 @@ export function AdminIndexPage() {
 
       {/* Purchase Reset Modal */}
       <Modal open={confirmPurchaseReset} onClose={closePurchaseResetModal} title={lang === 'ar' ? 'تصفير المشتريات' : 'Reset Purchases'} size="sm">
-        <div className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm leading-relaxed text-night-200">
+        <div className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm leading-relaxed text-[var(--tw-text-muted)]">
           <p className="mb-2 font-bold text-amber-400">⚠️ {lang === 'ar' ? 'هل أنت متأكد من تصفير المشتريات؟' : 'Are you sure you want to reset purchases?'}</p>
           <p>{lang === 'ar' ? 'سيتم تصفير بيانات المشتريات فقط.' : 'Only purchase data will be cleared.'}</p>
           <div className="mt-3">
             <p className="mb-1 text-xs font-bold text-red-400">{lang === 'ar' ? 'سيتم مسح:' : 'Will be cleared:'}</p>
-            <ul className="list-inside list-disc space-y-0.5 text-xs text-night-300">
+            <ul className="list-inside list-disc space-y-0.5 text-xs text-[var(--tw-text-muted)]">
               <li>{lang === 'ar' ? 'جميع سجلات المشتريات' : 'All purchase records'}</li>
               <li>{lang === 'ar' ? 'إجمالي تكلفة المشتريات' : 'Total purchase cost'}</li>
               <li>{lang === 'ar' ? 'عدد المشتريات' : 'Purchase count'}</li>
             </ul>
             <p className="mt-2 mb-1 text-xs font-bold text-emerald-400">{lang === 'ar' ? 'سيتم الحفاظ على:' : 'Will be preserved:'}</p>
-            <ul className="list-inside list-disc space-y-0.5 text-xs text-night-300">
+            <ul className="list-inside list-disc space-y-0.5 text-xs text-[var(--tw-text-muted)]">
               <li>{lang === 'ar' ? 'المنتجات والأسعار' : 'Products and prices'}</li>
               <li>{lang === 'ar' ? 'المخزون الحالي' : 'Current inventory'}</li>
               <li>{lang === 'ar' ? 'الطلبات والعملاء' : 'Orders and customers'}</li>
@@ -747,7 +747,7 @@ export function AdminIndexPage() {
           </div>
         </div>
         <div className="mb-5">
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-night-500">
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
             {lang === 'ar' ? 'اكتب RESET للتأكيد' : 'Type RESET to confirm'}
           </label>
           <Input
@@ -802,15 +802,15 @@ export function AdminIndexPage() {
             </thead>
             <tbody>
               {recent.data.items.map((o) => (
-                <tr key={o._id} className="transition-colors hover:bg-night-800/40">
-                  <Td className="font-bold text-night-50">
+                <tr key={o._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+                  <Td className="font-bold text-[var(--tw-text)]">
                     <Link to="/admin/orders" className="hover:text-brand-400">
                       {o.orderNo}
                     </Link>
                   </Td>
                   <Td>{o.customerName}</Td>
                   <Td>{formatPrice(o.subtotal, lang)}</Td>
-                  <Td className="font-bold text-night-50">{formatPrice(o.total, lang)}</Td>
+                  <Td className="font-bold text-[var(--tw-text)]">{formatPrice(o.total, lang)}</Td>
                   <Td>
                     <StatusBadge status={o.status} />
                   </Td>
@@ -831,10 +831,10 @@ export function AdminIndexPage() {
       {showExportModal && (
         <Modal open onClose={() => { setShowExportModal(false); setExportPreview(null); }} size="lg">
           <div className="w-full max-w-3xl space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-night-50">
+            <h2 className="text-lg font-bold text-[var(--tw-text)]">
               {lang === 'ar' ? 'تصدير تقرير حركة الأصناف' : 'Export Item Movement Report'}
             </h2>
-            <p className="text-sm text-night-400">
+            <p className="text-sm text-[var(--tw-text-muted)]">
               {lang === 'ar' ? 'تقرير مفصل عن كل منتج: المشتريات والمبيعات والمرتجعات والهدايا والفاقد' : 'Detailed report for every product: purchases, sales, returns, gifts, waste'}
             </p>
 
@@ -846,7 +846,7 @@ export function AdminIndexPage() {
                   'flex-1 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors',
                   exportType === 'movement'
                     ? 'border-brand-500 bg-brand-500/20 text-brand-400'
-                    : 'border-night-700 text-night-300 hover:border-night-500',
+                    : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]',
                 )}
               >
                 {lang === 'ar' ? 'حركة الأصناف' : 'Item Movement'}
@@ -857,7 +857,7 @@ export function AdminIndexPage() {
                   'flex-1 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors',
                   exportType === 'summary'
                     ? 'border-brand-500 bg-brand-500/20 text-brand-400'
-                    : 'border-night-700 text-night-300 hover:border-night-500',
+                    : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]',
                 )}
               >
                 {lang === 'ar' ? 'ملخص المبيعات والمشتريات' : 'Sales & Purchases Summary'}
@@ -866,7 +866,7 @@ export function AdminIndexPage() {
 
             {/* Period Selector */}
             <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-night-500">
+              <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'فترة التقرير' : 'Reporting Period'}
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -883,7 +883,7 @@ export function AdminIndexPage() {
                       'rounded-lg border px-3 py-2 text-sm font-semibold transition-colors',
                       exportPeriod === p.key
                         ? 'border-brand-500 bg-brand-500/20 text-brand-400'
-                        : 'border-night-700 text-night-300 hover:border-night-500',
+                        : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]',
                     )}
                   >
                     {p.label}
@@ -896,14 +896,14 @@ export function AdminIndexPage() {
             {exportPeriod === 'custom' && (
               <div className="flex items-center gap-2">
                 <div className="flex-1">
-                  <label className="mb-1 block text-xs font-bold text-night-500">
+                  <label className="mb-1 block text-xs font-bold text-[var(--tw-text-muted)]">
                     {lang === 'ar' ? 'من تاريخ' : 'Start Date'}
                   </label>
                   <Input type="date" value={exportCustomStart} onChange={(e) => { setExportCustomStart(e.target.value); setExportPreview(null); }} className="w-full" />
                 </div>
-                <span className="mt-5 text-night-500">→</span>
+                <span className="mt-5 text-[var(--tw-text-muted)]">→</span>
                 <div className="flex-1">
-                  <label className="mb-1 block text-xs font-bold text-night-500">
+                  <label className="mb-1 block text-xs font-bold text-[var(--tw-text-muted)]">
                     {lang === 'ar' ? 'إلى تاريخ' : 'End Date'}
                   </label>
                   <Input type="date" value={exportCustomEnd} onChange={(e) => { setExportCustomEnd(e.target.value); setExportPreview(null); }} className="w-full" />
@@ -926,21 +926,21 @@ export function AdminIndexPage() {
 
             {/* Preview */}
             {exportPreview && (
-              <div className="max-h-64 overflow-auto rounded-xl border border-night-700 bg-night-900/50 p-4">
-                <p className="mb-2 text-xs font-bold text-night-400">
+              <div className="max-h-64 overflow-auto rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]/50 p-4">
+                <p className="mb-2 text-xs font-bold text-[var(--tw-text-muted)]">
                   {lang === 'ar' ? 'ملخص التقرير' : 'Report Summary'}
                 </p>
                 <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="rounded-lg bg-night-800 p-2">
-                    <p className="text-night-500">{lang === 'ar' ? 'المنتجات' : 'Products'}</p>
-                    <p className="text-lg font-bold text-night-50">{exportPreview.summary.length}</p>
+                  <div className="rounded-lg bg-[var(--tw-surface-alt)] p-2">
+                    <p className="text-[var(--tw-text-muted)]">{lang === 'ar' ? 'المنتجات' : 'Products'}</p>
+                    <p className="text-lg font-bold text-[var(--tw-text)]">{exportPreview.summary.length}</p>
                   </div>
-                  <div className="rounded-lg bg-night-800 p-2">
-                    <p className="text-night-500">{lang === 'ar' ? 'الحركات' : 'Movements'}</p>
-                    <p className="text-lg font-bold text-night-50">{exportPreview.details.length}</p>
+                  <div className="rounded-lg bg-[var(--tw-surface-alt)] p-2">
+                    <p className="text-[var(--tw-text-muted)]">{lang === 'ar' ? 'الحركات' : 'Movements'}</p>
+                    <p className="text-lg font-bold text-[var(--tw-text)]">{exportPreview.details.length}</p>
                   </div>
-                  <div className="rounded-lg bg-night-800 p-2">
-                    <p className="text-night-500">{lang === 'ar' ? 'إجمالي المبيعات' : 'Total Sales'}</p>
+                  <div className="rounded-lg bg-[var(--tw-surface-alt)] p-2">
+                    <p className="text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي المبيعات' : 'Total Sales'}</p>
                     <p className="text-lg font-bold text-emerald-400">
                       {formatPrice(exportPreview.summary.reduce((a, p) => a + p.totalSalesRevenue, 0), lang)}
                     </p>
@@ -948,17 +948,17 @@ export function AdminIndexPage() {
                 </div>
                 {exportPreview.summary.length > 0 && (
                   <div className="mt-3">
-                    <p className="mb-1 text-xs font-bold text-night-400">
+                    <p className="mb-1 text-xs font-bold text-[var(--tw-text-muted)]">
                       {lang === 'ar' ? 'أعلى المنتجات' : 'Top Products'}
                     </p>
                     <div className="space-y-1">
                       {exportPreview.summary.slice(0, 5).map((item) => (
                         <div key={`${item.productId}-${item.productSize}`} className="flex items-center justify-between text-xs">
-                          <span className="text-night-300">
+                          <span className="text-[var(--tw-text-muted)]">
                             {item.productName}
                             {item.productSize ? ` (${item.productSize})` : ''}
                           </span>
-                          <span className="text-night-400">
+                          <span className="text-[var(--tw-text-muted)]">
                             {item.totalSold} {lang === 'ar' ? 'مباع' : 'sold'}
                             {item.totalSalesRevenue > 0 ? ` · ${formatPrice(item.totalSalesRevenue, lang)}` : ''}
                           </span>

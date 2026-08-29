@@ -57,7 +57,7 @@ export function ForgotPasswordPage() {
               <p className="text-[var(--tw-text-muted)]">{t('auth.devResetCodeHint')}</p>
               <a
                 href={devPayload.link}
-                className="block rounded-lg bg-brand-500 py-2.5 text-center font-bold text-night-950 hover:bg-brand-400"
+                className="block rounded-lg bg-brand-500 py-2.5 text-center font-bold text-white hover:bg-brand-400"
               >
                 {t('auth.continueReset')}
               </a>
@@ -67,7 +67,7 @@ export function ForgotPasswordPage() {
               <p>{t('auth.resetLinkSent')}</p>
               <Link
                 to="/reset-password"
-                className="block rounded-lg bg-brand-500 py-2.5 text-center font-bold text-night-950 hover:bg-brand-400"
+                className="block rounded-lg bg-brand-500 py-2.5 text-center font-bold text-white hover:bg-brand-400"
               >
                 {t('auth.enterResetCode')}
               </Link>

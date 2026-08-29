@@ -427,7 +427,7 @@ export function CheckoutPage() {
                                 type="checkbox"
                                 checked={isEnabled}
                                 onChange={() => toggleCustomPrice(idx)}
-                                className="h-4 w-4 rounded border-night-600 bg-[var(--tw-surface-alt)] text-brand-500 focus:ring-brand-500"
+                                className="h-4 w-4 rounded border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] text-brand-500 focus:ring-brand-500"
                               />
                               {i18n.language === 'ar' ? 'سعر مخصص' : 'Custom Price'}
                             </label>
@@ -704,7 +704,7 @@ function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
             'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors',
             value === method.value
               ? 'border-brand-500 bg-brand-500/10 text-[var(--tw-text)]'
-              : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-night-600',
+              : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]',
           )}
         >
           <input

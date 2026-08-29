@@ -24,7 +24,7 @@ export function BranchesPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {branches?.map((branch) => (
-            <Card key={branch._id} className="transition-colors hover:border-night-600">
+            <Card key={branch._id} className="transition-colors hover:border-[var(--tw-border-strong)]">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="text-lg font-bold text-[var(--tw-text)]">

@@ -85,7 +85,7 @@ export function OfferDetailPage() {
         <div className="relative flex flex-wrap items-center gap-3">
           <Badge
             tone="gold"
-            className={cn('text-base', data.theme === 'gold' && 'border-night-900/50 bg-[var(--tw-bg)]/60 text-gold-200')}
+            className={cn('text-base', data.theme === 'gold' && 'border-white/50 bg-[var(--tw-bg)]/60 text-gold-200')}
           >
             <Percent className="h-4 w-4" />
             {discountLabel}

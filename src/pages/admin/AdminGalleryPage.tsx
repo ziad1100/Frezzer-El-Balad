@@ -157,8 +157,8 @@ export function AdminGalleryPage() {
                   loading="lazy"
                   className={`h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 ${g.isVisible ? '' : 'opacity-40 grayscale'}`}
                 />
-                <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-night-950/90 to-transparent p-2">
-                  <span className="rounded-full bg-night-950/80 px-2 py-0.5 text-xs font-bold text-[var(--tw-text-muted)]">
+                <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-[var(--tw-bg)]/90 to-transparent p-2">
+                  <span className="rounded-full bg-[var(--tw-bg)]/80 px-2 py-0.5 text-xs font-bold text-[var(--tw-text-muted)]">
                     {t('admin.order')}: {g.order}
                   </span>
                   <ToggleSwitch

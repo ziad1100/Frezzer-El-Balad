@@ -28,7 +28,7 @@ export function BlogPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {items.map((post) => (
             <Link key={post._id} to={`/blog/${post.slug}`} className="group">
-              <Card className="h-full transition-all duration-300 group-hover:-translate-y-1 group-hover:border-night-600">
+              <Card className="h-full transition-all duration-300 group-hover:-translate-y-1 group-hover:border-[var(--tw-border-strong)]">
                 <CardContent className="flex h-full flex-col p-6">
                   <div className="mb-3 flex items-center gap-2 text-xs text-[var(--tw-text-muted)]">
                     <Calendar className="h-3.5 w-3.5" />
