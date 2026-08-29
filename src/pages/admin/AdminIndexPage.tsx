@@ -14,6 +14,12 @@ import { Modal } from '@/components/ui/Modal';
 import { PageHeader, StatusBadge, TableWrap, Td, Th } from '@/components/admin/primitives';
 import { cn, formatPrice } from '@/lib/utils';
 import { PurchasesChart } from '@/components/admin/charts/PurchasesChart';
+import { SalesChart } from '@/components/admin/charts/SalesChart';
+import { SalesVsPurchasesChart } from '@/components/admin/charts/SalesVsPurchasesChart';
+import { TopProductsChart } from '@/components/admin/charts/TopProductsChart';
+import { OrdersDonutChart } from '@/components/admin/charts/OrdersDonutChart';
+import { InventoryChart } from '@/components/admin/charts/InventoryChart';
+import { RevenuesChart } from '@/components/admin/charts/RevenuesChart';
 
 type PeriodKey = 'today' | 'week' | 'month';
 
@@ -481,41 +487,186 @@ export function AdminIndexPage() {
         </Card>
       </div>
 
-      {/* Purchases Over Time */}
-      <Card className="mt-5">
-        <CardContent className="p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-              <Package className="h-4 w-4 text-violet-400" />
-              {lang === 'ar' ? 'المشتريات على مدار الوقت' : 'Purchases Over Time'}
-            </h3>
-            <div className="inline-flex rounded-lg border border-[var(--tw-border)] bg-[var(--tw-surface)] p-0.5">
-              {(['today', 'week', 'month'] as PeriodKey[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={cn(
-                    'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
-                    period === p ? 'bg-brand-600 text-white' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
-                  )}
-                >
-                  {t(PERIOD_KEYS[p])}
-                </button>
-              ))}
-            </div>
-          </div>
-          {purchasesForChart.isLoading ? (
-            <Skeleton className="h-64" />
-          ) : purchasesTrendData.length > 0 ? (
-            <PurchasesChart data={purchasesTrendData} lang={lang} />
-          ) : (
-            <EmptyState
-              title={lang === 'ar' ? 'لا توجد مشتريات لهذه الفترة' : 'No purchases for this period'}
-              icon={<Package className="h-10 w-10" />}
-            />
-          )}
-        </CardContent>
-      </Card>
+      {/* ═══ CHARTS SECTION ═══ */}
+      <div className="mt-5">
+        <h2 className="mb-3 text-base font-bold text-[var(--tw-text)]">{lang === 'ar' ? 'الرسوم البيانية' : 'Charts & Analytics'}</h2>
+
+        {/* Period filter for all charts */}
+        <div className="mb-4 inline-flex rounded-lg border border-[var(--tw-border)] bg-[var(--tw-surface)] p-0.5">
+          {(['today', 'week', 'month'] as PeriodKey[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={cn(
+                'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
+                period === p ? 'bg-brand-600 text-white' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
+              )}
+            >
+              {t(PERIOD_KEYS[p])}
+            </button>
+          ))}
+        </div>
+
+        {/* Row 1: Sales + Purchases */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                <TrendingUp className="h-4 w-4 text-brand-400" />
+                {lang === 'ar' ? 'المبيعات على مدار الوقت' : 'Sales Over Time'}
+              </h3>
+              {trendData.length > 0 ? (
+                <SalesChart data={trendData} lang={lang} />
+              ) : (
+                <EmptyState title={t('admin.emptyList')} icon={<TrendingUp className="h-10 w-10" />} />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                <Package className="h-4 w-4 text-violet-400" />
+                {lang === 'ar' ? 'المشتريات على مدار الوقت' : 'Purchases Over Time'}
+              </h3>
+              {purchasesForChart.isLoading ? (
+                <Skeleton className="h-64" />
+              ) : purchasesTrendData.length > 0 ? (
+                <PurchasesChart data={purchasesTrendData} lang={lang} />
+              ) : (
+                <EmptyState
+                  title={lang === 'ar' ? 'لا توجد مشتريات لهذه الفترة' : 'No purchases for this period'}
+                  icon={<Package className="h-10 w-10" />}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Row 2: Sales vs Purchases + Revenue/Cost */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                <TrendingUp className="h-4 w-4 text-emerald-400" />
+                {lang === 'ar' ? 'المبيعات مقابل المشتريات' : 'Sales vs Purchases'}
+              </h3>
+              {(() => {
+                // Build comparison data from dailyStats + purchasesForChart
+                const salesByDate = new Map<string, number>();
+                for (const d of dailyStats) {
+                  salesByDate.set(d.date, d.revenue);
+                }
+                const purchasesByDate = new Map<string, number>();
+                for (const p of purchasesForChart.data?.items ?? []) {
+                  const d = p.purchaseDate?.slice(0, 10) ?? '';
+                  if (d) purchasesByDate.set(d, (purchasesByDate.get(d) ?? 0) + p.totalCost);
+                }
+                // Merge all dates
+                const allDates = new Set([...salesByDate.keys(), ...purchasesByDate.keys()]);
+                const comparisonData = Array.from(allDates)
+                  .sort()
+                  .map((date) => ({
+                    date: date.slice(5),
+                    sales: Math.round((salesByDate.get(date) ?? 0) * 100) / 100,
+                    purchases: Math.round((purchasesByDate.get(date) ?? 0) * 100) / 100,
+                  }));
+                return comparisonData.length > 0 ? (
+                  <SalesVsPurchasesChart data={comparisonData} lang={lang} />
+                ) : (
+                  <EmptyState title={t('admin.emptyList')} icon={<TrendingUp className="h-10 w-10" />} />
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                <Banknote className="h-4 w-4 text-amber-400" />
+                {lang === 'ar' ? 'الإيرادات مقابل التكلفة' : 'Revenue vs Cost'}
+              </h3>
+              {(() => {
+                // Build revenue/cost from dailyStats + purchases
+                const salesByDate = new Map<string, number>();
+                for (const d of dailyStats) {
+                  salesByDate.set(d.date, d.revenue);
+                }
+                const purchasesByDate = new Map<string, number>();
+                for (const p of purchasesForChart.data?.items ?? []) {
+                  const d = p.purchaseDate?.slice(0, 10) ?? '';
+                  if (d) purchasesByDate.set(d, (purchasesByDate.get(d) ?? 0) + p.totalCost);
+                }
+                const allDates = new Set([...salesByDate.keys(), ...purchasesByDate.keys()]);
+                const revenueData = Array.from(allDates)
+                  .sort()
+                  .map((date) => ({
+                    label: date.slice(5),
+                    revenue: Math.round((salesByDate.get(date) ?? 0) * 100) / 100,
+                    cost: Math.round((purchasesByDate.get(date) ?? 0) * 100) / 100,
+                  }));
+                return revenueData.length > 0 ? (
+                  <RevenuesChart data={revenueData} lang={lang} />
+                ) : (
+                  <EmptyState title={t('admin.emptyList')} icon={<Banknote className="h-10 w-10" />} />
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Row 3: Top Products + Order Status + Inventory */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                <ShoppingBag className="h-4 w-4 text-brand-400" />
+                {lang === 'ar' ? 'أكثر المنتجات مبيعًا' : 'Top Selling Products'}
+              </h3>
+              {periodTop.length > 0 ? (
+                <TopProductsChart data={periodTop.map((p) => ({ name: p.name, count: p.count, revenue: p.revenue }))} lang={lang} />
+              ) : (
+                <EmptyState title={t('admin.emptyList')} icon={<ShoppingBag className="h-10 w-10" />} />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                <Package className="h-4 w-4 text-emerald-400" />
+                {lang === 'ar' ? 'الطلبات حسب الحالة' : 'Orders by Status'}
+              </h3>
+              {statuses.length > 0 ? (
+                <OrdersDonutChart data={statuses} lang={lang} />
+              ) : (
+                <EmptyState title={t('admin.emptyList')} icon={<Package className="h-10 w-10" />} />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                <Package className="h-4 w-4 text-amber-400" />
+                {lang === 'ar' ? 'حالة المخزون' : 'Inventory Status'}
+              </h3>
+              {inventoryStats.data ? (
+                <InventoryChart
+                  data={{
+                    available: inventoryStats.data.totalStockQuantity - inventoryStats.data.lowStockCount - inventoryStats.data.outOfStockCount,
+                    lowStock: inventoryStats.data.lowStockCount,
+                    outOfStock: inventoryStats.data.outOfStockCount,
+                  }}
+                  lang={lang}
+                />
+              ) : (
+                <EmptyState title={t('admin.emptyList')} icon={<Package className="h-10 w-10" />} />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <Card>
