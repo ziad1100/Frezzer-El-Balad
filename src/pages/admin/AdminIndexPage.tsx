@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Banknote, CalendarDays, Download, Eraser, Package, RefreshCw, ShoppingBag, Star, TrendingUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, getInventoryStats, getPurchaseStats, getSalesStats, refreshDashboard, resetPurchases, systemReset } from '@/api/admin';
+import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, getInventoryStats, getPurchaseStats, getSalesStats, listPurchases, refreshDashboard, resetPurchases, systemReset } from '@/api/admin';
 import { exportMovementReport, getMovementReport, type MovementReport } from '@/api/stock-movements';
 import { getErrorMessage } from '@/lib/api';
 import { Card, CardContent, EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { PageHeader, StatusBadge, TableWrap, Td, Th } from '@/components/admin/primitives';
 import { cn, formatPrice } from '@/lib/utils';
+import { PurchasesChart } from '@/components/admin/charts/PurchasesChart';
 
 type PeriodKey = 'today' | 'week' | 'month';
 
@@ -177,6 +178,46 @@ export function AdminIndexPage() {
     queryFn: () => getDashboardDay(day),
     enabled: Boolean(day),
   });
+
+  // Purchases over time — fetch all purchases in the selected period and aggregate by date
+  const purchaseDateRange = (() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (period === 'today') {
+      const ds = today.toISOString().slice(0, 10);
+      return { startDate: ds, endDate: ds + 'T23:59:59' };
+    }
+    if (period === 'month') {
+      const ms = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      const me = today.toISOString().slice(0, 10);
+      return { startDate: ms, endDate: me + 'T23:59:59' };
+    }
+    // week
+    const ws = new Date(today);
+    ws.setDate(ws.getDate() - 6);
+    return { startDate: ws.toISOString().slice(0, 10), endDate: today.toISOString().slice(0, 10) + 'T23:59:59' };
+  })();
+
+  const purchasesForChart = useQuery({
+    queryKey: ['admin', 'purchases', 'chart', purchaseDateRange],
+    queryFn: () => listPurchases({ page: 1, limit: 500, startDate: purchaseDateRange.startDate, endDate: purchaseDateRange.endDate }),
+  });
+
+  const purchasesTrendData = (() => {
+    const items = purchasesForChart.data?.items ?? [];
+    const byDate = new Map<string, { cost: number; quantity: number }>();
+    for (const p of items) {
+      const d = p.purchaseDate?.slice(0, 10) ?? 'unknown';
+      const entry = byDate.get(d) ?? { cost: 0, quantity: 0 };
+      entry.cost += p.totalCost;
+      entry.quantity += p.quantity;
+      byDate.set(d, entry);
+    }
+    // Sort by date
+    return Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, { cost, quantity }]) => ({ date: date.slice(5), cost: Math.round(cost * 100) / 100, quantity }));
+  })();
 
   const stats = [
     { key: t('admin.revenue'), value: dashboard.data ? formatPrice(dashboard.data.revenue, lang) : '—', icon: Banknote },
@@ -439,6 +480,42 @@ export function AdminIndexPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Purchases Over Time */}
+      <Card className="mt-5">
+        <CardContent className="p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+              <Package className="h-4 w-4 text-violet-400" />
+              {lang === 'ar' ? 'المشتريات على مدار الوقت' : 'Purchases Over Time'}
+            </h3>
+            <div className="inline-flex rounded-lg border border-[var(--tw-border)] bg-[var(--tw-surface)] p-0.5">
+              {(['today', 'week', 'month'] as PeriodKey[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={cn(
+                    'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
+                    period === p ? 'bg-brand-600 text-white' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
+                  )}
+                >
+                  {t(PERIOD_KEYS[p])}
+                </button>
+              ))}
+            </div>
+          </div>
+          {purchasesForChart.isLoading ? (
+            <Skeleton className="h-64" />
+          ) : purchasesTrendData.length > 0 ? (
+            <PurchasesChart data={purchasesTrendData} lang={lang} />
+          ) : (
+            <EmptyState
+              title={lang === 'ar' ? 'لا توجد مشتريات لهذه الفترة' : 'No purchases for this period'}
+              icon={<Package className="h-10 w-10" />}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <Card>
