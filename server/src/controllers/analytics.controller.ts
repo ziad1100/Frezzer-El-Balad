@@ -241,6 +241,23 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
     { key: 'month', label: 'هذا الشهر', stats: monthStats },
   ];
 
+  // ---- Helper: format weight in grams to admin-friendly display ----
+  const formatWeightForExport = (grams: number): { display: string; unit: string; weightValue: number } => {
+    if (grams <= 0) return { display: '—', unit: '—', weightValue: 0 };
+    if (grams >= 1000) {
+      const kg = grams / 1000;
+      const display = kg === Math.floor(kg) ? `${kg} كيلو` : `${kg.toFixed(2).replace(/\.?0+$/, '')} كيلو`;
+      return { display, unit: 'كيلو', weightValue: kg };
+    }
+    return { display: `${grams} جم`, unit: 'جم', weightValue: grams };
+  };
+
+  // Pre-compute total weight across all purchases in the filtered period
+  const totalWeightGramsAll = purchasesPage.items.reduce(
+    (sum, p) => sum + (Number(p.weightGrams) || 0) * (Number(p.quantity) || 0),
+    0,
+  );
+
   const wb = XLSX.utils.book_new();
   // Right-to-left workbook so Arabic content lays out correctly in Excel.
   wb.Workbook = { Views: [{ RTL: true }] };
@@ -277,7 +294,9 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
     ['المشتريات (الفترة)', ''],
     ['إجمالي تكلفة المشتريات', purchaseStats.totalCost],
     ['إجمالي الكمية المشتراة', purchaseStats.totalQuantity],
+    ['إجمالي الوزن المشترى', formatWeightForExport(totalWeightGramsAll).display],
     ['عدد المشتريات', purchaseStats.purchaseCount],
+    ['عدد الأصناف المختلفة', purchasesPage.items.length > 0 ? new Set(purchasesPage.items.map((p) => String(p.productId))).size : 0],
     ['', ''],
     ['المخزون', ''],
     ['إجمالي المخزون', inventoryStats.totalStockQuantity],
@@ -287,7 +306,7 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
   const summary = sheetOf(summaryRows);
   const moneyRows = [1, 2, 3, 4, 5, 14, 22, 24, 28];
   for (let r = 1; r < summaryRows.length; r++) setFormat(summary, r, 1, moneyRows.includes(r) ? MONEY : RATING);
-  for (const r of [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 20, 21, 23, 25, 29, 30, 31, 33, 34, 35]) setFormat(summary, r, 1, COUNT);
+  for (const r of [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 20, 21, 23, 25, 29, 31, 32, 35, 36, 37]) setFormat(summary, r, 1, COUNT);
   summary['!cols'] = [{ wch: 30 }, { wch: 20 }];
   XLSX.utils.book_append_sheet(wb, summary, 'ملخص لوحة التحكم');
 
@@ -458,17 +477,35 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
   analyticsWs['!cols'] = [{ wch: 24 }, { wch: 14 }, { wch: 18 }];
   XLSX.utils.book_append_sheet(wb, analyticsWs, 'التحليلات');
 
-  // ---- Sheet 9: المشتريات (purchases in period) ----
+  // ---- Sheet 9: المشتريات (detailed purchase records) ----
   const purchaseRows: (string | number)[][] = [
-    ['معرّف المشتريات', 'التاريخ', 'المنتج', 'النوع/الوزن', 'الكمية', 'سعر الوحدة', 'التكلفة الإجمالية', 'المورد', 'ملاحظات'],
+    ['التاريخ', 'اسم المنتج', 'نوع الوحدة', 'وزن الوحدة', 'وحدة الوزن', 'الكمية', 'إجمالي الوزن', 'سعر الوحدة', 'إجمالي التكلفة', 'المورد', 'ملاحظات'],
   ];
   for (const p of purchasesPage.items) {
+    const wGrams = Number(p.weightGrams) || 0;
+    const qty = Number(p.quantity) || 0;
+    const totalWeightGrams = wGrams * qty;
+    const { display: unitWeightDisplay, unit: weightUnitLabel } = formatWeightForExport(wGrams);
+    const { display: totalWeightDisplay } = formatWeightForExport(totalWeightGrams);
+    // Unit type: use weightDisplay if available, otherwise derive from weightMode
+    let unitTypeLabel = '';
+    if (p.weightMode === 'custom') {
+      unitTypeLabel = 'وزن مخصص';
+    } else if (p.weightDisplay) {
+      unitTypeLabel = String(p.weightDisplay);
+    } else if (p.productSize) {
+      unitTypeLabel = String(p.productSize);
+    } else if (wGrams > 0) {
+      unitTypeLabel = unitWeightDisplay;
+    }
     purchaseRows.push([
-      String(p._id ?? ''),
       p.purchaseDate ? fmtDate(new Date(String(p.purchaseDate))) : '',
       String(p.productName ?? ''),
-      String(p.productSize ?? ''),
-      Number(p.quantity) || 0,
+      unitTypeLabel,
+      unitWeightDisplay,
+      weightUnitLabel,
+      qty,
+      totalWeightDisplay,
       Number(p.unitCost) || 0,
       Number(p.totalCost) || 0,
       String(p.supplier ?? ''),
@@ -477,12 +514,89 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
   }
   const purchaseWs = sheetOf(purchaseRows);
   for (let r = 1; r < purchaseRows.length; r++) {
-    setFormat(purchaseWs, r, 5, MONEY);
-    setFormat(purchaseWs, r, 6, MONEY);
-    setFormat(purchaseWs, r, 4, COUNT);
+    setFormat(purchaseWs, r, 5, COUNT);
+    setFormat(purchaseWs, r, 7, MONEY);
+    setFormat(purchaseWs, r, 8, MONEY);
   }
-  purchaseWs['!cols'] = [{ wch: 40 }, { wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 24 }];
+  purchaseWs['!cols'] = [
+    { wch: 14 },  // التاريخ
+    { wch: 24 },  // اسم المنتج
+    { wch: 16 },  // نوع الوحدة
+    { wch: 14 },  // وزن الوحدة
+    { wch: 10 },  // وحدة الوزن
+    { wch: 10 },  // الكمية
+    { wch: 16 },  // إجمالي الوزن
+    { wch: 14 },  // سعر الوحدة
+    { wch: 16 },  // إجمالي التكلفة
+    { wch: 20 },  // المورد
+    { wch: 24 },  // ملاحظات
+  ];
   XLSX.utils.book_append_sheet(wb, purchaseWs, 'المشتريات');
+
+  // ---- Sheet 13: ملخص المشتريات بالمنتجات (product-by-product purchase summary) ----
+  {
+    // Group purchases by product + unit weight to keep different weights separate
+    const productSummaryMap = new Map<string, {
+      productName: string;
+      unitWeightDisplay: string;
+      weightGrams: number;
+      totalQty: number;
+      totalWeightGrams: number;
+      totalCost: number;
+    }>();
+    for (const p of purchasesPage.items) {
+      const wGrams = Number(p.weightGrams) || 0;
+      const qty = Number(p.quantity) || 0;
+      const totalWeightGrams = wGrams * qty;
+      // Use weightDisplay as grouping key for same-weight rows, or weightGrams for old records
+      const weightKey = wGrams > 0 ? `${wGrams}` : (p.productSize || 'unknown');
+      const key = `${p.productId}:${weightKey}`;
+      const existing = productSummaryMap.get(key);
+      const { display: unitWeightDisplay } = formatWeightForExport(wGrams);
+      if (existing) {
+        existing.totalQty += qty;
+        existing.totalWeightGrams += totalWeightGrams;
+        existing.totalCost += Number(p.totalCost) || 0;
+      } else {
+        productSummaryMap.set(key, {
+          productName: String(p.productName ?? ''),
+          unitWeightDisplay,
+          weightGrams: wGrams,
+          totalQty: qty,
+          totalWeightGrams,
+          totalCost: Number(p.totalCost) || 0,
+        });
+      }
+    }
+    const summaryProductRows: (string | number)[][] = [
+      ['المنتج', 'وزن الوحدة', 'إجمالي عدد الوحدات', 'إجمالي الوزن', 'إجمالي التكلفة'],
+    ];
+    // Sort by total cost descending
+    const sortedEntries = [...productSummaryMap.values()].sort((a, b) => b.totalCost - a.totalCost);
+    for (const entry of sortedEntries) {
+      const { display: totalWeightDisplay } = formatWeightForExport(entry.totalWeightGrams);
+      summaryProductRows.push([
+        entry.productName,
+        entry.unitWeightDisplay,
+        entry.totalQty,
+        totalWeightDisplay,
+        entry.totalCost,
+      ]);
+    }
+    const summaryProductWs = sheetOf(summaryProductRows);
+    for (let r = 1; r < summaryProductRows.length; r++) {
+      setFormat(summaryProductWs, r, 2, COUNT);
+      setFormat(summaryProductWs, r, 4, MONEY);
+    }
+    summaryProductWs['!cols'] = [
+      { wch: 24 },  // المنتج
+      { wch: 16 },  // وزن الوحدة
+      { wch: 20 },  // إجمالي عدد الوحدات
+      { wch: 16 },  // إجمالي الوزن
+      { wch: 18 },  // إجمالي التكلفة
+    ];
+    XLSX.utils.book_append_sheet(wb, summaryProductWs, 'ملخص المشتريات بالمنتجات');
+  }
 
   // ---- Sheet 10: ملخص المنتجات (product-level sales + purchases summary) ----
   const productSummaryRows: (string | number)[][] = [
@@ -576,6 +690,7 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
     ['المشتريات', ''],
     ['إجمالي تكلفة المشتريات (الفترة)', purchaseStats.totalCost],
     ['إجمالي الكمية المشتراة (الفترة)', purchaseStats.totalQuantity],
+    ['إجمالي الوزن المشترى (الفترة)', formatWeightForExport(totalWeightGramsAll).display],
     ['عدد المشتريات (الفترة)', purchaseStats.purchaseCount],
     ['', ''],
     ['المخزون', ''],
@@ -585,8 +700,8 @@ export const exportStats = asyncHandler(async (req: Request, res: Response) => {
   ];
   const financialWs = sheetOf(financialRows);
   for (let r = 4; r <= 7; r++) setFormat(financialWs, r, 1, MONEY);
-  for (let r = 9; r <= 11; r++) setFormat(financialWs, r, 1, MONEY);
-  for (let r = 13; r <= 15; r++) setFormat(financialWs, r, 1, COUNT);
+  for (let r = 9; r <= 12; r++) setFormat(financialWs, r, 1, MONEY);
+  for (let r = 14; r <= 17; r++) setFormat(financialWs, r, 1, COUNT);
   financialWs['!cols'] = [{ wch: 36 }, { wch: 28 }];
   XLSX.utils.book_append_sheet(wb, financialWs, 'ملخص مالي');
 
