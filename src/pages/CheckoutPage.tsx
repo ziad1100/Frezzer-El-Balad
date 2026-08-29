@@ -5,7 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Lock } from 'lucide-react';
+import { Lock, AlertTriangle, Tag, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { createOrder, getSettings } from '@/api/orders';
 import { getPaymentSettings, type PaymentSettings } from '@/api/payment';
@@ -36,7 +36,6 @@ export function CheckoutPage() {
   const note = useAppSelector((state) => state.cart.note);
   type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'bank_transfer' | 'instapay';
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('cash');
-  // Track whether we've created the order and are now in the payment flow
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
 
   const settings = useQuery({ queryKey: ['settings'], queryFn: getSettings });
@@ -79,7 +78,6 @@ export function CheckoutPage() {
   const user = useAppSelector((state) => state.auth.user);
   const isAdmin = user?.role === ('admin' as Role) || user?.role === ('manager' as Role);
 
-  // Admin: schema with optional customer info
   const adminSchema = z.object({
     customerName: z.string().optional(),
     phone: z.string().optional(),
@@ -95,25 +93,21 @@ export function CheckoutPage() {
     defaultValues: { customerName: '', phone: '', city: '', street: '', building: '' },
   });
 
-  // Admin inline product search state
   const [selectedSearchProduct, setSelectedSearchProduct] = useState<AdminSearchProduct | null>(null);
   const [searchSizeId, setSearchSizeId] = useState<string | null>(null);
   const [searchQty, setSearchQty] = useState(1);
 
-  // Admin custom price state: map of line index -> custom price value
   const [customPrices, setCustomPrices] = useState<Record<number, number>>({});
   const [customPriceEnabled, setCustomPriceEnabled] = useState<Record<number, boolean>>({});
 
   const toggleCustomPrice = (index: number) => {
     setCustomPriceEnabled((prev) => ({ ...prev, [index]: !prev[index] }));
-    // When disabling, remove the custom price
     if (customPriceEnabled[index]) {
       setCustomPrices((prev) => {
         const next = { ...prev };
         delete next[index];
         return next;
       });
-      // Also update the cart line
       dispatch({ type: 'cart/setCustomPrice', payload: { index, customPrice: undefined, isCustomPrice: false } });
     }
   };
@@ -126,9 +120,7 @@ export function CheckoutPage() {
     }
   };
 
-  // Handler for when a product is picked from the search dropdown
   const handleSearchProductPicked = (product: SearchableProduct) => {
-    // Cast to AdminSearchProduct — the shapes are compatible
     const ap = product as unknown as AdminSearchProduct;
     setSelectedSearchProduct(ap);
     const firstSize = ap.sizes?.find((s) => s.isAvailable);
@@ -136,7 +128,6 @@ export function CheckoutPage() {
     setSearchQty(1);
   };
 
-  // Add the searched product to the cart
   const handleAddSearchedProduct = () => {
     if (!selectedSearchProduct) return;
     const size = selectedSearchProduct.sizes?.find((s) => s._id === searchSizeId);
@@ -175,11 +166,9 @@ export function CheckoutPage() {
         sizeName: line.customWeight ? line.customWeight.display : line.sizeName,
         extras: line.extras.map((e) => ({ name: e.name, price: e.price })),
         qty: line.qty,
-        // Admin-only: include customPrice if set
         ...(isAdmin && line.isCustomPrice && typeof line.customPrice === 'number'
           ? { customPrice: line.customPrice }
           : {}),
-        // Admin-only: include customWeight if set
         ...(line.customWeight ? { customWeight: line.customWeight } : {}),
       })),
       couponCode: couponCode || undefined,
@@ -207,11 +196,9 @@ export function CheckoutPage() {
     mutationFn: (values: FormValues) => createOrder(buildOrderPayload(values)),
     onSuccess: (order) => {
       if (isManualPayment || isCardPayment) {
-        // For manual/card payments: show the payment flow instead of navigating away
         setCreatedOrderId(order._id);
         toast.success(t('checkout.orderSuccess'));
       } else {
-        // Cash on delivery: clear cart and navigate
         dispatch(clearCoupon());
         dispatch(clearCart());
         toast.success(t('checkout.orderSuccess'));
@@ -245,7 +232,7 @@ export function CheckoutPage() {
           hint={t('cart.emptyHint')}
           action={
             <Link to="/menu">
-              <Button variant="gold">{t('cart.browseMenu')}</Button>
+              <Button variant="fresh">{t('cart.browseMenu')}</Button>
             </Link>
           }
         />
@@ -258,13 +245,19 @@ export function CheckoutPage() {
 
   return (
     <div className="container-px py-10">
-      <h1 className="mb-6 text-2xl font-extrabold text-[var(--tw-text)]">{t('checkout.title')}</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-extrabold text-[var(--tw-text)]">{t('checkout.title')}</h1>
+        <p className="mt-1 text-sm text-[var(--tw-text-muted)]">
+          {i18n.language === 'ar' ? 'أكمل بياناتك لإتمام الطلب' : 'Complete your details to place the order'}
+        </p>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-5">
+        {/* Form */}
         <Card className="lg:col-span-3">
-          <CardContent>
+          <CardContent className="p-5">
             {isAdmin ? (
-              /* ── Admin: compact order-for-customer form ── */
-              <form onSubmit={adminHandleSubmit((values) => adminOrderMutation.mutate(values))} className="space-y-5">
+              <form onSubmit={adminHandleSubmit((values) => adminOrderMutation.mutate(values))} className="space-y-6">
                 <Section title={i18n.language === 'ar' ? 'بحث سريع عن منتج' : 'Quick Product Search'}>
                   <ProductSearch
                     onSelect={handleSearchProductPicked}
@@ -272,9 +265,8 @@ export function CheckoutPage() {
                     placeholder={i18n.language === 'ar' ? 'اكتب اسم المنتج...' : 'Type product name...'}
                   />
 
-                  {/* Inline size / qty selector after picking a product */}
                   {selectedSearchProduct && (
-                    <div className="mt-3 rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]/60 p-4">
+                    <div className="mt-3 rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)]/50 p-4">
                       <div className="mb-3 flex items-start gap-3">
                         {selectedSearchProduct.images?.[0] && (
                           <img
@@ -294,16 +286,15 @@ export function CheckoutPage() {
                         <button
                           type="button"
                           onClick={() => { setSelectedSearchProduct(null); setSearchSizeId(null); }}
-                          className="text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
                         >
                           ✕
                         </button>
                       </div>
 
-                      {/* Size selection */}
                       {selectedSearchProduct.sizes && selectedSearchProduct.sizes.length > 0 && (
                         <div className="mb-3">
-                          <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                             {i18n.language === 'ar' ? 'النوع / الوزن' : 'Variant / Weight'}
                           </label>
                           <div className="flex flex-wrap gap-2">
@@ -314,11 +305,11 @@ export function CheckoutPage() {
                                 disabled={!size.isAvailable}
                                 onClick={() => setSearchSizeId(size._id!)}
                                 className={cn(
-                                  'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                                  'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all',
                                   searchSizeId === size._id
-                                    ? 'border-brand-500 bg-brand-500/20 text-brand-400'
+                                    ? 'border-brand-500 bg-brand-500/15 text-brand-400 shadow-sm'
                                     : size.isAvailable
-                                      ? 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]'
+                                      ? 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-brand-500/50 hover:text-brand-400'
                                       : 'border-[var(--tw-border)] text-[var(--tw-border-strong)] opacity-50',
                                 )}
                               >
@@ -330,16 +321,15 @@ export function CheckoutPage() {
                         </div>
                       )}
 
-                      {/* Quantity */}
                       <div className="mb-3 flex items-center gap-3">
                         <label className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                           {i18n.language === 'ar' ? 'الكمية' : 'Qty'}
                         </label>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5 rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]">
                           <button
                             type="button"
                             onClick={() => setSearchQty((q) => Math.max(1, q - 1))}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]"
+                            className="flex h-7 w-7 items-center justify-center rounded-l-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
                           >
                             −
                           </button>
@@ -349,12 +339,12 @@ export function CheckoutPage() {
                             max="99"
                             value={searchQty}
                             onChange={(e) => setSearchQty(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))}
-                            className="w-14 rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] px-1 py-1 text-center text-sm text-[var(--tw-text)] focus:border-brand-500 focus:outline-none"
+                            className="w-12 border-0 bg-transparent px-1 py-1 text-center text-sm font-bold tabular-nums text-[var(--tw-text)] focus:outline-none"
                           />
                           <button
                             type="button"
                             onClick={() => setSearchQty((q) => Math.min(99, q + 1))}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]"
+                            className="flex h-7 w-7 items-center justify-center rounded-r-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
                           >
                             +
                           </button>
@@ -404,13 +394,13 @@ export function CheckoutPage() {
                 </Section>
 
                 <Section title={i18n.language === 'ar' ? 'السعر المخصص' : 'Custom Pricing'}>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {lines.map((line, idx) => {
                       const normalPrice = line.unitPrice;
                       const isEnabled = customPriceEnabled[idx] ?? line.isCustomPrice ?? false;
                       const currentCustom = customPrices[idx] ?? line.customPrice;
                       return (
-                        <div key={`${line.productId}-${line.size ?? ''}`} className="rounded-lg border border-[var(--tw-border-strong)] p-3">
+                        <div key={`${line.productId}-${line.size ?? ''}`} className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-3.5">
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-[var(--tw-text-muted)]">
                               {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
@@ -421,7 +411,7 @@ export function CheckoutPage() {
                               {formatPrice(normalPrice, i18n.language)}
                             </span>
                           </div>
-                          <div className="mt-2 flex items-center gap-3">
+                          <div className="mt-2.5 flex items-center gap-3">
                             <label className="flex items-center gap-2 text-xs text-[var(--tw-text-muted)]">
                               <input
                                 type="checkbox"
@@ -448,7 +438,7 @@ export function CheckoutPage() {
                             )}
                           </div>
                           {isEnabled && typeof currentCustom === 'number' && (
-                            <div className="mt-1 text-xs text-gold-400">
+                            <div className="mt-1.5 text-xs font-semibold text-gold-400">
                               {i18n.language === 'ar' ? 'السعر المطبق' : 'Applied Price'}: {formatPrice(currentCustom, i18n.language)}
                             </div>
                           )}
@@ -472,8 +462,7 @@ export function CheckoutPage() {
                 </Button>
               </form>
             ) : (
-              /* ── Customer: existing checkout form (unchanged) ── */
-              <form onSubmit={handleSubmit((values) => orderMutation.mutate(values))} className="space-y-5">
+              <form onSubmit={handleSubmit((values) => orderMutation.mutate(values))} className="space-y-6">
                 <Section title={t('checkout.contact')}>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
@@ -526,9 +515,16 @@ export function CheckoutPage() {
           </CardContent>
         </Card>
 
+        {/* Order Summary */}
         <Card className="h-fit lg:col-span-2">
-          <CardContent>
-            <h2 className="mb-4 text-lg font-bold text-[var(--tw-text)]">{t('cart.title')}</h2>
+          <CardContent className="p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500">
+                <ShoppingBag className="h-4 w-4" />
+              </span>
+              <h2 className="text-base font-bold text-[var(--tw-text)]">{t('cart.title')}</h2>
+            </div>
+
             <div className="space-y-3 border-b border-[var(--tw-border)] pb-4">
               {lines.map((line) => {
                 const effectivePrice = line.isCustomPrice && typeof line.customPrice === 'number' ? line.customPrice : line.unitPrice;
@@ -549,49 +545,63 @@ export function CheckoutPage() {
               })}
             </div>
 
-            <div className="mt-4 flex gap-2">
-              <Input
-                value={couponInput}
-                onChange={(e) => setCouponInput(e.target.value)}
-                placeholder={t('cart.couponPlaceholder')}
-                className="uppercase"
-              />
-              <Button
-                variant="outline"
-                onClick={() => couponMutation.mutate(couponInput.trim())}
-                loading={couponMutation.isPending}
-              >
-                {t('cart.couponApply')}
-              </Button>
+            {/* Coupon */}
+            <div className="mt-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Tag className="absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--tw-text-muted)]" />
+                  <Input
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    placeholder={t('cart.couponPlaceholder')}
+                    className="uppercase ps-9 text-xs"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => couponMutation.mutate(couponInput.trim())}
+                  loading={couponMutation.isPending}
+                >
+                  {t('cart.couponApply')}
+                </Button>
+              </div>
+              {couponError ? <p className="mt-1.5 text-xs text-red-400">{couponError}</p> : null}
             </div>
-            {couponError ? <p className="mt-1 text-sm text-red-400">{couponError}</p> : null}
 
-            <div className="mt-4 space-y-2 text-sm">
+            {/* Totals */}
+            <div className="mt-4 space-y-2.5 text-sm">
               <Row label={t('cart.subtotal')} value={formatPrice(subtotal, i18n.language)} />
               <Row
                 label={t('cart.delivery')}
                 value={effectiveFee === 0 ? t('common.freeDelivery') : formatPrice(effectiveFee, i18n.language)}
+                free={effectiveFee === 0}
               />
               {couponDiscount > 0 ? (
                 <Row label={`${t('cart.discount')} (${couponCode})`} value={formatPrice(-couponDiscount, i18n.language)} accent />
               ) : null}
             </div>
+
             <div className="mt-4 flex items-center justify-between border-t border-[var(--tw-border)] pt-4">
               <span className="font-bold text-[var(--tw-text)]">{t('cart.total')}</span>
               <span className="text-2xl font-extrabold text-brand-500">
                 {formatPrice(Math.max(0, total), i18n.language)}
               </span>
             </div>
+
             {subtotal < minimumOrder ? (
-              <p className="mt-3 rounded-lg border border-gold-500/40 bg-gold-500/10 p-2 text-xs text-gold-400">
-                {t('checkout.minOrderRequired')}: {formatPrice(minimumOrder, i18n.language)}
-              </p>
+              <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                <p className="text-xs leading-relaxed text-amber-400">
+                  {t('checkout.minOrderRequired')}: {formatPrice(minimumOrder, i18n.language)}
+                </p>
+              </div>
             ) : null}
           </CardContent>
         </Card>
       </div>
 
-      {/* Payment Flow — shown after order is created for manual/card payments */}
+      {/* Payment Flow */}
       {createdOrderId && (
         <div className="mt-8">
           <Card>
@@ -642,8 +652,6 @@ export function CheckoutPage() {
           </Card>
         </div>
       )}
-
-
     </div>
   );
 }
@@ -651,21 +659,17 @@ export function CheckoutPage() {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-        <span className="h-px flex-1 bg-[var(--tw-surface-alt)]" />
-        {title}
-        <span className="h-px flex-1 bg-[var(--tw-surface-alt)]" />
-      </h3>
+      <h3 className="mb-3 text-sm font-bold text-[var(--tw-text)]">{title}</h3>
       {children}
     </section>
   );
 }
 
-function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Row({ label, value, accent, free }: { label: string; value: string; accent?: boolean; free?: boolean }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-[var(--tw-text-muted)]">{label}</span>
-      <span className={cn('font-bold', accent ? 'text-gold-400' : 'text-[var(--tw-text)]')}>{value}</span>
+      <span className={cn('font-bold', accent ? 'text-gold-400' : free ? 'text-fresh-400' : 'text-[var(--tw-text)]')}>{value}</span>
     </div>
   );
 }
@@ -701,10 +705,10 @@ function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
         <label
           key={method.value}
           className={cn(
-            'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors',
+            'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all',
             value === method.value
-              ? 'border-brand-500 bg-brand-500/10 text-[var(--tw-text)]'
-              : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]',
+              ? 'border-brand-500 bg-brand-500/10 shadow-sm shadow-brand-500/5'
+              : 'border-[var(--tw-border-strong)] hover:border-brand-500/30 hover:bg-[var(--tw-hover)]',
           )}
         >
           <input
@@ -716,7 +720,7 @@ function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
             className="sr-only"
           />
           <span className="text-lg">{method.icon}</span>
-          <span className="text-sm font-semibold">
+          <span className={cn('text-sm font-semibold', value === method.value ? 'text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)]')}>
             {lang === 'ar' ? method.labelAr : method.labelEn}
           </span>
           {value === method.value && (

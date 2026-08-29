@@ -49,13 +49,20 @@ export function CartDrawer() {
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[var(--tw-border)] px-5 py-4">
-              <h2 className="flex items-center gap-2 text-base font-bold text-[var(--tw-text)]">
-                <ShoppingBag className="h-4 w-4 text-brand-500" />
-                {t('cart.title')}
-              </h2>
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
+                  <ShoppingBag className="h-4.5 w-4.5" />
+                </span>
+                <div>
+                  <h2 className="text-base font-bold text-[var(--tw-text)]">{t('cart.title')}</h2>
+                  <p className="text-xs text-[var(--tw-text-muted)]">
+                    {lines.length} {lines.length === 1 ? (i18n.language === 'ar' ? 'منتج' : 'item') : (i18n.language === 'ar' ? 'منتجات' : 'items')}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => dispatch(setCartOpen(false))}
-                className="rounded-lg p-1.5 text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
                 aria-label="close"
               >
                 <X className="h-5 w-5" />
@@ -78,73 +85,87 @@ export function CartDrawer() {
             ) : (
               <>
                 {/* Items */}
-                <div className="flex-1 space-y-3 overflow-y-auto p-5">
-                  {lines.map((line, index) => (
-                    <div key={`${line.productId}-${line.size ?? ''}`} className="flex gap-3 rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-3">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--tw-hover)]">
-                        {line.image ? (
-                          <img src={line.image} alt={line.name} className="h-full w-full object-cover" />
-                        ) : (
-                          <ShoppingBag className="h-6 w-6 text-[var(--tw-text-muted)]" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="truncate text-sm font-semibold text-[var(--tw-text)]">
-                            {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
-                          </p>
-                          <button
-                            onClick={() => dispatch(removeLine(index))}
-                            className="text-[var(--tw-text-muted)] transition-colors hover:text-red-400"
-                            aria-label={t('cart.remove')}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="space-y-2.5">
+                    {lines.map((line, index) => (
+                      <div
+                        key={`${line.productId}-${line.size ?? ''}`}
+                        className="group flex gap-3 rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-3 transition-colors hover:border-[var(--tw-border-strong)]"
+                      >
+                        {/* Image */}
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--tw-surface-alt)]">
+                          {line.image ? (
+                            <img src={line.image} alt={line.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <ShoppingBag className="h-6 w-6 text-[var(--tw-text-muted)]" />
+                          )}
                         </div>
-                        {line.sizeName ? <p className="text-xs text-[var(--tw-text-muted)]">{line.sizeName}</p> : null}
-                        {line.extras.length > 0 ? (
-                          <p className="truncate text-xs text-[var(--tw-text-muted)]">
-                            {line.extras.map((e) => e.name).join(' + ')}
-                          </p>
-                        ) : null}
-                        <div className="mt-2 flex items-center justify-between">
-                          <div className="flex items-center gap-1 rounded-lg border border-[var(--tw-border-strong)]">
+
+                        {/* Details */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-[var(--tw-text)]">
+                                {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
+                              </p>
+                              {line.sizeName ? (
+                                <p className="mt-0.5 text-xs text-[var(--tw-text-muted)]">{line.sizeName}</p>
+                              ) : null}
+                              {line.extras.length > 0 ? (
+                                <p className="mt-0.5 truncate text-xs text-[var(--tw-text-muted)]">
+                                  {line.extras.map((e) => e.name).join(' + ')}
+                                </p>
+                              ) : null}
+                            </div>
                             <button
-                              onClick={() => dispatch(updateQty({ index, qty: line.qty + 1 }))}
-                              className="p-1.5 text-[var(--tw-text-muted)] hover:text-brand-500"
-                              aria-label="plus"
+                              onClick={() => dispatch(removeLine(index))}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--tw-text-muted)] opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                              aria-label={t('cart.remove')}
                             >
-                              <Plus className="h-3.5 w-3.5" />
-                            </button>
-                            <span className="min-w-6 text-center text-sm font-bold text-[var(--tw-text)]">{line.qty}</span>
-                            <button
-                              onClick={() => dispatch(updateQty({ index, qty: line.qty - 1 }))}
-                              className="p-1.5 text-[var(--tw-text-muted)] hover:text-brand-500"
-                              aria-label="minus"
-                            >
-                              <Minus className="h-3.5 w-3.5" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
-                          <p className="text-sm font-bold text-brand-500">
-                            {formatPrice(line.unitPrice * line.qty, i18n.language)}
-                          </p>
+
+                          {/* Price + Qty */}
+                          <div className="mt-2.5 flex items-center justify-between">
+                            <div className="flex items-center gap-0.5 rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]">
+                              <button
+                                onClick={() => dispatch(updateQty({ index, qty: line.qty - 1 }))}
+                                className="flex h-7 w-7 items-center justify-center rounded-l-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+                                aria-label="minus"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </button>
+                              <span className="min-w-7 text-center text-sm font-bold tabular-nums text-[var(--tw-text)]">{line.qty}</span>
+                              <button
+                                onClick={() => dispatch(updateQty({ index, qty: line.qty + 1 }))}
+                                className="flex h-7 w-7 items-center justify-center rounded-r-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+                                aria-label="plus"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <p className="text-sm font-extrabold text-brand-500">
+                              {formatPrice(line.unitPrice * line.qty, i18n.language)}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-[var(--tw-border)] p-5">
+                <div className="border-t border-[var(--tw-border)] bg-[var(--tw-surface)] px-5 py-4">
                   <div className="mb-4 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-[var(--tw-text-muted)]">{t('cart.subtotal')}</span>
-                    <span className="text-base font-extrabold text-[var(--tw-text)]">{formatPrice(subtotal, i18n.language)}</span>
+                    <span className="text-sm text-[var(--tw-text-muted)]">{t('cart.subtotal')}</span>
+                    <span className="text-lg font-extrabold text-[var(--tw-text)]">{formatPrice(subtotal, i18n.language)}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2.5">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="flex-1"
+                      className="px-3"
                       onClick={() => dispatch(clearCart())}
                     >
                       {t('cart.clear')}
