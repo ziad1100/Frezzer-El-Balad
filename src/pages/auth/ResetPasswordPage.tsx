@@ -55,11 +55,11 @@ export function ResetPasswordPage() {
 
   if (!urlToken && !codeComplete) {
     return (
-      <div className="container-px flex min-h-[70vh] items-center justify-center py-16">
-        <div className="w-full max-w-md rounded-3xl border border-[var(--tw-border)] bg-[var(--tw-surface)] p-8">
-          <div className="mb-8 text-center">
-            <Logo className="mx-auto h-14 w-14 rounded-2xl" />
-            <h1 className="mt-4 text-2xl font-extrabold text-[var(--tw-text)]">{t('auth.otpHeading')}</h1>
+      <div className="container-px flex min-h-[70vh] items-center justify-center py-12">
+        <div className="w-full max-w-sm rounded-2xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] p-6">
+          <div className="mb-6 text-center">
+            <Logo className="mx-auto h-12 w-12 rounded-xl" />
+            <h1 className="mt-3 text-xl font-extrabold text-[var(--tw-text)]">{t('auth.otpHeading')}</h1>
             <p className="mt-1 text-sm text-[var(--tw-text-muted)]">{t('auth.otpHint')}</p>
           </div>
           <OtpInput value={code} onChange={setCode} length={CODE_LENGTH} />
@@ -75,11 +75,11 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="container-px flex min-h-[70vh] items-center justify-center py-16">
-      <div className="w-full max-w-md rounded-3xl border border-[var(--tw-border)] bg-[var(--tw-surface)] p-8">
-        <div className="mb-8 text-center">
-          <Logo className="mx-auto h-14 w-14 rounded-2xl" />
-          <h1 className="mt-4 text-2xl font-extrabold text-[var(--tw-text)]">{t('auth.resetTitle')}</h1>
+    <div className="container-px flex min-h-[70vh] items-center justify-center py-12">
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] p-6">
+        <div className="mb-6 text-center">
+          <Logo className="mx-auto h-12 w-12 rounded-xl" />
+          <h1 className="mt-3 text-xl font-extrabold text-[var(--tw-text)]">{t('auth.resetTitle')}</h1>
           <p className="mt-1 text-sm text-[var(--tw-text-muted)]">{t('auth.resetSubtitle')}</p>
         </div>
 
@@ -88,7 +88,7 @@ export function ResetPasswordPage() {
             {t('auth.resetSuccess')}
           </div>
         ) : (
-          <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
+          <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-3.5">
             <div>
               <Label htmlFor="password">{t('auth.newPassword')}</Label>
               <PasswordInput id="password" type="password" {...register('password')} error={Boolean(errors.password)} />

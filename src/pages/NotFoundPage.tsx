@@ -8,7 +8,7 @@ export function NotFoundPage() {
 
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 text-center">
-      <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-[var(--tw-surface)] text-brand-500">
+      <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-[var(--tw-surface)] text-brand-500">
         <Compass className="h-12 w-12" />
       </div>
       <h1 className="mt-6 text-6xl font-extrabold text-[var(--tw-text)]">404</h1>

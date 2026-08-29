@@ -37,11 +37,11 @@ export function ForgotPasswordPage() {
   });
 
   return (
-    <div className="container-px flex min-h-[70vh] items-center justify-center py-16">
-      <div className="w-full max-w-md rounded-3xl border border-[var(--tw-border)] bg-[var(--tw-surface)] p-8">
-        <div className="mb-8 text-center">
-          <Logo className="mx-auto h-14 w-14 rounded-2xl" />
-          <h1 className="mt-4 text-2xl font-extrabold text-[var(--tw-text)]">{t('auth.forgotTitle')}</h1>
+    <div className="container-px flex min-h-[70vh] items-center justify-center py-12">
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] p-6">
+        <div className="mb-6 text-center">
+          <Logo className="mx-auto h-12 w-12 rounded-xl" />
+          <h1 className="mt-3 text-xl font-extrabold text-[var(--tw-text)]">{t('auth.forgotTitle')}</h1>
           <p className="mt-1 text-sm text-[var(--tw-text-muted)]">{t('auth.forgotSubtitle')}</p>
         </div>
 
@@ -57,7 +57,7 @@ export function ForgotPasswordPage() {
               <p className="text-[var(--tw-text-muted)]">{t('auth.devResetCodeHint')}</p>
               <a
                 href={devPayload.link}
-                className="block rounded-lg bg-brand-500 py-2.5 text-center font-bold text-white hover:bg-brand-400"
+                className="block rounded-lg bg-brand-500 py-2.5 text-center font-bold text-white hover:bg-brand-700"
               >
                 {t('auth.continueReset')}
               </a>
@@ -67,14 +67,14 @@ export function ForgotPasswordPage() {
               <p>{t('auth.resetLinkSent')}</p>
               <Link
                 to="/reset-password"
-                className="block rounded-lg bg-brand-500 py-2.5 text-center font-bold text-white hover:bg-brand-400"
+                className="block rounded-lg bg-brand-500 py-2.5 text-center font-bold text-white hover:bg-brand-700"
               >
                 {t('auth.enterResetCode')}
               </Link>
             </div>
           )
         ) : (
-          <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
+          <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-3.5">
             <div>
               <Label htmlFor="email">{t('auth.email')}</Label>
               <Input id="email" type="email" dir="ltr" {...register('email')} error={Boolean(errors.email)} />

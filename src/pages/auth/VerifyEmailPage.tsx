@@ -18,10 +18,10 @@ export function VerifyEmailPage() {
   });
 
   return (
-    <div className="container-px flex min-h-[70vh] items-center justify-center py-16">
-      <div className="w-full max-w-md rounded-3xl border border-[var(--tw-border)] bg-[var(--tw-surface)] p-8 text-center">
-        <Logo className="mx-auto h-14 w-14 rounded-2xl" />
-        <h1 className="mt-4 text-2xl font-extrabold text-[var(--tw-text)]">{t('auth.verifyTitle')}</h1>
+    <div className="container-px flex min-h-[70vh] items-center justify-center py-12">
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] p-6 text-center">
+        <Logo className="mx-auto h-12 w-12 rounded-xl" />
+        <h1 className="mt-3 text-xl font-extrabold text-[var(--tw-text)]">{t('auth.verifyTitle')}</h1>
 
         {isPending ? (
           <>
