@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -28,6 +28,7 @@ import {
   UserCog,
   Users,
   X,
+  Bell,
 } from 'lucide-react';
 import { Logo } from '@/components/logo/Logo';
 import { useAppDispatch, useAppSelector } from '@/hooks';
@@ -89,7 +90,6 @@ export function AdminLayout() {
   const { theme, toggleTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Pending-review count badge on the sidebar Reviews link (review moderation).
   const reviewStats = useQuery({
     queryKey: ['admin', 'review-stats'],
     queryFn: adminReviewStats,
@@ -110,10 +110,10 @@ export function AdminLayout() {
 
   const sidebarContent = (onNavigate?: () => void) => (
     <>
-      <nav className="flex-1 space-y-5 overflow-y-auto pb-8">
+      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
         {navGroups.map((group) => (
           <div key={group.label}>
-            <p className="mb-1.5 px-3 text-xs font-bold uppercase tracking-wider text-night-500">
+            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">
               {t(group.label)}
             </p>
             <div className="space-y-0.5">
@@ -125,17 +125,17 @@ export function AdminLayout() {
                   onClick={onNavigate}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
                       isActive
-                        ? 'bg-brand-600/15 text-brand-400'
-                        : 'text-night-300 hover:bg-night-800/60 hover:text-night-50',
+                        ? 'bg-brand-500/10 text-brand-500 shadow-sm shadow-brand-500/5'
+                        : 'text-[var(--tw-text-muted)] hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]',
                     )
                   }
                 >
-                  <Icon className="h-4.5 w-4.5 shrink-0" />
+                  <Icon className="h-[18px] w-[18px] shrink-0" />
                   <span className="flex-1 truncate">{t(label)}</span>
                   {to === '/admin/reviews' && pendingReviews > 0 ? (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-bold text-white">
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
                       {pendingReviews > 99 ? '99+' : pendingReviews}
                     </span>
                   ) : null}
@@ -145,19 +145,21 @@ export function AdminLayout() {
           </div>
         ))}
       </nav>
-      <div className="border-t border-night-800/60 p-2">
-        <div className="flex items-center gap-2.5 px-2 py-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
+
+      {/* User Footer */}
+      <div className="border-t border-[var(--tw-border)] p-3">
+        <div className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white shadow-sm">
             {user?.fullName.charAt(0) ?? 'A'}
           </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-night-50">{user?.fullName}</p>
-            <p className="truncate text-xs capitalize text-night-500">{user?.role}</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-[var(--tw-text)]">{user?.fullName}</p>
+            <p className="truncate text-xs capitalize text-[var(--tw-text-muted)]">{user?.role}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-400 hover:bg-night-800/60"
+          className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10"
         >
           <LogOut className="h-4 w-4" />
           {t('nav.logout')}
@@ -167,36 +169,42 @@ export function AdminLayout() {
   );
 
   return (
-    <div className="flex min-h-screen bg-night-950">
-      <aside className="fixed inset-y-0 start-0 z-30 hidden w-60 border-e border-night-800/60 bg-night-900/80 p-3 lg:block">
-        <Link to="/" className="mb-5 flex items-center gap-2 px-2">
-          <Logo className="h-8 w-8 rounded-lg" />
-          <span className="text-base font-bold text-brand-400">
-            {t('nav.brand')}
-          </span>
-        </Link>
+    <div className="flex min-h-screen bg-[var(--tw-bg)]">
+      {/* ── Desktop Sidebar ─────────────────────────────────────── */}
+      <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-[var(--tw-sidebar-border)] bg-[var(--tw-sidebar-bg)] lg:flex">
+        {/* Sidebar Header */}
+        <div className="flex h-16 items-center gap-3 border-b border-[var(--tw-border)] px-5">
+          <Link to="/" className="flex items-center gap-2.5">
+            <Logo className="h-8 w-8 rounded-lg" />
+            <span className="text-sm font-bold tracking-tight text-[var(--tw-text)]">
+              {t('nav.brand')}
+            </span>
+          </Link>
+        </div>
         {sidebarContent()}
       </aside>
 
+      {/* ── Mobile Drawer ───────────────────────────────────────── */}
       {drawerOpen ? (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
-            className="absolute inset-0 bg-night-950/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
             onClick={() => setDrawerOpen(false)}
             aria-hidden
           />
-          <aside className="absolute inset-y-0 start-0 flex w-64 flex-col border-e border-night-800 bg-night-900 p-4">
-            <div className="mb-6 flex items-center justify-between gap-2 px-2">
-              <Link to="/" className="flex items-center gap-2">
-                <Logo className="h-9 w-9 rounded-lg" />
-                <span className="text-lg font-extrabold text-brand-500">
+          <aside className="absolute inset-y-0 start-0 flex w-72 flex-col bg-[var(--tw-sidebar-bg)] shadow-2xl">
+            {/* Drawer Header */}
+            <div className="flex h-16 items-center justify-between border-b border-[var(--tw-border)] px-5">
+              <Link to="/" className="flex items-center gap-2.5" onClick={() => setDrawerOpen(false)}>
+                <Logo className="h-8 w-8 rounded-lg" />
+                <span className="text-sm font-bold tracking-tight text-[var(--tw-text)]">
                   {t('nav.brand')}
                 </span>
               </Link>
               <button
                 onClick={() => setDrawerOpen(false)}
                 aria-label={t('common.close')}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-night-200 transition-colors hover:bg-night-800 hover:text-night-50"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -206,44 +214,74 @@ export function AdminLayout() {
         </div>
       ) : null}
 
+      {/* ── Main Content ────────────────────────────────────────── */}
       <div className="flex-1 lg:ms-64">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-night-800 bg-night-950/90 px-4 backdrop-blur md:px-8">
+        {/* Topbar */}
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[var(--tw-border)] bg-[var(--tw-header-bg)] px-4 backdrop-blur-xl md:px-8">
+          {/* Left */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setDrawerOpen(true)}
               aria-label={t('admin.openMenu')}
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-night-200 transition-colors hover:bg-night-800 hover:text-night-50 lg:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)] lg:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <h1 className="text-lg font-bold text-night-50">{t('admin.title')}</h1>
+            <div>
+              <h1 className="text-lg font-bold text-[var(--tw-text)]">{t('admin.title')}</h1>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Right */}
+          <div className="flex items-center gap-2">
+            {/* Language */}
             <button
               onClick={toggleLanguage}
               aria-label="language"
-              className="flex h-9 items-center gap-1 rounded-xl px-2.5 text-sm font-bold text-night-200 transition-colors hover:bg-night-800 hover:text-night-50"
+              className="flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
             >
               <Languages className="h-4 w-4" />
-              <span>{t('nav.language')}</span>
+              <span className="hidden sm:inline">{t('nav.language')}</span>
             </button>
+
+            {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
               aria-label="theme"
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-night-200 transition-colors hover:bg-night-800 hover:text-night-50"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
             >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
             </button>
+
+            {/* Notifications */}
+            {pendingReviews > 0 ? (
+              <Link
+                to="/admin/reviews"
+                className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+              >
+                <Bell className="h-[18px] w-[18px]" />
+                <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[9px] font-bold text-white">
+                  {pendingReviews > 9 ? '9+' : pendingReviews}
+                </span>
+              </Link>
+            ) : null}
+
+            {/* Divider */}
+            <div className="mx-1 h-6 w-px bg-[var(--tw-border)]" />
+
+            {/* Home Link */}
             <Link
               to="/"
-              className="hidden items-center gap-1 text-sm font-semibold text-brand-500 hover:text-brand-400 sm:flex"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-brand-500"
             >
-              {t('nav.home')}
+              <span className="hidden sm:inline">{t('nav.home')}</span>
               <ChevronRight className="h-4 w-4 rtl:rotate-180" />
             </Link>
           </div>
         </header>
-        <main className="p-4 md:p-8">
+
+        {/* Page Content */}
+        <main className="p-4 md:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

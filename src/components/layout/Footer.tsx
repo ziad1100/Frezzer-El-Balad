@@ -1,13 +1,10 @@
-﻿import { Link } from 'react-router';
+import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Clock } from 'lucide-react';
 import { Logo } from '@/components/logo/Logo';
 
-// Official brand glyphs (viewBox 0 0 24 24, fill=currentColor).
 const FACEBOOK_PATH =
   'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z';
-
-
 
 const socials = [
   {
@@ -30,8 +27,9 @@ export function Footer() {
   ];
 
   return (
-    <footer className="border-t border-night-800/60 bg-night-950">
+    <footer className="border-t border-[var(--tw-border)] bg-[var(--tw-bg)]">
       <div className="container-px grid gap-8 py-12 md:grid-cols-2 lg:grid-cols-4">
+        {/* Brand */}
         <div>
           <Link to="/" className="flex items-center gap-2">
             <Logo className="h-9 w-9 rounded-lg" />
@@ -39,11 +37,12 @@ export function Footer() {
               {t('nav.brand')}
             </span>
           </Link>
-          <p className="mt-3 max-w-xs text-sm leading-relaxed text-night-400">{t('footer.tagline')}</p>
+          <p className="mt-3 max-w-xs text-sm leading-relaxed text-[var(--tw-text-muted)]">{t('footer.tagline')}</p>
         </div>
 
+        {/* Quick Links */}
         <div>
-          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-night-300">
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-[var(--tw-text)]">
             {t('footer.quickLinks')}
           </h3>
           <ul className="space-y-2">
@@ -51,7 +50,7 @@ export function Footer() {
               <li key={item.to}>
                 <Link
                   to={item.to}
-                  className="text-sm text-night-400 transition-colors hover:text-brand-400"
+                  className="text-sm text-[var(--tw-text-muted)] transition-colors hover:text-brand-500"
                 >
                   {t(`nav.${item.key}`)}
                 </Link>
@@ -60,11 +59,12 @@ export function Footer() {
           </ul>
         </div>
 
+        {/* Contact */}
         <div>
-          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-night-300">
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-[var(--tw-text)]">
             {t('footer.contact')}
           </h3>
-          <ul className="space-y-2.5 text-sm text-night-400">
+          <ul className="space-y-2.5 text-sm text-[var(--tw-text-muted)]">
             <li className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-brand-500" />
               <span>{t('footer.hoursValue')}</span>
@@ -72,8 +72,9 @@ export function Footer() {
           </ul>
         </div>
 
+        {/* Social */}
         <div>
-          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-night-300">Social</h3>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-[var(--tw-text)]">Social</h3>
           <div className="flex gap-2">
             {socials.map(({ label, href, path }) => (
               <a
@@ -82,7 +83,7 @@ export function Footer() {
                 target="_blank"
                 rel="noreferrer"
                 aria-label={label}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-night-800/60 text-night-300 transition-colors hover:border-brand-500/60 hover:text-brand-400"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--tw-border)] text-[var(--tw-text-muted)] transition-colors hover:border-brand-500/60 hover:text-brand-500"
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden="true">
                   <path d={path} />
@@ -90,7 +91,7 @@ export function Footer() {
               </a>
             ))}
           </div>
-          <p className="mt-4 text-sm text-night-500">
+          <p className="mt-4 text-sm text-[var(--tw-text-muted)]">
             © {new Date().getFullYear()} {t('nav.brand')}. {t('footer.rights')}
           </p>
         </div>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
@@ -61,15 +61,17 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-night-800/60 bg-night-950/95 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-[var(--tw-border)] bg-[var(--tw-header-bg)] backdrop-blur-xl">
       <div className="container-px flex h-16 items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label={i18n.t('nav.brand')}>
+        {/* Logo */}
+        <Link to="/" className="flex shrink-0 items-center gap-2.5" aria-label={i18n.t('nav.brand')}>
           <Logo className="h-9 w-9 rounded-lg" />
-          <span className="hidden text-lg font-bold tracking-tight text-night-50 min-[344px]:inline">
+          <span className="hidden text-lg font-bold tracking-tight text-[var(--tw-text)] min-[344px]:inline">
             {i18n.t('nav.brand')}
           </span>
         </Link>
 
+        {/* Desktop Nav */}
         <nav className="hidden items-center gap-0.5 lg:flex">
           {navLinks.map((link) => (
             <NavLink
@@ -79,7 +81,9 @@ export function Header() {
               className={({ isActive }) =>
                 cn(
                   'rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors',
-                  isActive ? 'bg-brand-600/15 text-brand-400' : 'text-night-300 hover:bg-night-800/60 hover:text-night-50',
+                  isActive
+                    ? 'bg-brand-500/10 text-brand-500'
+                    : 'text-[var(--tw-text-muted)] hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]',
                 )
               }
             >
@@ -88,59 +92,65 @@ export function Header() {
           ))}
         </nav>
 
+        {/* Actions */}
         <div className="flex items-center gap-1">
+          {/* Language */}
           <button
             onClick={toggleLanguage}
-            className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-bold text-night-300 transition-colors hover:bg-night-800/60 hover:text-night-50"
+            className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
             aria-label="language"
           >
             <Languages className="h-4 w-4" />
             <span>{i18n.t('nav.language')}</span>
           </button>
+
+          {/* Theme */}
           <button
             onClick={toggleTheme}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-night-300 transition-colors hover:bg-night-800/60 hover:text-night-50"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
             aria-label="theme"
           >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
           </button>
 
+          {/* Cart */}
           <button
             onClick={() => dispatch(setCartOpen(true))}
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-night-300 transition-colors hover:bg-night-800/60 hover:text-night-50"
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
             aria-label="cart"
           >
-            <ShoppingCart className="h-5 w-5" />
+            <ShoppingCart className="h-[18px] w-[18px]" />
             {cartCount > 0 ? (
-              <span className="absolute -top-0.5 -end-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-bold text-white">
+              <span className="absolute -end-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-white">
                 {cartCount}
               </span>
             ) : null}
           </button>
 
+          {/* User / Login */}
           {token && user ? (
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setUserMenu((v) => !v)}
-                className="flex h-10 items-center gap-2 rounded-xl px-2 transition-colors hover:bg-night-800"
+                className="flex h-10 items-center gap-2 rounded-lg px-2 transition-colors hover:bg-[var(--tw-hover)]"
                 aria-label="account"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white shadow-sm">
                   {user.fullName.trim().charAt(0) || 'U'}
                 </span>
-                {userMenu ? <X className="h-4 w-4 text-night-300" /> : <UserIcon className="h-4 w-4 text-night-300" />}
+                {userMenu ? <X className="h-4 w-4 text-[var(--tw-text-muted)]" /> : <UserIcon className="h-4 w-4 text-[var(--tw-text-muted)]" />}
               </button>
               {userMenu ? (
-                <div className="absolute end-0 top-12 w-52 overflow-hidden rounded-xl border border-night-800 bg-night-900 py-1.5 shadow-2xl">
-                  <div className="border-b border-night-800 px-4 py-2.5">
-                    <p className="truncate text-sm font-bold text-night-50">{user.fullName}</p>
-                    <p className="truncate text-xs text-night-400">{user.email}</p>
+                <div className="absolute end-0 top-12 w-56 overflow-hidden rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] py-1.5 shadow-2xl">
+                  <div className="border-b border-[var(--tw-border)] px-4 py-3">
+                    <p className="truncate text-sm font-semibold text-[var(--tw-text)]">{user.fullName}</p>
+                    <p className="truncate text-xs text-[var(--tw-text-muted)]">{user.email}</p>
                   </div>
                   {(user.role === 'admin' || user.role === 'manager') ? (
                     <Link
                       to="/admin"
                       onClick={() => setUserMenu(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-night-200 hover:bg-night-800"
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-[var(--tw-text)] transition-colors hover:bg-[var(--tw-hover)]"
                     >
                       <LayoutDashboard className="h-4 w-4" />
                       {i18n.t('nav.admin')}
@@ -149,14 +159,15 @@ export function Header() {
                   <Link
                     to="/orders"
                     onClick={() => setUserMenu(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-night-200 hover:bg-night-800"
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-[var(--tw-text)] transition-colors hover:bg-[var(--tw-hover)]"
                   >
                     <ShoppingCart className="h-4 w-4" />
                     {i18n.t('order.title')}
                   </Link>
+                  <div className="my-1 border-t border-[var(--tw-border)]" />
                   <button
                     onClick={handleLogout}
-                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-semibold text-red-400 hover:bg-night-800"
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10"
                   >
                     <LogOut className="h-4 w-4" />
                     {i18n.t('nav.logout')}
@@ -167,15 +178,16 @@ export function Header() {
           ) : (
             <Link
               to="/login"
-              className="hidden h-10 items-center gap-1.5 rounded-xl bg-brand-600 px-4 text-sm font-bold text-white transition-colors hover:bg-brand-700 sm:flex"
+              className="hidden h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-all hover:bg-brand-700 sm:flex"
             >
               {i18n.t('nav.login')}
             </Link>
           )}
 
+          {/* Mobile Menu */}
           <button
             onClick={() => dispatch(setMobileOpen(!mobileOpen))}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-night-200 hover:bg-night-800 lg:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--tw-text)] transition-colors hover:bg-[var(--tw-hover)] lg:hidden"
             aria-label="menu"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
@@ -183,8 +195,9 @@ export function Header() {
         </div>
       </div>
 
+      {/* Mobile Nav */}
       {mobileOpen ? (
-        <nav className="border-t border-night-800 bg-night-950 px-4 py-3 lg:hidden">
+        <nav className="border-t border-[var(--tw-border)] bg-[var(--tw-bg)] px-4 py-3 lg:hidden">
           <div className="flex flex-col gap-1">
             {navLinks.map((link) => (
               <NavLink
@@ -195,7 +208,9 @@ export function Header() {
                 className={({ isActive }) =>
                   cn(
                     'rounded-lg px-3 py-2.5 text-base font-semibold transition-colors',
-                    isActive ? 'bg-night-800 text-brand-500' : 'text-night-200 hover:text-night-50',
+                    isActive
+                      ? 'bg-brand-500/10 text-brand-500'
+                      : 'text-[var(--tw-text)] hover:bg-[var(--tw-hover)]',
                   )
                 }
               >
@@ -206,7 +221,7 @@ export function Header() {
               <Link
                 to="/login"
                 onClick={() => dispatch(setMobileOpen(false))}
-                className="mt-2 flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-base font-bold text-white"
+                className="mt-2 flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-base font-bold text-white transition-colors hover:bg-brand-700"
               >
                 {i18n.t('nav.login')}
               </Link>

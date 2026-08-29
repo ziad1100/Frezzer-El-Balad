@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -13,7 +13,7 @@ import {
 import { setCartOpen } from '@/store/slices/uiSlice';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/Card';
-import { cn, formatPrice } from '@/lib/utils';
+import { formatPrice } from '@/lib/utils';
 
 export function CartDrawer() {
   const { t, i18n } = useTranslation();
@@ -39,35 +39,37 @@ export function CartDrawer() {
     <AnimatePresence>
       {open ? (
         <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 bg-night-950/70 backdrop-blur-sm" onClick={() => dispatch(setCartOpen(false))} />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => dispatch(setCartOpen(false))} />
           <motion.aside
-            className="absolute inset-y-0 inset-e-0 flex w-full max-w-md flex-col border-s border-night-700/80 bg-night-900 shadow-xl shadow-black/20"
+            className="absolute inset-y-0 inset-e-0 flex w-full max-w-md flex-col border-s border-[var(--tw-border-strong)] bg-[var(--tw-surface)] shadow-2xl"
             initial={{ x: i18n.dir() === 'rtl' ? '100%' : '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: i18n.dir() === 'rtl' ? '100%' : '-100%' }}
             transition={{ type: 'tween', duration: 0.3 }}
           >
-            <div className="flex items-center justify-between border-b border-night-700/50 px-5 py-3.5">
-              <h2 className="flex items-center gap-2 text-base font-bold text-night-50">
-                <ShoppingBag className="h-4 w-4 text-brand-400" />
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--tw-border)] px-5 py-4">
+              <h2 className="flex items-center gap-2 text-base font-bold text-[var(--tw-text)]">
+                <ShoppingBag className="h-4 w-4 text-brand-500" />
                 {t('cart.title')}
               </h2>
               <button
                 onClick={() => dispatch(setCartOpen(false))}
-                className="rounded-lg p-1.5 text-night-400 hover:bg-night-800 hover:text-night-50"
+                className="rounded-lg p-1.5 text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
                 aria-label="close"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {lines.length === 0 ? (                <div className="flex flex-1 flex-col items-center justify-center px-6">
+            {lines.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center px-6">
                 <EmptyState
                   icon={<ShoppingBag className="h-12 w-12" />}
                   title={t('cart.empty')}
                   hint={t('cart.emptyHint')}
                   action={
-                    <Button onClick={() => goTo('/menu')} variant="gold">
+                    <Button onClick={() => goTo('/menu')} variant="fresh">
                       {t('cart.browseMenu')}
                     </Button>
                   }
@@ -75,48 +77,49 @@ export function CartDrawer() {
               </div>
             ) : (
               <>
-                <div className="flex-1 space-y-4 overflow-y-auto p-5">
+                {/* Items */}
+                <div className="flex-1 space-y-3 overflow-y-auto p-5">
                   {lines.map((line, index) => (
-                    <div key={`${line.productId}-${line.size ?? ''}`} className="flex gap-3 rounded-lg border border-night-800/60 bg-night-950/60 p-3">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-night-800/60">
+                    <div key={`${line.productId}-${line.size ?? ''}`} className="flex gap-3 rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-3">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--tw-hover)]">
                         {line.image ? (
                           <img src={line.image} alt={line.name} className="h-full w-full object-cover" />
                         ) : (
-                          <ShoppingBag className="h-6 w-6 text-night-500" />
+                          <ShoppingBag className="h-6 w-6 text-[var(--tw-text-muted)]" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="truncate text-sm font-semibold text-night-50">
+                          <p className="truncate text-sm font-semibold text-[var(--tw-text)]">
                             {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
                           </p>
                           <button
                             onClick={() => dispatch(removeLine(index))}
-                            className="text-night-500 transition-colors hover:text-red-400"
+                            className="text-[var(--tw-text-muted)] transition-colors hover:text-red-400"
                             aria-label={t('cart.remove')}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
-                        {line.sizeName ? <p className="text-xs text-night-400">{line.sizeName}</p> : null}
+                        {line.sizeName ? <p className="text-xs text-[var(--tw-text-muted)]">{line.sizeName}</p> : null}
                         {line.extras.length > 0 ? (
-                          <p className="truncate text-xs text-night-500">
+                          <p className="truncate text-xs text-[var(--tw-text-muted)]">
                             {line.extras.map((e) => e.name).join(' + ')}
                           </p>
                         ) : null}
                         <div className="mt-2 flex items-center justify-between">
-                          <div className="flex items-center gap-1 rounded-lg border border-night-700/60">
+                          <div className="flex items-center gap-1 rounded-lg border border-[var(--tw-border-strong)]">
                             <button
                               onClick={() => dispatch(updateQty({ index, qty: line.qty + 1 }))}
-                              className="p-1.5 text-night-300 hover:text-brand-500"
+                              className="p-1.5 text-[var(--tw-text-muted)] hover:text-brand-500"
                               aria-label="plus"
                             >
                               <Plus className="h-3.5 w-3.5" />
                             </button>
-                            <span className="min-w-6 text-center text-sm font-bold text-night-50">{line.qty}</span>
+                            <span className="min-w-6 text-center text-sm font-bold text-[var(--tw-text)]">{line.qty}</span>
                             <button
                               onClick={() => dispatch(updateQty({ index, qty: line.qty - 1 }))}
-                              className="p-1.5 text-night-300 hover:text-brand-500"
+                              className="p-1.5 text-[var(--tw-text-muted)] hover:text-brand-500"
                               aria-label="minus"
                             >
                               <Minus className="h-3.5 w-3.5" />
@@ -131,10 +134,11 @@ export function CartDrawer() {
                   ))}
                 </div>
 
-                <div className="border-t border-night-700/50 p-5">
+                {/* Footer */}
+                <div className="border-t border-[var(--tw-border)] p-5">
                   <div className="mb-4 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-night-300">{t('cart.subtotal')}</span>
-                    <span className="text-base font-extrabold text-night-50">{formatPrice(subtotal, i18n.language)}</span>
+                    <span className="text-sm font-semibold text-[var(--tw-text-muted)]">{t('cart.subtotal')}</span>
+                    <span className="text-base font-extrabold text-[var(--tw-text)]">{formatPrice(subtotal, i18n.language)}</span>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -146,8 +150,8 @@ export function CartDrawer() {
                       {t('cart.clear')}
                     </Button>
                     <Button
-                      variant="gold"
-                      className={cn('flex-2')}
+                      variant="fresh"
+                      className="flex-[2]"
                       onClick={() => goTo('/checkout')}
                     >
                       {t('cart.checkout')}
