@@ -320,16 +320,16 @@ export function AdminIndexPage() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map(({ key, value, icon: Icon }) => (
             <Card key={key}>
-              <CardContent className="flex items-center gap-4 p-5">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-600/15 text-brand-500">
-                  <Icon className="h-6 w-6" />
+              <CardContent className="flex items-center gap-3 p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-600/15 text-brand-400">
+                  <Icon className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-sm text-night-400">{key}</p>
-                  <p className="mt-0.5 text-2xl font-extrabold text-night-50">{value}</p>
+                  <p className="text-xs text-night-400">{key}</p>
+                  <p className="mt-0.5 text-xl font-extrabold text-night-50">{value}</p>
                 </div>
               </CardContent>
             </Card>
@@ -338,18 +338,18 @@ export function AdminIndexPage() {
       )}
 
       {/* Sales / Outgoing & Inventory Stats */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Sales / Outgoing Value */}
         <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600/15 text-emerald-500">
-              <TrendingUp className="h-6 w-6" />
+          <CardContent className="flex items-center gap-3 p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600/15 text-emerald-400">
+              <TrendingUp className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm text-night-400">
+              <p className="text-xs text-night-400">
                 {lang === 'ar' ? 'المبيعات / المنصرف' : 'Sales / Outgoing'}
               </p>
-              <p className="mt-0.5 text-2xl font-extrabold text-night-50">
+              <p className="mt-0.5 text-xl font-extrabold text-night-50">
                 {salesStats.data ? formatPrice(salesStats.data.salesValue, lang) : '—'}
               </p>
               {salesStats.data && (
@@ -363,15 +363,15 @@ export function AdminIndexPage() {
 
         {/* Purchases */}
         <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-600/15 text-violet-500">
-              <Package className="h-6 w-6" />
+          <CardContent className="flex items-center gap-3 p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-600/15 text-violet-400">
+              <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm text-night-400">
+              <p className="text-xs text-night-400">
                 {lang === 'ar' ? 'المشتريات' : 'Purchases'}
               </p>
-              <p className="mt-0.5 text-2xl font-extrabold text-night-50">
+              <p className="mt-0.5 text-xl font-extrabold text-night-50">
                 {purchaseStats.data ? formatPrice(purchaseStats.data.totalCost, lang) : '—'}
               </p>
               {purchaseStats.data && (
@@ -385,15 +385,15 @@ export function AdminIndexPage() {
 
         {/* Available Stock */}
         <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600/15 text-blue-500">
-              <Package className="h-6 w-6" />
+          <CardContent className="flex items-center gap-3 p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600/15 text-blue-400">
+              <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm text-night-400">
+              <p className="text-xs text-night-400">
                 {lang === 'ar' ? 'المخزون المتاح' : 'Available Stock'}
               </p>
-              <p className="mt-0.5 text-2xl font-extrabold text-night-50">
+              <p className="mt-0.5 text-xl font-extrabold text-night-50">
                 {inventoryStats.data ? inventoryStats.data.totalStockQuantity : '—'}
               </p>
               {inventoryStats.data && (
@@ -407,15 +407,15 @@ export function AdminIndexPage() {
 
         {/* Low Stock */}
         <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-600/15 text-amber-500">
-              <Package className="h-6 w-6" />
+          <CardContent className="flex items-center gap-3 p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-600/15 text-amber-400">
+              <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm text-night-400">
+              <p className="text-xs text-night-400">
                 {lang === 'ar' ? 'مخزون منخفض' : 'Low Stock'}
               </p>
-              <p className="mt-0.5 text-2xl font-extrabold text-amber-400">
+              <p className="mt-0.5 text-xl font-extrabold text-amber-400">
                 {inventoryStats.data ? inventoryStats.data.lowStockCount : '—'}
               </p>
             </div>
@@ -424,15 +424,15 @@ export function AdminIndexPage() {
 
         {/* Out of Stock */}
         <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-600/15 text-red-500">
-              <Package className="h-6 w-6" />
+          <CardContent className="flex items-center gap-3 p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600/15 text-red-400">
+              <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm text-night-400">
+              <p className="text-xs text-night-400">
                 {lang === 'ar' ? 'غير متوفر' : 'Out of Stock'}
               </p>
-              <p className="mt-0.5 text-2xl font-extrabold text-red-400">
+              <p className="mt-0.5 text-xl font-extrabold text-red-400">
                 {inventoryStats.data ? inventoryStats.data.outOfStockCount : '—'}
               </p>
             </div>
@@ -440,16 +440,16 @@ export function AdminIndexPage() {
         </Card>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-bold text-night-200">{t('admin.financialTitle')}</h3>
+          <CardContent className="p-4">
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.financialTitle')}</h3>
             {financial.length > 0 ? (
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
                 {financial.map(({ key, value, tone }) => (
                   <div key={key}>
-                    <dt className="text-xs text-night-500">{key}</dt>
-                    <dd className={`mt-0.5 text-lg font-extrabold ${tone}`}>{value}</dd>
+                    <dt className="text-[11px] text-night-500">{key}</dt>
+                    <dd className={`mt-0.5 text-sm font-bold ${tone}`}>{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -460,9 +460,9 @@ export function AdminIndexPage() {
         </Card>
 
         <Card>
-          <CardContent className="p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-bold text-night-200">{t('admin.dailyTitle')}</h3>
+          <CardContent className="p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.dailyTitle')}</h3>
               <Input
                 type="date"
                 value={day}
@@ -481,14 +481,14 @@ export function AdminIndexPage() {
                 retryLabel={t('common.retry')}
               />
             ) : dayRows.length > 0 ? (
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
                 {dayRows.map(({ key, value }) => (
                   <div key={key}>
-                    <dt className="flex items-center gap-1.5 text-xs text-night-500">
-                      <CalendarDays className="h-3.5 w-3.5" />
+                    <dt className="flex items-center gap-1.5 text-[11px] text-night-500">
+                      <CalendarDays className="h-3 w-3" />
                       {key}
                     </dt>
-                    <dd className="mt-0.5 text-lg font-extrabold text-night-50">{value}</dd>
+                    <dd className="mt-0.5 text-sm font-bold text-night-50">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -499,25 +499,25 @@ export function AdminIndexPage() {
         </Card>
       </div>
 
-      <Card className="mt-6">
-        <CardContent className="p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h3 className="flex items-center gap-2 text-sm font-bold text-night-200">
+      <Card className="mt-5">
+        <CardContent className="p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-night-400">
               <Star className="h-4 w-4 text-gold-400" />
               {t('admin.reviewsOverview')}
             </h3>
-            <Link to="/admin/reviews" className="text-sm font-bold text-brand-500 hover:text-brand-400">
+            <Link to="/admin/reviews" className="text-xs font-bold text-brand-400 hover:text-brand-300">
               {t('admin.nav.reviews')}
             </Link>
           </div>
           {reviewStats.isLoading ? (
             <Skeleton className="h-28" />
           ) : reviewStats.data ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
               {reviewTiles.map(({ label, value, tone }) => (
-                <div key={label} className="rounded-xl border border-night-800 bg-night-950/60 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-night-500">{label}</p>
-                  <p className={cn('mt-1 text-2xl font-extrabold text-night-50', tone)} dir="ltr">
+                <div key={label} className="rounded-lg border border-night-800/60 bg-night-950/40 px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-night-500">{label}</p>
+                  <p className={cn('mt-0.5 text-base font-bold text-night-50', tone)} dir="ltr">
                     {value}
                   </p>
                 </div>
@@ -527,16 +527,16 @@ export function AdminIndexPage() {
         </CardContent>
       </Card>
 
-      <div className="mt-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-night-50">{t('admin.periodTitle')}</h2>
-          <div className="inline-flex rounded-xl border border-night-800 bg-night-900 p-1">
+      <div className="mt-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold text-night-50">{t('admin.periodTitle')}</h2>
+          <div className="inline-flex rounded-lg border border-night-800/60 bg-night-900/80 p-0.5">
             {(['today', 'week', 'month'] as PeriodKey[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={cn(
-                  'rounded-lg px-4 py-1.5 text-sm font-bold transition-colors',
+                  'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
                   period === p ? 'bg-brand-600 text-white' : 'text-night-300 hover:text-night-50',
                 )}
               >
@@ -546,31 +546,31 @@ export function AdminIndexPage() {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {periodCards.map(({ key, value, icon: Icon }) => (
             <Card key={key}>
-              <CardContent className="flex items-center gap-4 p-5">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-600/15 text-brand-500">
-                  <Icon className="h-6 w-6" />
+              <CardContent className="flex items-center gap-3 p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-600/15 text-brand-400">
+                  <Icon className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-sm text-night-400">{key}</p>
-                  <p className="mt-0.5 text-2xl font-extrabold text-night-50">{value}</p>
+                  <p className="text-xs text-night-400">{key}</p>
+                  <p className="mt-0.5 text-xl font-extrabold text-night-50">{value}</p>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <Card>
-            <CardContent className="p-5">
-              <h3 className="mb-4 text-sm font-bold text-night-200">{t('admin.topProducts')}</h3>
+            <CardContent className="p-4">
+              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.topProducts')}</h3>
               {periodTop.length > 0 ? (
-                <ul className="space-y-3">
+                <ul className="space-y-2">
                   {periodTop.map((p) => (
-                    <li key={`${p._id}-${p.name}`} className="flex items-center justify-between gap-3">
-                      <span className="min-w-0 truncate text-sm font-semibold text-night-200">{p.name}</span>
+                    <li key={`${p._id}-${p.name}`} className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-xs font-medium text-night-200">{p.name}</span>
                       <span className="shrink-0 text-xs text-night-500">
                         {p.count}× · {formatPrice(p.revenue, lang)}
                       </span>
@@ -584,8 +584,8 @@ export function AdminIndexPage() {
           </Card>
 
           <Card>
-            <CardContent className="p-5">
-              <h3 className="mb-4 text-sm font-bold text-night-200">
+            <CardContent className="p-4">
+              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">
                 {period === 'today' ? t('admin.unitsToday') : period === 'month' ? t('admin.unitsThisMonth') : t('admin.unitsTrend', { days: 7 })}
               </h3>
               {unitsWindow.length > 0 ? (
@@ -611,11 +611,11 @@ export function AdminIndexPage() {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
         {trendData.length > 0 ? (
           <Card className="lg:col-span-1">
-            <CardContent className="p-5">
-              <h3 className="mb-4 text-sm font-bold text-night-200">{t('admin.last7Days')}</h3>
+            <CardContent className="p-4">
+              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.last7Days')}</h3>
               <div className="flex h-40 items-end gap-2">
                 {trendData.map((d) => {
                   const max = Math.max(...trendData.map((x) => x.revenue), 1);
@@ -635,10 +635,10 @@ export function AdminIndexPage() {
         ) : null}
 
         <Card className="lg:col-span-1">
-          <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-bold text-night-200">{t('admin.statusTitle')}</h3>
+          <CardContent className="p-4">
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.statusTitle')}</h3>
             {statuses.length > 0 ? (
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 {statuses.map((s) => (
                   <li key={s.status} className="flex items-center justify-between gap-3">
                     <StatusBadge status={s.status} />
@@ -653,10 +653,10 @@ export function AdminIndexPage() {
         </Card>
 
         <Card className="lg:col-span-1">
-          <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-bold text-night-200">{t('admin.topProducts')}</h3>
+          <CardContent className="p-4">
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-night-400">{t('admin.topProducts')}</h3>
             {top.length > 0 ? (
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 {top.map((p) => (
                   <li key={p._id} className="flex items-center justify-between gap-3">
                     <span className="min-w-0 truncate text-sm font-semibold text-night-200">{p.name}</span>
