@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Flame, Heart, Minus, Plus, ShoppingBag } from 'lucide-react';
@@ -35,16 +35,11 @@ export function ProductCard({ product }: { product: Product }) {
   const handleAdd = (): void => {
     dispatch(
       addLine({
-        productId: product._id,
-        name: product.name,
-        nameEn: product.nameEn,
-        image: image ?? '',
-        slug: product.slug,
+        productId: product._id, name: product.name, nameEn: product.nameEn,
+        image: image ?? '', slug: product.slug,
         size: cheapestSize?._id ?? null,
         sizeName: cheapestSize ? (i18n.language === 'ar' ? cheapestSize.name : cheapestSize.nameEn || cheapestSize.name) : '',
-        extras: [],
-        qty: 1,
-        unitPrice: price,
+        extras: [], qty: 1, unitPrice: price,
       }),
     );
   };
@@ -59,9 +54,10 @@ export function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <div className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-night-800/60 bg-night-900/80 transition-all duration-200 hover:-translate-y-0.5 hover:border-night-700 hover:shadow-lg hover:shadow-black/20">
+    <div className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10">
       <Link to={`/product/${product.slug}`} className="flex flex-1 flex-col">
-        <div className="relative aspect-[4/3] overflow-hidden bg-night-800/60">
+        {/* Image */}
+        <div className="relative aspect-[4/3] overflow-hidden bg-[var(--tw-surface-alt)]">
           {image ? (
             <img
               src={image}
@@ -71,7 +67,7 @@ export function ProductCard({ product }: { product: Product }) {
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <ShoppingBag className="h-12 w-12 text-night-600" />
+              <ShoppingBag className="h-12 w-12 text-[var(--tw-text-muted)]" />
             </div>
           )}
           {product.isBestSeller ? (
@@ -82,20 +78,17 @@ export function ProductCard({ product }: { product: Product }) {
           ) : null}
           <span
             aria-hidden="true"
-            className="absolute inset-0 flex items-center justify-center bg-night-950/0 opacity-0 transition-all duration-300 group-hover:bg-night-950/30 group-hover:opacity-100"
+            className="absolute inset-0 flex items-center justify-center bg-[var(--tw-bg)]/0 opacity-0 transition-all duration-300 group-hover:bg-[var(--tw-bg)]/30 group-hover:opacity-100"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm">
               <ShoppingBag className="h-5 w-5" />
             </span>
           </span>
           <button
-            onClick={(e) => {
-              e.preventDefault();
-              dispatch(toggleWishlist(product._id));
-            }}
+            onClick={(e) => { e.preventDefault(); dispatch(toggleWishlist(product._id)); }}
             className={cn(
               'absolute inset-e-3 top-3 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors',
-              isWished ? 'bg-brand-600 text-white' : 'bg-night-950/70 text-night-200 hover:text-brand-500',
+              isWished ? 'bg-brand-500 text-white' : 'bg-[var(--tw-bg)]/70 text-[var(--tw-text)] hover:text-brand-500',
             )}
             aria-label="wishlist"
           >
@@ -103,8 +96,9 @@ export function ProductCard({ product }: { product: Product }) {
           </button>
         </div>
 
+        {/* Info */}
         <div className="flex flex-1 flex-col gap-1.5 p-3.5">
-          <h3 className="line-clamp-1 text-sm font-semibold text-night-50 transition-colors group-hover:text-brand-400">
+          <h3 className="line-clamp-1 text-sm font-semibold text-[var(--tw-text)] transition-colors group-hover:text-brand-500">
             {i18n.language === 'ar' ? product.name : product.nameEn || product.name}
           </h3>
           {product.labels && product.labels.length > 0 ? (
@@ -123,7 +117,7 @@ export function ProductCard({ product }: { product: Product }) {
                 </span>
               ))}
               {product.labels.length > 3 ? (
-                <span className="inline-flex items-center rounded-full bg-night-800 px-1.5 py-0.5 text-[10px] font-semibold text-night-400">
+                <span className="inline-flex items-center rounded-full bg-[var(--tw-surface-alt)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--tw-text-muted)]">
                   +{product.labels.length - 3}
                 </span>
               ) : null}
@@ -132,47 +126,47 @@ export function ProductCard({ product }: { product: Product }) {
           {product.reviewsCount > 0 ? (
             <div className="flex items-center gap-1.5">
               <StarRating value={Math.round(product.rating)} readOnly size="sm" ariaLabel={commonT('review.averageRating')} />
-              <span className="text-xs font-bold text-night-300" dir="ltr">
+              <span className="text-xs font-bold text-[var(--tw-text-muted)]" dir="ltr">
                 {product.rating.toFixed(1)}
               </span>
-              <span className="text-xs text-night-500">{commonT('review.reviews', { count: product.reviewsCount })}</span>
+              <span className="text-xs text-[var(--tw-text-muted)]">{commonT('review.reviews', { count: product.reviewsCount })}</span>
             </div>
           ) : (
-            <p className="text-xs text-night-500">{commonT('review.noReviews')}</p>
+            <p className="text-xs text-[var(--tw-text-muted)]">{commonT('review.noReviews')}</p>
           )}
-          <p className="line-clamp-1 text-sm text-night-400">
+          <p className="line-clamp-1 text-sm text-[var(--tw-text-muted)]">
             {i18n.language === 'ar' ? product.description : product.descriptionEn || product.description}
           </p>
         </div>
       </Link>
 
+      {/* Price + Add to Cart */}
       <div className="px-3.5 pb-3.5">
         <div className="flex items-center justify-between pt-1.5">
           <div>
-            <span className="text-sm font-extrabold text-brand-400">
+            <span className="text-sm font-extrabold text-brand-500">
               {formatPrice(price, i18n.language)}
             </span>
-            <span className="ms-1 text-xs text-night-500">{commonT('common.from')}</span>
+            <span className="ms-1 text-xs text-[var(--tw-text-muted)]">{commonT('common.from')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleSub}
               disabled={inCartQty === 0}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-night-700/60 text-night-300 transition-colors hover:border-night-500 hover:text-night-50 disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] transition-colors hover:border-[var(--tw-border-strong)] hover:text-[var(--tw-text)] disabled:cursor-not-allowed disabled:opacity-30"
               aria-label={commonT('cart.remove')}
             >
               <Minus className="h-5 w-5" />
             </button>
             <button
               onClick={handleAdd}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white transition-colors hover:bg-brand-700"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-white transition-colors hover:bg-brand-600"
               aria-label={commonT('menu.addToCart')}
             >
               <Plus className="h-5 w-5" />
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
