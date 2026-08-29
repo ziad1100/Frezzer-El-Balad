@@ -6,13 +6,22 @@ import { ROLES } from '../constants';
 
 const router = Router();
 
-// POST /api/system/reset — admin only
+// POST /api/system/reset — admin only (revenue/sales reset)
 router.post(
   '/reset',
   requireAuth,
   requireRole(ROLES.ADMIN),
   invalidateCache('dashboard'),
   systemReset.systemResetHandler,
+);
+
+// POST /api/system/reset-purchases — admin only (purchases reset)
+router.post(
+  '/reset-purchases',
+  requireAuth,
+  requireRole(ROLES.ADMIN),
+  invalidateCache('dashboard'),
+  systemReset.resetPurchasesHandler,
 );
 
 export default router;

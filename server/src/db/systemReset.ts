@@ -75,3 +75,30 @@ export const systemReset = async (): Promise<{
     };
   });
 };
+
+/**
+ * Reset only purchase records. Preserves everything else.
+ *
+ * What gets CLEARED:
+ *   - All rows in `purchases` table
+ *
+ * What is PRESERVED:
+ *   - Products, categories, sizes, extras
+ *   - Orders, order_items
+ *   - Carts, cart_items
+ *   - Stock movements (historical record)
+ *   - Users, reviews, settings, etc.
+ *
+ * NOTE: We do NOT touch inventory stockQuantity because purchase
+ * records are additive (each purchase increases stock). Deleting
+ * purchase records without reversing stock would leave inventory
+ * inconsistent. The existing architecture records purchases as
+ * one-shot events — the admin must manually adjust stock if needed.
+ */
+export const resetPurchases = async (): Promise<{ purchasesDeleted: number }> => {
+  return await withTransaction(async (tx) => {
+    const result = await tx.query('DELETE FROM purchases');
+    const purchasesDeleted = result.rowCount ?? 0;
+    return { purchasesDeleted };
+  });
+};

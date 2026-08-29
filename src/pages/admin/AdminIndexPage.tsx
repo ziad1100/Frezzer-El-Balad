@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Banknote, CalendarDays, Download, Eraser, Package, RefreshCw, ShoppingBag, Star, TrendingUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, getInventoryStats, getPurchaseStats, getSalesStats, refreshDashboard, systemReset } from '@/api/admin';
+import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, getInventoryStats, getPurchaseStats, getSalesStats, refreshDashboard, resetPurchases, systemReset } from '@/api/admin';
 import { exportMovementReport, getMovementReport, type MovementReport } from '@/api/stock-movements';
 import { getErrorMessage } from '@/lib/api';
 import { Card, CardContent, EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
@@ -78,6 +78,33 @@ export function AdminIndexPage() {
   const closeClearModal = () => {
     setConfirmClear(false);
     setResetTyped('');
+  };
+
+  // Purchase Reset
+  const [confirmPurchaseReset, setConfirmPurchaseReset] = useState(false);
+  const [purchaseResetTyped, setPurchaseResetTyped] = useState('');
+
+  const purchaseResetMutation = useMutation({
+    mutationFn: resetPurchases,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', 'purchases'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'inventory'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'sales'] }),
+      ]);
+      toast.success(lang === 'ar' ? 'تم تصفير المشتريات بنجاح' : 'Purchases reset successfully');
+      setConfirmPurchaseReset(false);
+      setPurchaseResetTyped('');
+    },
+    onError: (error: Error) => {
+      console.error('[purchases] reset error:', error);
+      toast.error(lang === 'ar' ? 'فشل تصفير المشتريات' : 'Failed to reset purchases');
+    },
+  });
+
+  const closePurchaseResetModal = () => {
+    setConfirmPurchaseReset(false);
+    setPurchaseResetTyped('');
   };
 
   const [exportPeriod, setExportPeriod] = useState<PeriodKey | 'custom'>('today');
@@ -240,6 +267,17 @@ export function AdminIndexPage() {
             >
               <Eraser className="h-4 w-4" />
               {t('admin.systemReset')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              loading={purchaseResetMutation.isPending}
+              disabled={purchaseResetMutation.isPending}
+              onClick={() => setConfirmPurchaseReset(true)}
+              title={lang === 'ar' ? 'تصفير المشتريات' : 'Reset Purchases'}
+            >
+              <Eraser className="h-4 w-4" />
+              {lang === 'ar' ? 'تصفير المشتريات' : 'Reset Purchases'}
             </Button>
             <Button
               variant="outline"
@@ -683,6 +721,56 @@ export function AdminIndexPage() {
             onClick={() => clearMutation.mutate()}
           >
             {t('admin.systemReset')}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Purchase Reset Modal */}
+      <Modal open={confirmPurchaseReset} onClose={closePurchaseResetModal} title={lang === 'ar' ? 'تصفير المشتريات' : 'Reset Purchases'} size="sm">
+        <div className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm leading-relaxed text-night-200">
+          <p className="mb-2 font-bold text-amber-400">⚠️ {lang === 'ar' ? 'هل أنت متأكد من تصفير المشتريات؟' : 'Are you sure you want to reset purchases?'}</p>
+          <p>{lang === 'ar' ? 'سيتم تصفير بيانات المشتريات فقط.' : 'Only purchase data will be cleared.'}</p>
+          <div className="mt-3">
+            <p className="mb-1 text-xs font-bold text-red-400">{lang === 'ar' ? 'سيتم مسح:' : 'Will be cleared:'}</p>
+            <ul className="list-inside list-disc space-y-0.5 text-xs text-night-300">
+              <li>{lang === 'ar' ? 'جميع سجلات المشتريات' : 'All purchase records'}</li>
+              <li>{lang === 'ar' ? 'إجمالي تكلفة المشتريات' : 'Total purchase cost'}</li>
+              <li>{lang === 'ar' ? 'عدد المشتريات' : 'Purchase count'}</li>
+            </ul>
+            <p className="mt-2 mb-1 text-xs font-bold text-emerald-400">{lang === 'ar' ? 'سيتم الحفاظ على:' : 'Will be preserved:'}</p>
+            <ul className="list-inside list-disc space-y-0.5 text-xs text-night-300">
+              <li>{lang === 'ar' ? 'المنتجات والأسعار' : 'Products and prices'}</li>
+              <li>{lang === 'ar' ? 'المخزون الحالي' : 'Current inventory'}</li>
+              <li>{lang === 'ar' ? 'الطلبات والعملاء' : 'Orders and customers'}</li>
+              <li>{lang === 'ar' ? 'البيانات الأخرى' : 'Other data'}</li>
+            </ul>
+          </div>
+        </div>
+        <div className="mb-5">
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-night-500">
+            {lang === 'ar' ? 'اكتب RESET للتأكيد' : 'Type RESET to confirm'}
+          </label>
+          <Input
+            value={purchaseResetTyped}
+            onChange={(e) => setPurchaseResetTyped(e.target.value)}
+            placeholder="RESET"
+            dir="ltr"
+            className="h-10 w-full font-mono text-center tracking-[0.3em]"
+            autoComplete="off"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={closePurchaseResetModal} disabled={purchaseResetMutation.isPending}>
+            {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={purchaseResetMutation.isPending}
+            disabled={purchaseResetTyped.trim().toUpperCase() !== 'RESET'}
+            onClick={() => purchaseResetMutation.mutate()}
+          >
+            {lang === 'ar' ? 'تأكيد التصفير' : 'Confirm Reset'}
           </Button>
         </div>
       </Modal>

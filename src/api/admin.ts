@@ -243,6 +243,16 @@ export interface SystemResetResult {
 export const systemReset = (): Promise<SystemResetResult> =>
   unwrap(api.post<ApiEnvelope<SystemResetResult>>('/system/reset'));
 
+export interface PurchasesResetResult {
+  ok: boolean;
+  summary: {
+    purchasesDeleted: number;
+  };
+}
+
+export const resetPurchases = (): Promise<PurchasesResetResult> =>
+  unwrap(api.post<ApiEnvelope<PurchasesResetResult>>('/system/reset-purchases'));
+
 export const exportDashboard = async (date?: string, period = 'today', startDate?: string, endDate?: string): Promise<{ blob: Blob; filename: string }> => {
   const res = await api.get<Blob>('/analytics/export', {
     params: { date: date || undefined, period, startDate: startDate || undefined, endDate: endDate || undefined },
