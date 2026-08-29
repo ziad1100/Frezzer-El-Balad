@@ -1,7 +1,7 @@
 ﻿import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Leaf, Phone, Snowflake, Star, Tag, Truck } from 'lucide-react';
+import { ArrowLeft, Clock, Leaf, Phone, Star, Tag, Truck } from 'lucide-react';
 import { getBestSellers, listProducts } from '@/api/products';
 import { getActiveOffers } from '@/api/offers';
 import { getRestaurantStats } from '@/api/reviews';
@@ -93,21 +93,7 @@ export function HomePage() {
               </div>
             </div>
           </div>
-          <div className="relative hidden items-center justify-center lg:flex">
-            <div className="animate-scale-in relative flex h-104 w-full max-w-lg items-center justify-center overflow-hidden rounded-3xl border border-night-800 bg-linear-to-br from-night-800 via-night-900 to-night-950 shadow-2xl">
-              <span className="absolute h-72 w-72 rounded-full bg-brand-600/25 blur-3xl" />
-              <span className="absolute h-48 w-48 rounded-full bg-gold-500/15 blur-2xl" />
-              <div className="relative flex flex-col items-center gap-4">
-                <span className="flex h-32 w-32 items-center justify-center rounded-full bg-brand-600 text-white shadow-2xl shadow-brand-600/40">
-                  <Snowflake className="h-16 w-16" />
-                </span>
-                <p className="text-lg font-extrabold text-brand-500">
-                  {t('hero.title')}
-                </p>
-                <p className="text-sm text-night-300">{t('hero.badge')}</p>
-              </div>
-            </div>
-          </div>
+
         </div>
       </section>
 
