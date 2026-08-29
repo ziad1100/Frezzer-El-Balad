@@ -7,51 +7,57 @@ import { Input, Label, Textarea } from '@/components/ui/Input';
 import { uploadImage } from '@/api/admin';
 import { cn } from '@/lib/utils';
 
+/* ── PageHeader ──────────────────────────────────────────────────── */
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h2 className="text-lg font-bold text-[var(--tw-text)]">{title}</h2>
-        {subtitle ? <p className="mt-0.5 text-xs text-[var(--tw-text-muted)]">{subtitle}</p> : null}
+        <h2 className="text-xl font-bold tracking-tight text-[var(--tw-text)]">{title}</h2>
+        {subtitle && <p className="mt-0.5 text-sm text-[var(--tw-text-muted)]">{subtitle}</p>}
       </div>
-      {action}
+      {action && <div className="flex items-center gap-2">{action}</div>}
     </div>
   );
 }
 
+/* ── TableWrap ────────────────────────────────────────────────────── */
 export function TableWrap({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface)]">
+    <div className="overflow-x-auto rounded-2xl border border-[var(--tw-border)] bg-[var(--tw-surface)]">
       <table className="w-full min-w-[640px] text-start text-sm">{children}</table>
     </div>
   );
 }
 
+/* ── Th ────────────────────────────────────────────────────────────── */
 export function Th({ children, className }: { children?: ReactNode; className?: string }) {
   return (
-    <th className={cn('px-3.5 py-2.5 text-start text-[11px] font-bold uppercase tracking-wider text-[var(--tw-text-muted)]', className)}>
+    <th className={cn('px-4 py-3 text-start text-[11px] font-bold uppercase tracking-wider text-[var(--tw-text-muted)] border-b border-[var(--tw-border)]', className)}>
       {children}
     </th>
   );
 }
 
+/* ── Td ────────────────────────────────────────────────────────────── */
 export function Td({ children, className, ...props }: ComponentProps<'td'>) {
   return (
-    <td className={cn('border-t border-[var(--tw-border)] px-3.5 py-2.5 align-middle text-[var(--tw-text-muted)]', className)} {...props}>
+    <td className={cn('border-b border-[var(--tw-border)]/50 px-4 py-3.5 align-middle text-[var(--tw-text-muted)]', className)} {...props}>
       {children}
     </td>
   );
 }
 
+/* ── SearchBox ────────────────────────────────────────────────────── */
 export function SearchBox({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div className="relative">
-      <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--tw-text-muted)]" />
-      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-9 w-56 ps-9 text-xs" />
+      <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--tw-text-subtle)]" />
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-10 w-60 ps-10 text-sm" />
     </div>
   );
 }
 
+/* ── Pagination ───────────────────────────────────────────────────── */
 export function Pagination({ page, pages, onPage }: { page: number; pages: number; onPage: (p: number) => void }) {
   if (pages <= 1) return null;
   return (
@@ -59,7 +65,7 @@ export function Pagination({ page, pages, onPage }: { page: number; pages: numbe
       <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
         <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
       </Button>
-      <span className="text-sm font-bold text-[var(--tw-text-muted)]">
+      <span className="min-w-[60px] text-center text-sm font-bold text-[var(--tw-text-muted)]">
         {page} / {pages}
       </span>
       <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>
@@ -69,6 +75,7 @@ export function Pagination({ page, pages, onPage }: { page: number; pages: numbe
   );
 }
 
+/* ── StatusBadge ──────────────────────────────────────────────────── */
 const statusStyles: Record<string, string> = {
   pending: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
   confirmed: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
@@ -87,7 +94,7 @@ export function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold capitalize',
+        'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold capitalize',
         statusStyles[status] ?? 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)]',
       )}
     >
@@ -96,6 +103,7 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
+/* ── ConfirmDialog ────────────────────────────────────────────────── */
 export function ConfirmDialog({
   open,
   onClose,
@@ -130,7 +138,7 @@ export function ConfirmDialog({
   return (
     <Modal open={open} onClose={onClose} title={title} size="sm">
       <p className="text-sm text-[var(--tw-text-muted)]">{message}</p>
-      {reasonLabel !== undefined ? (
+      {reasonLabel !== undefined && (
         <div className="mt-4">
           <Label className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{reasonLabel}</Label>
           <Textarea
@@ -141,7 +149,7 @@ export function ConfirmDialog({
             error={reasonRequired && (reason?.trim().length ?? 0) === 0}
           />
         </div>
-      ) : null}
+      )}
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>
           {t('common.cancel')}
@@ -154,6 +162,7 @@ export function ConfirmDialog({
   );
 }
 
+/* ── ToggleSwitch ─────────────────────────────────────────────────── */
 export function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
   return (
     <button
@@ -179,6 +188,7 @@ export function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean
   );
 }
 
+/* ── ImageUpload ──────────────────────────────────────────────────── */
 export function ImageUpload({ value, onChange, label }: { value: string; onChange: (url: string) => void; label?: string }) {
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
@@ -200,9 +210,9 @@ export function ImageUpload({ value, onChange, label }: { value: string; onChang
 
   return (
     <div>
-      {label ? <p className="mb-1.5 text-sm font-medium text-[var(--tw-text-muted)]">{label}</p> : null}
+      {label && <p className="mb-1.5 text-sm font-medium text-[var(--tw-text-muted)]">{label}</p>}
       <div className="flex items-center gap-3">
-        {value ? (
+        {value && (
           <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[var(--tw-border-strong)]">
             <img src={value} alt="" className="h-full w-full object-cover" />
             <button
@@ -214,20 +224,20 @@ export function ImageUpload({ value, onChange, label }: { value: string; onChang
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
-        ) : null}
+        )}
         <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[var(--tw-border-strong)] px-4 text-sm font-semibold text-[var(--tw-text-muted)] transition-colors hover:border-brand-500 hover:text-brand-400">
           <UploadCloud className="h-4 w-4" />
           {uploading ? t('common.loading') : t('admin.upload')}
           <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => void handleFile(e.target.files?.[0])} />
         </label>
       </div>
-      {error ? <p className="mt-1 text-sm text-red-400">{error}</p> : null}
-      {value ? (
+      {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
+      {value && (
         <p className="mt-1 flex items-center gap-1 text-xs text-emerald-400">
           <Check className="h-3.5 w-3.5" />
           {t('admin.uploaded')}
         </p>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -29,6 +29,7 @@ import {
   Users,
   X,
   Bell,
+  TrendingUp,
 } from 'lucide-react';
 import { Logo } from '@/components/logo/Logo';
 import { useAppDispatch, useAppSelector } from '@/hooks';
@@ -64,7 +65,7 @@ const navGroups: { label: string; items: { to: string; icon: typeof LayoutDashbo
     items: [
       { to: '/admin/orders', icon: ShoppingCart, label: 'admin.nav.orders' },
       { to: '/admin/payments', icon: CreditCard, label: 'admin.nav.payments' },
-      { to: '/admin/purchases', icon: Package, label: 'admin.nav.purchases' },
+      { to: '/admin/purchases', icon: TrendingUp, label: 'admin.nav.purchases' },
       { to: '/admin/reviews', icon: Star, label: 'admin.nav.reviews' },
       { to: '/admin/users', icon: Users, label: 'admin.nav.users' },
     ],
@@ -110,10 +111,10 @@ export function AdminLayout() {
 
   const sidebarContent = (onNavigate?: () => void) => (
     <>
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
         {navGroups.map((group) => (
           <div key={group.label}>
-            <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-[var(--tw-text-subtle)]">
               {t(group.label)}
             </p>
             <div className="space-y-0.5">
@@ -125,7 +126,7 @@ export function AdminLayout() {
                   onClick={onNavigate}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
                       isActive
                         ? 'bg-brand-500/10 text-brand-500 shadow-sm shadow-brand-500/5'
                         : 'text-[var(--tw-text-muted)] hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]',
@@ -134,11 +135,11 @@ export function AdminLayout() {
                 >
                   <Icon className="h-[18px] w-[18px] shrink-0" />
                   <span className="flex-1 truncate">{t(label)}</span>
-                  {to === '/admin/reviews' && pendingReviews > 0 ? (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
+                  {to === '/admin/reviews' && pendingReviews > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white shadow-sm shadow-brand-500/30">
                       {pendingReviews > 99 ? '99+' : pendingReviews}
                     </span>
-                  ) : null}
+                  )}
                 </NavLink>
               ))}
             </div>
@@ -147,9 +148,9 @@ export function AdminLayout() {
       </nav>
 
       {/* User Footer */}
-      <div className="border-t border-[var(--tw-border)] px-3 py-3">
+      <div className="border-t border-[var(--tw-border)] px-3 py-4">
         <div className="flex items-center gap-3 rounded-xl px-3 py-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white shadow-sm">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white shadow-sm shadow-brand-500/30">
             {user?.fullName.charAt(0) ?? 'A'}
           </span>
           <div className="min-w-0 flex-1">
@@ -173,11 +174,11 @@ export function AdminLayout() {
       {/* ── Desktop Sidebar ─────────────────────────────────────── */}
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-[var(--tw-sidebar-border)] bg-[var(--tw-sidebar-bg)] lg:flex">
         {/* Sidebar Header */}
-        <div className="flex h-16 items-center gap-3 border-b border-[var(--tw-border)] px-4">
+        <div className="flex h-16 items-center gap-3 border-b border-[var(--tw-border)] px-5">
           <Link to="/" className="flex items-center gap-2.5">
             <Logo className="h-8 w-8 rounded-lg" />
             <span className="text-sm font-bold tracking-tight text-[var(--tw-text)]">
-              {t('nav.brand')}
+              {i18n.language === 'ar' ? 'فريزر البلد' : t('nav.brand')}
             </span>
           </Link>
         </div>
@@ -185,26 +186,26 @@ export function AdminLayout() {
       </aside>
 
       {/* ── Mobile Drawer ───────────────────────────────────────── */}
-      {drawerOpen ? (
+      {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+            className="absolute inset-0 bg-[var(--tw-overlay)] backdrop-blur-sm transition-opacity"
             onClick={() => setDrawerOpen(false)}
             aria-hidden
           />
           <aside className="absolute inset-y-0 start-0 flex w-72 flex-col bg-[var(--tw-sidebar-bg)] shadow-2xl">
             {/* Drawer Header */}
-            <div className="flex h-16 items-center justify-between border-b border-[var(--tw-border)] px-4">
+            <div className="flex h-16 items-center justify-between border-b border-[var(--tw-border)] px-5">
               <Link to="/" className="flex items-center gap-2.5" onClick={() => setDrawerOpen(false)}>
                 <Logo className="h-8 w-8 rounded-lg" />
                 <span className="text-sm font-bold tracking-tight text-[var(--tw-text)]">
-                  {t('nav.brand')}
+                  {i18n.language === 'ar' ? 'فريزر البلد' : t('nav.brand')}
                 </span>
               </Link>
               <button
                 onClick={() => setDrawerOpen(false)}
                 aria-label={t('common.close')}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -212,7 +213,7 @@ export function AdminLayout() {
             {sidebarContent(() => setDrawerOpen(false))}
           </aside>
         </div>
-      ) : null}
+      )}
 
       {/* ── Main Content ────────────────────────────────────────── */}
       <div className="flex-1 lg:ms-64">
@@ -238,7 +239,7 @@ export function AdminLayout() {
             <button
               onClick={toggleLanguage}
               aria-label="language"
-              className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+              className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
             >
               <Languages className="h-4 w-4" />
               <span className="hidden sm:inline">{t('nav.language')}</span>
@@ -254,17 +255,17 @@ export function AdminLayout() {
             </button>
 
             {/* Notifications */}
-            {pendingReviews > 0 ? (
+            {pendingReviews > 0 && (
               <Link
                 to="/admin/reviews"
                 className="relative flex h-9 w-9 items-center justify-center rounded-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
               >
                 <Bell className="h-[18px] w-[18px]" />
-                <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[9px] font-bold text-white">
+                <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[9px] font-bold text-white shadow-sm shadow-brand-500/30">
                   {pendingReviews > 9 ? '9+' : pendingReviews}
                 </span>
               </Link>
-            ) : null}
+            )}
 
             {/* Divider */}
             <div className="mx-1 h-6 w-px bg-[var(--tw-border)]" />

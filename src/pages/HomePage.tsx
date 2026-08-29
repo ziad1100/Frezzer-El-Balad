@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Leaf, Phone, Star, Tag, Truck } from 'lucide-react';
+import { ArrowLeft, Clock, Leaf, Phone, Star, Tag, Truck, ChevronLeft } from 'lucide-react';
 import { getBestSellers, listProducts } from '@/api/products';
 import { getActiveOffers } from '@/api/offers';
 import { getRestaurantStats } from '@/api/reviews';
@@ -50,8 +50,8 @@ export function HomePage() {
             <h1 className="mt-5 text-3xl font-extrabold leading-tight text-[var(--tw-text)] sm:text-4xl lg:text-5xl">
               {t('hero.title')}
             </h1>
-            <p className="mt-3 max-w-lg text-base leading-relaxed text-[var(--tw-text-muted)]">{t('hero.subtitle')}</p>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <p className="mt-4 max-w-lg text-base leading-relaxed text-[var(--tw-text-muted)]">{t('hero.subtitle')}</p>
+            <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/menu">
                 <Button variant="fresh" size="lg">
                   {t('hero.ctaMenu')}
@@ -64,7 +64,7 @@ export function HomePage() {
                 </Button>
               </Link>
             </div>
-            <div className="mt-10 grid max-w-md grid-cols-3 gap-4">
+            <div className="mt-10 grid max-w-md grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="text-2xl font-extrabold text-fresh-500">
                   {productsCount.isLoading ? (
@@ -132,14 +132,15 @@ export function HomePage() {
       </section>
 
       {/* Offers */}
-      <section className="container-px py-14">
+      <section className="container-px py-16">
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <h2 className="text-2xl font-extrabold text-[var(--tw-text)] sm:text-3xl">{t('home.deals')}</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-[var(--tw-text)] sm:text-3xl">{t('home.deals')}</h2>
             <p className="mt-1 text-sm text-[var(--tw-text-muted)]">{t('offers.subtitle')}</p>
           </div>
-          <Link to="/offers" className="hidden text-sm font-bold text-brand-500 hover:text-brand-400 sm:block">
+          <Link to="/offers" className="hidden items-center gap-1 text-sm font-bold text-brand-500 hover:text-brand-400 sm:flex">
             {t('common.viewAll')}
+            <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
           </Link>
         </div>
         {offers.isLoading ? (
@@ -171,10 +172,10 @@ export function HomePage() {
       </section>
 
       {/* Best Sellers */}
-      <section className="bg-[var(--tw-surface-alt)] py-14">
+      <section className="bg-[var(--tw-surface-alt)] py-16">
         <div className="container-px">
           <div className="mb-8 text-center">
-            <h2 className="text-2xl font-extrabold text-[var(--tw-text)] sm:text-3xl">{t('home.bestSellers')}</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-[var(--tw-text)] sm:text-3xl">{t('home.bestSellers')}</h2>
           </div>
           {bestSellers.isLoading ? (
             <div className="grid grid-cols-1 justify-items-center gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
@@ -199,27 +200,27 @@ export function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="container-px grid gap-6 py-14 md:grid-cols-3">
+      <section className="container-px grid gap-6 py-16 md:grid-cols-3">
         {features.map(({ icon: Icon, title, desc }) => (
           <div
             key={title}
-            className="rounded-xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-6 text-center transition-colors hover:border-brand-500/40"
+            className="rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-7 text-center transition-all duration-200 hover:border-brand-500/40 hover:shadow-lg hover:shadow-black/5"
           >
-            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
-              <Icon className="h-6 w-6" />
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500">
+              <Icon className="h-7 w-7" />
             </span>
-            <h3 className="mt-3 text-base font-bold text-[var(--tw-text)]">{title}</h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-[var(--tw-text-muted)]">{desc}</p>
+            <h3 className="mt-4 text-base font-bold text-[var(--tw-text)]">{title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--tw-text-muted)]">{desc}</p>
           </div>
         ))}
       </section>
 
       {/* CTA */}
       <section className="container-px pb-16">
-        <div className="relative overflow-hidden rounded-2xl border border-brand-700/30 bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 p-8 text-center md:p-14">
+        <div className="relative overflow-hidden rounded-3xl border border-brand-700/30 bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 p-10 text-center md:p-16">
           <h2 className="text-2xl font-extrabold text-white sm:text-3xl md:text-4xl">{t('home.ctaTitle')}</h2>
-          <p className="mt-2 text-base text-white/70">{t('home.ctaSubtitle')}</p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <p className="mt-3 text-base text-white/70">{t('home.ctaSubtitle')}</p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Link to="/menu">
               <Button variant="fresh" size="lg">
                 {t('home.ctaOrder')}

@@ -11,9 +11,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     <input
       ref={ref}
       className={cn(
-        'h-10 w-full rounded-lg border bg-[var(--tw-input-bg)] px-3.5 text-sm text-[var(--tw-text)] placeholder:text-[var(--tw-text-muted)]',
-        'transition-colors focus:border-brand-500 focus:outline-none',
-        error ? 'border-red-500' : 'border-[var(--tw-input-border)] hover:border-[var(--tw-border-strong)]',
+        'h-11 w-full rounded-xl border bg-[var(--tw-input-bg)] px-4 text-sm text-[var(--tw-text)] placeholder:text-[var(--tw-text-subtle)]',
+        'transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none',
+        error
+          ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+          : 'border-[var(--tw-input-border)] hover:border-[var(--tw-border-strong)]',
         className,
       )}
       {...props}
@@ -30,7 +32,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, InputProps>(
       <div className="relative">
         <Input
           ref={ref}
-          className={cn('pe-10', className)}
+          className={cn('pe-11', className)}
           {...props}
           type={visible ? 'text' : 'password'}
         />
@@ -38,7 +40,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, InputProps>(
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? 'Hide password' : 'Show password'}
-          className="absolute inset-y-0 end-3 flex items-center text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]"
+          className="absolute inset-y-0 end-3 flex items-center rounded-lg px-1.5 text-[var(--tw-text-subtle)] transition-colors hover:text-[var(--tw-text)]"
         >
           {visible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
         </button>
@@ -58,9 +60,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     <textarea
       ref={ref}
       className={cn(
-        'w-full rounded-lg border bg-[var(--tw-input-bg)] px-3.5 py-2.5 text-sm text-[var(--tw-text)] placeholder:text-[var(--tw-text-muted)]',
-        'transition-colors focus:border-brand-500 focus:outline-none',
-        error ? 'border-red-500' : 'border-[var(--tw-input-border)] hover:border-[var(--tw-border-strong)]',
+        'w-full rounded-xl border bg-[var(--tw-input-bg)] px-4 py-3 text-sm text-[var(--tw-text)] placeholder:text-[var(--tw-text-subtle)]',
+        'transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none',
+        error
+          ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+          : 'border-[var(--tw-input-border)] hover:border-[var(--tw-border-strong)]',
         className,
       )}
       {...props}
@@ -79,9 +83,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     <select
       ref={ref}
       className={cn(
-        'h-10 w-full appearance-none rounded-lg border bg-[var(--tw-input-bg)] px-3.5 text-sm text-[var(--tw-text)]',
-        'transition-colors focus:border-brand-500 focus:outline-none',
-        error ? 'border-red-500' : 'border-[var(--tw-input-border)] hover:border-[var(--tw-border-strong)]',
+        'h-11 w-full appearance-none rounded-xl border bg-[var(--tw-input-bg)] px-4 text-sm text-[var(--tw-text)]',
+        'transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none',
+        error
+          ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+          : 'border-[var(--tw-input-border)] hover:border-[var(--tw-border-strong)]',
         className,
       )}
       {...props}
@@ -95,7 +101,7 @@ Select.displayName = 'Select';
 
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-1 text-sm text-red-400">{message}</p>;
+  return <p className="mt-1.5 text-xs font-medium text-red-400">{message}</p>;
 }
 
 export function Label({ className, ...props }: ComponentProps<'label'>) {

@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, Eye, Gift, Printer, ChevronDown, FileDown, Zap } from 'lucide-react';
+import { Ban, Eye, Gift, Printer, ChevronDown, FileDown, Zap, Hash, Package, CheckCircle2, XCircle, Truck, Clock, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminCancelOrder, adminListOrders, adminMarkComplimentary, getAdminSettings, updateOrderStatus } from '@/api/admin';
 import { getErrorMessage } from '@/lib/api';
@@ -340,25 +340,42 @@ export function AdminOrdersPage() {
       })()
     : '';
 
+  const statusFilterOptions = [
+    { value: '', label: t('admin.allStatuses'), icon: Package, color: 'text-[var(--tw-text-muted)]' },
+    { value: 'pending', label: t('admin.status.pending'), icon: Clock, color: 'text-amber-400' },
+    { value: 'confirmed', label: t('admin.status.confirmed'), icon: CheckCircle2, color: 'text-blue-400' },
+    { value: 'preparing', label: t('admin.status.preparing'), icon: Package, color: 'text-sky-400' },
+    { value: 'ready_for_delivery', label: t('admin.status.ready_for_delivery'), icon: Package, color: 'text-teal-400' },
+    { value: 'on_delivery', label: t('admin.status.on_delivery'), icon: Truck, color: 'text-violet-400' },
+    { value: 'completed', label: t('admin.status.completed'), icon: CheckCircle2, color: 'text-emerald-400' },
+    { value: 'cancelled', label: t('admin.status.cancelled'), icon: XCircle, color: 'text-red-400' },
+    { value: 'delivery_failed', label: t('admin.status.delivery_failed'), icon: XCircle, color: 'text-orange-400' },
+    { value: 'refunded', label: t('admin.status.refunded'), icon: RotateCcw, color: 'text-gray-400' },
+    { value: 'complimentary', label: t('admin.status.complimentary'), icon: Gift, color: 'text-gold-400' },
+  ];
+
   return (
     <div>
       <PageHeader title={t('admin.nav.orders')} />
 
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <SearchBox value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder={t('admin.searchPlaceholder')} />
-        <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="h-10 w-44">
-          <option value="">{t('admin.allStatuses')}</option>
-          <option value="pending">{t('admin.status.pending')}</option>
-          <option value="confirmed">{t('admin.status.confirmed')}</option>
-          <option value="preparing">{t('admin.status.preparing')}</option>
-          <option value="ready_for_delivery">{t('admin.status.ready_for_delivery')}</option>
-          <option value="on_delivery">{t('admin.status.on_delivery')}</option>
-          <option value="completed">{t('admin.status.completed')}</option>
-          <option value="cancelled">{t('admin.status.cancelled')}</option>
-          <option value="delivery_failed">{t('admin.status.delivery_failed')}</option>
-          <option value="refunded">{t('admin.status.refunded')}</option>
-          <option value="complimentary">{t('admin.status.complimentary')}</option>
-        </Select>
+        <div className="flex flex-wrap gap-1.5 rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface)] p-1">
+          {statusFilterOptions.map(({ value: v, label, icon: Icon, color }) => (
+            <button
+              key={v}
+              onClick={() => { setStatus(v); setPage(1); }}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all ${
+                status === v
+                  ? 'bg-brand-500/20 text-brand-400 shadow-sm'
+                  : `${color} hover:bg-[var(--tw-hover)]`
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline">{label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {orders.isLoading ? (
@@ -380,8 +397,13 @@ export function AdminOrdersPage() {
             </thead>
             <tbody>
               {(orders.data.items as AdminOrder[]).map((o) => (
-                <tr key={o._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
-                  <Td className="font-bold text-[var(--tw-text)]">{o.orderNo}</Td>
+                <tr key={o._id} className="group transition-colors hover:bg-[var(--tw-hover)]">
+                  <Td>
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-3.5 w-3.5 text-[var(--tw-text-muted)]" />
+                      <span className="font-bold tracking-tight text-[var(--tw-text)]">{o.orderNo}</span>
+                    </div>
+                  </Td>
                   <Td>
                     <p className="font-semibold text-[var(--tw-text)]">{o.customerName}</p>
                     <p className="text-xs text-[var(--tw-text-muted)]">
@@ -392,9 +414,14 @@ export function AdminOrdersPage() {
                         : ''}
                     </p>
                   </Td>
-                  <Td dir="ltr">{o.phone}</Td>
-                  <Td className="font-bold text-[var(--tw-text)]">{formatPrice(o.total, lang)}</Td>
-                  <Td>{o.items.reduce((sum, i) => sum + i.qty, 0)}</Td>
+                  <Td dir="ltr" className="font-mono text-xs text-[var(--tw-text-muted)]">{o.phone}</Td>
+                  <Td className="font-bold tracking-tight text-[var(--tw-text)]">{formatPrice(o.total, lang)}</Td>
+                  <Td>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--tw-surface)] px-2 py-0.5 text-xs font-semibold text-[var(--tw-text-muted)]">
+                      <Package className="h-3 w-3" />
+                      {o.items.reduce((sum, i) => sum + i.qty, 0)}
+                    </span>
+                  </Td>
                   <Td className="text-xs text-[var(--tw-text-muted)]">{fmtDate(o.createdAt)}</Td>
                   <Td>
                     <div className="flex items-center gap-2">
@@ -410,7 +437,7 @@ export function AdminOrdersPage() {
                               }
                             }}
                             disabled={statusMutation.isPending}
-                            className="h-8 w-36 appearance-none pr-7"
+                            className="h-8 w-36 appearance-none rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] pr-7 text-xs font-semibold"
                             aria-label={t('admin.statusChange')}
                           >
                             <option value="">{t('admin.statusChange')}…</option>
@@ -437,7 +464,13 @@ export function AdminOrdersPage() {
                       >
                         <Zap className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { setSelected(o); void fetchPrintJobs(o._id); }} aria-label={t('common.viewAll')}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="hover:bg-[var(--tw-hover)]"
+                        onClick={() => { setSelected(o); void fetchPrintJobs(o._id); }}
+                        aria-label={t('common.viewAll')}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                     </div>
@@ -459,6 +492,29 @@ export function AdminOrdersPage() {
       <Modal open={Boolean(selected)} onClose={() => setSelected(null)} title={selected?.orderNo ?? ''} size="lg">
         {selected ? (
           <div className="space-y-5">
+            {/* Status Progress Indicator */}
+            {!TERMINAL.includes(selected.status) && (
+              <div className="flex items-center gap-1">
+                {['pending', 'confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed'].map((step, i, arr) => {
+                  const stepIdx = arr.indexOf(selected.status);
+                  const isDone = i < stepIdx;
+                  const isCurrent = i === stepIdx;
+                  const StepIcon = step === 'pending' ? Clock : step === 'completed' ? CheckCircle2 : step === 'on_delivery' ? Truck : Package;
+                  return (
+                    <div key={step} className="flex items-center">
+                      <div className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
+                        isDone ? 'bg-brand-500 text-white' : isCurrent ? 'bg-brand-500/20 text-brand-400 ring-2 ring-brand-500' : 'bg-[var(--tw-surface)] text-[var(--tw-text-muted)]'
+                      }`} title={t(`admin.status.${step}`)}>
+                        <StepIcon className="h-3.5 w-3.5" />
+                      </div>
+                      {i < arr.length - 1 && (
+                        <div className={`h-0.5 w-4 ${i < stepIdx ? 'bg-brand-500' : 'bg-[var(--tw-border)]'}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <StatusBadge status={selected.status} />
@@ -502,7 +558,7 @@ export function AdminOrdersPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-blue-500/40 text-blue-400"
+                    className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                     onClick={() => void openPrintDialog(selected)}
                   >
                     <Printer className="h-4 w-4" />
@@ -511,7 +567,7 @@ export function AdminOrdersPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-emerald-500/40 text-emerald-400"
+                    className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                     onClick={() => setPdfPreviewOrder(selected)}
                   >
                     <FileDown className="h-4 w-4" />
@@ -564,18 +620,18 @@ export function AdminOrdersPage() {
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-[var(--tw-border)] p-4">
+              <div className="rounded-xl border border-[var(--tw-border)] bg-gradient-to-br from-[var(--tw-surface)] to-transparent p-4">
                 <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.customer')}</p>
                 <p className="mt-2 font-bold text-[var(--tw-text)]">{selected.customerName}</p>
-                <p dir="ltr" className="text-sm text-[var(--tw-text-muted)]">{selected.phone}</p>
+                <p dir="ltr" className="font-mono text-sm text-[var(--tw-text-muted)]">{selected.phone}</p>
                 {selected.payment ? (
                   <p className="mt-1 text-sm capitalize text-[var(--tw-text-muted)]">
                     {selected.payment.method} · {formatPrice(selected.payment.amount, lang)}
                   </p>
                 ) : null}
               </div>
-              <div className="rounded-xl border border-[var(--tw-border)] p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.category')}</p>
+              <div className="rounded-xl border border-[var(--tw-border)] bg-gradient-to-br from-[var(--tw-surface)] to-transparent p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'العنوان' : 'Address'}</p>
                 <p className="mt-2 text-sm text-[var(--tw-text-muted)]">
                   {selected.deliveryAddress.city
                     ? [selected.deliveryAddress.city, selected.deliveryAddress.street, selected.deliveryAddress.building]
@@ -583,35 +639,47 @@ export function AdminOrdersPage() {
                         .join(' — ')
                     : '—'}
                 </p>
-                {selected.notes ? <p className="mt-1 text-sm text-[var(--tw-text-muted)]">{selected.notes}</p> : null}
+                {selected.notes ? <p className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-300">📝 {selected.notes}</p> : null}
               </div>
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.orderItems')}</p>
+              <div className="mb-3 flex items-center gap-2">
+                <Package className="h-4 w-4 text-brand-400" />
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.orderItems')}</p>
+                <span className="rounded-full bg-[var(--tw-surface)] px-2 py-0.5 text-xs font-semibold text-[var(--tw-text-muted)]">
+                  {selected.items.length} {lang === 'ar' ? 'صنف' : 'items'}
+                </span>
+              </div>
               <div className="space-y-2">
                 {selected.items.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-xl border border-[var(--tw-border)] px-4 py-3 text-sm">
-                    <span className="font-semibold text-[var(--tw-text)]">
-                      {item.qty} × {itemName(item)}
-                      {item.size ? <span className="text-[var(--tw-text-muted)]"> ({item.size})</span> : null}
-                      {item.isCustomPrice ? (
-                        <span className="ms-1 inline-block rounded bg-gold-500/20 px-1.5 py-0.5 text-xs font-bold text-gold-400">
-                          {lang === 'ar' ? 'سعر مخصص' : 'Custom Price'}
-                        </span>
-                      ) : null}
-                      {item.extras?.length ? (
-                        <span className="block text-xs text-[var(--tw-text-muted)]">{item.extras.map((e) => e.name).join(', ')}</span>
-                      ) : null}
-                    </span>
-                    <span className="font-bold text-[var(--tw-text)]">{formatPrice(item.lineTotal, lang)}</span>
+                  <div key={i} className="flex items-center justify-between rounded-xl border border-[var(--tw-border)] px-4 py-3 text-sm transition-colors hover:bg-[var(--tw-hover)]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/10 text-xs font-bold text-brand-400">
+                        {item.qty}×
+                      </div>
+                      <div>
+                        <span className="font-semibold text-[var(--tw-text)]">{itemName(item)}</span>
+                        {item.size ? <span className="ms-1.5 rounded-md bg-[var(--tw-surface)] px-1.5 py-0.5 text-xs text-[var(--tw-text-muted)]">{item.size}</span> : null}
+                        {item.isCustomPrice ? (
+                          <span className="ms-1.5 inline-block rounded-md bg-gold-500/20 px-1.5 py-0.5 text-xs font-bold text-gold-400">
+                            {lang === 'ar' ? 'سعر مخصص' : 'Custom Price'}
+                          </span>
+                        ) : null}
+                        {item.extras?.length ? (
+                          <span className="block text-xs text-[var(--tw-text-muted)]">{item.extras.map((e) => e.name).join(', ')}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <span className="font-bold tracking-tight text-[var(--tw-text)]">{formatPrice(item.lineTotal, lang)}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--tw-border)] px-4 py-3">
-              <div className="space-y-1 text-sm">
+            <div className="rounded-xl border border-[var(--tw-border)] bg-gradient-to-br from-[var(--tw-surface)] to-transparent px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1.5 text-sm">
                 <p className="text-[var(--tw-text-muted)]">
                   {t('common.min')}: <span className="font-bold text-[var(--tw-text)]">{formatPrice(selected.subtotal, lang)}</span>
                 </p>
@@ -642,28 +710,35 @@ export function AdminOrdersPage() {
               </div>
               <div className="text-end">
                 <p className="text-xs text-[var(--tw-text-muted)]">{fmtDate(selected.createdAt)}</p>
-                <p className="text-lg font-extrabold text-[var(--tw-text)]">
-                  {t('admin.total')}: {formatPrice(selected.total, lang)}
+                <p className="text-lg font-extrabold tracking-tight text-brand-400">
+                  {formatPrice(selected.total, lang)}
                 </p>
               </div>
+            </div>
             </div>
 
             {/* Print History */}
             {printJobs.length > 0 ? (
-              <div className="rounded-xl border border-[var(--tw-border)] p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-                  {lang === 'ar' ? 'سجل الطباعة' : 'Print History'}
-                </p>
-                <div className="mt-2 space-y-1">
+              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface)]/50 p-4">
+                <div className="flex items-center gap-2">
+                  <Printer className="h-4 w-4 text-blue-400" />
+                  <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                    {lang === 'ar' ? 'سجل الطباعة' : 'Print History'}
+                  </p>
+                  <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-xs font-semibold text-blue-400">
+                    {printJobs.length}
+                  </span>
+                </div>
+                <div className="mt-3 space-y-1.5">
                   {printJobs.map((pj) => (
-                    <div key={pj.id} className="flex items-center justify-between text-xs">
+                    <div key={pj.id} className="flex items-center justify-between rounded-lg bg-[var(--tw-surface)] px-3 py-2 text-xs">
                       <span className="text-[var(--tw-text-muted)]">{fmtDate(pj.createdAt)}</span>
-                      <span className={
-                        pj.status === 'printed' ? 'text-emerald-400' :
-                        pj.status === 'failed' ? 'text-red-400' :
-                        pj.status === 'pending' ? 'text-amber-400' :
-                        'text-blue-400'
-                      }>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        pj.status === 'printed' ? 'bg-emerald-500/20 text-emerald-400' :
+                        pj.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                        pj.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                        'bg-blue-500/20 text-blue-400'
+                      }`}>
                         {pj.status}
                       </span>
                     </div>

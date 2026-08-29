@@ -19,8 +19,6 @@ interface CategoryForm {
   order: number;
 }
 
-// New categories default to the end of the menu (order 999); the admin can
-// reorder them with the arrows or by editing the display order directly.
 const blank = (): CategoryForm => ({ name: '', nameEn: '', type: 'section', parentId: '', order: 999 });
 
 export function AdminCategoriesPage() {
@@ -37,22 +35,11 @@ export function AdminCategoriesPage() {
 
   const sections = (categories.data ?? []).filter((c) => c.type === 'section');
 
-  const openCreate = (): void => {
-    setEditing(null);
-    setForm(blank());
-    setOpen(true);
-  };
-
-  const openEdit = (c: Category): void => {
-    setEditing(c);
-    setForm({ name: c.name, nameEn: c.nameEn, type: c.type, parentId: c.parentId ?? '', order: c.order });
-    setOpen(true);
-  };
+  const openCreate = (): void => { setEditing(null); setForm(blank()); setOpen(true); };
+  const openEdit = (c: Category): void => { setEditing(c); setForm({ name: c.name, nameEn: c.nameEn, type: c.type, parentId: c.parentId ?? '', order: c.order }); setOpen(true); };
 
   const invalidate = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'categories'] });
-    // Keep the public menu/category data in sync right away — the server cache
-    // is invalidated by the API, but the open client also holds this data.
     void queryClient.invalidateQueries({ queryKey: ['categories'] });
   };
 
@@ -68,59 +55,35 @@ export function AdminCategoriesPage() {
       if (editing) await updateCategory(editing._id, payload);
       else await createCategory(payload);
     },
-    onSuccess: () => {
-      toast.success(t('admin.saved'));
-      invalidate();
-      setOpen(false);
-      setEditing(null);
-    },
+    onSuccess: () => { toast.success(t('admin.saved')); invalidate(); setOpen(false); setEditing(null); },
     onError: () => toast.error(t('admin.saveFailed')),
   });
 
   const toggleMutation = useMutation({
     mutationFn: (id: string) => toggleCategory(id),
-    onSuccess: () => {
-      toast.success(t('admin.saved'));
-      invalidate();
-    },
+    onSuccess: () => { toast.success(t('admin.saved')); invalidate(); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteCategory(id),
-    onSuccess: () => {
-      toast.success(t('common.delete'));
-      invalidate();
-      setDeleting(null);
-    },
+    onSuccess: () => { toast.success(t('common.delete')); invalidate(); setDeleting(null); },
   });
 
-  // Move a category up/down within its sibling group (sections together,
-  // subs under the same parent). The group's orders are normalized to 0..n-1 so
-  // reordering always works, even when several categories share an order value.
   const reorderMutation = useMutation({
     mutationFn: async ({ id, dir }: { id: string; dir: -1 | 1 }): Promise<void> => {
       const cat = (categories.data ?? []).find((c) => c._id === id);
       if (!cat) return;
       const siblings = (categories.data ?? [])
-        .filter((c) =>
-          cat.type === 'section'
-            ? c.type === 'section'
-            : c.type === 'sub' && (c.parentId ?? '') === (cat.parentId ?? ''),
-        )
+        .filter((c) => cat.type === 'section' ? c.type === 'section' : c.type === 'sub' && (c.parentId ?? '') === (cat.parentId ?? ''))
         .sort((a, b) => a.order - b.order || a._id.localeCompare(b._id));
       const from = siblings.findIndex((c) => c._id === id);
       const to = from + dir;
       if (from < 0 || to < 0 || to >= siblings.length) return;
       [siblings[from], siblings[to]] = [siblings[to], siblings[from]];
-      const updates = siblings
-        .map((c, i) => (c.order === i ? null : updateCategory(c._id, { order: i })))
-        .filter((u): u is Promise<Category> => u !== null);
+      const updates = siblings.map((c, i) => (c.order === i ? null : updateCategory(c._id, { order: i }))).filter((u): u is Promise<Category> => u !== null);
       await Promise.all(updates);
     },
-    onSuccess: () => {
-      toast.success(t('admin.saved'));
-      invalidate();
-    },
+    onSuccess: () => { toast.success(t('admin.saved')); invalidate(); },
     onError: () => toast.error(t('admin.saveFailed')),
   });
 
@@ -157,40 +120,32 @@ export function AdminCategoriesPage() {
           </thead>
           <tbody>
             {(categories.data ?? []).map((c) => (
-              <tr key={c._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+              <tr key={c._id} className="transition-colors hover:bg-[var(--tw-hover)]">
                 <Td>
-                  <p className="flex items-center gap-2 font-bold text-[var(--tw-text)]">
-                    <FolderOpen className="h-4 w-4 text-brand-500" />
+                  <p className="flex items-center gap-2.5 font-bold text-[var(--tw-text)]">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500">
+                      <FolderOpen className="h-4 w-4" />
+                    </span>
                     {c.name}
                   </p>
-                  {c.nameEn ? <p className="text-xs text-[var(--tw-text-muted)]">{c.nameEn}</p> : null}
+                  {c.nameEn && <p className="mt-0.5 ml-10 text-xs text-[var(--tw-text-muted)]">{c.nameEn}</p>}
                 </Td>
-                <Td>{c.type === 'section' ? t('admin.isSection') : t('admin.isSub')}</Td>
+                <Td>
+                  <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
+                    c.type === 'section' ? 'border-brand-500/30 bg-brand-500/15 text-brand-400' : 'border-ice-500/30 bg-ice-500/15 text-ice-400'
+                  }`}>
+                    {c.type === 'section' ? t('admin.isSection') : t('admin.isSub')}
+                  </span>
+                </Td>
                 <Td>{c.type === 'sub' ? nameOf(sections, c.parentId ?? '') : '—'}</Td>
                 <Td>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[var(--tw-text-muted)]">{c.order}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-semibold text-[var(--tw-text-muted)]">{c.order}</span>
                     <span className="inline-flex">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        disabled={reorderMutation.isPending}
-                        onClick={() => reorderMutation.mutate({ id: c._id, dir: -1 })}
-                        title={t('common.moveUp')}
-                        aria-label={t('common.moveUp')}
-                      >
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={reorderMutation.isPending} onClick={() => reorderMutation.mutate({ id: c._id, dir: -1 })} title={t('common.moveUp')} aria-label={t('common.moveUp')}>
                         <ChevronUp className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        disabled={reorderMutation.isPending}
-                        onClick={() => reorderMutation.mutate({ id: c._id, dir: 1 })}
-                        title={t('common.moveDown')}
-                        aria-label={t('common.moveDown')}
-                      >
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={reorderMutation.isPending} onClick={() => reorderMutation.mutate({ id: c._id, dir: 1 })} title={t('common.moveDown')} aria-label={t('common.moveDown')}>
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                     </span>
@@ -204,13 +159,7 @@ export function AdminCategoriesPage() {
                     <Button variant="ghost" size="icon" onClick={() => openEdit(c)} aria-label={t('common.edit')}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-400 hover:bg-red-500/10 hover:text-red-400"
-                      onClick={() => setDeleting(c)}
-                      aria-label={t('common.delete')}
-                    >
+                    <Button variant="ghost" size="icon" className="text-red-400 hover:bg-red-500/10 hover:text-red-400" onClick={() => setDeleting(c)} aria-label={t('common.delete')}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -248,41 +197,27 @@ export function AdminCategoriesPage() {
             </Select>
           </div>
 
-          {form.type === 'sub' ? (
+          {form.type === 'sub' && (
             <div>
               <Label htmlFor="c-parent">{t('admin.parent')}</Label>
               <Select id="c-parent" value={form.parentId} onChange={(e) => setForm({ ...form, parentId: e.target.value })}>
                 <option value="">—</option>
-                {sections
-                  .filter((s) => s._id !== editing?._id)
-                  .map((s) => (
-                    <option key={s._id} value={s._id}>
-                      {lang === 'ar' ? s.name : s.nameEn || s.name}
-                    </option>
-                  ))}
+                {sections.filter((s) => s._id !== editing?._id).map((s) => (
+                  <option key={s._id} value={s._id}>{lang === 'ar' ? s.name : s.nameEn || s.name}</option>
+                ))}
               </Select>
             </div>
-          ) : null}
+          )}
 
           <div>
             <Label htmlFor="c-order">{t('admin.order')}</Label>
-            <Input
-              id="c-order"
-              type="number"
-              min={0}
-              value={form.order}
-              onChange={(e) => setForm({ ...form, order: Number(e.target.value) || 0 })}
-            />
+            <Input id="c-order" type="number" min={0} value={form.order} onChange={(e) => setForm({ ...form, order: Number(e.target.value) || 0 })} />
             <p className="mt-1 text-xs text-[var(--tw-text-muted)]">{t('admin.orderHint')}</p>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
-              {t('common.save')}
-            </Button>
+          <div className="flex justify-end gap-2 border-t border-[var(--tw-border)] pt-5">
+            <Button variant="outline" onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
+            <Button loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>{t('common.save')}</Button>
           </div>
         </div>
       </Modal>

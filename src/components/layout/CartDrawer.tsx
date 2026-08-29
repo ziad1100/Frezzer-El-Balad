@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, Trash2, X, ArrowRight } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/hooks';
 import {
   clearCart,
@@ -35,28 +35,30 @@ export function CartDrawer() {
     navigate(path);
   };
 
+  const totalItems = lines.reduce((sum, line) => sum + line.qty, 0);
+
   return (
     <AnimatePresence>
       {open ? (
         <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => dispatch(setCartOpen(false))} />
+          <div className="absolute inset-0 bg-[var(--tw-overlay)] backdrop-blur-sm" onClick={() => dispatch(setCartOpen(false))} />
           <motion.aside
             className="absolute inset-y-0 inset-e-0 flex w-full max-w-md flex-col border-s border-[var(--tw-border-strong)] bg-[var(--tw-surface)] shadow-2xl"
             initial={{ x: i18n.dir() === 'rtl' ? '100%' : '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: i18n.dir() === 'rtl' ? '100%' : '-100%' }}
-            transition={{ type: 'tween', duration: 0.3 }}
+            transition={{ type: 'spring', duration: 0.35, bounce: 0.1 }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[var(--tw-border)] px-5 py-4">
+            <div className="flex items-center justify-between border-b border-[var(--tw-border)] px-6 py-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
-                  <ShoppingBag className="h-4.5 w-4.5" />
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
+                  <ShoppingBag className="h-5 w-5" />
                 </span>
                 <div>
                   <h2 className="text-base font-bold text-[var(--tw-text)]">{t('cart.title')}</h2>
                   <p className="text-xs text-[var(--tw-text-muted)]">
-                    {lines.length} {lines.length === 1 ? (i18n.language === 'ar' ? 'منتج' : 'item') : (i18n.language === 'ar' ? 'منتجات' : 'items')}
+                    {totalItems} {totalItems === 1 ? (i18n.language === 'ar' ? 'منتج' : 'item') : (i18n.language === 'ar' ? 'منتج' : 'items')}
                   </p>
                 </div>
               </div>
@@ -85,19 +87,19 @@ export function CartDrawer() {
             ) : (
               <>
                 {/* Items */}
-                <div className="flex-1 overflow-y-auto p-4">
-                  <div className="space-y-2.5">
+                <div className="flex-1 overflow-y-auto p-5">
+                  <div className="space-y-3">
                     {lines.map((line, index) => (
                       <div
                         key={`${line.productId}-${line.size ?? ''}`}
-                        className="group flex gap-3 rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-3 transition-colors hover:border-[var(--tw-border-strong)]"
+                        className="group flex gap-3.5 rounded-2xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-3.5 transition-all duration-200 hover:border-[var(--tw-border-strong)]"
                       >
                         {/* Image */}
                         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--tw-surface-alt)]">
                           {line.image ? (
                             <img src={line.image} alt={line.name} className="h-full w-full object-cover" />
                           ) : (
-                            <ShoppingBag className="h-6 w-6 text-[var(--tw-text-muted)]" />
+                            <ShoppingBag className="h-6 w-6 text-[var(--tw-text-subtle)]" />
                           )}
                         </div>
 
@@ -108,18 +110,21 @@ export function CartDrawer() {
                               <p className="truncate text-sm font-semibold text-[var(--tw-text)]">
                                 {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
                               </p>
-                              {line.sizeName ? (
+                              {line.sizeName && (
                                 <p className="mt-0.5 text-xs text-[var(--tw-text-muted)]">{line.sizeName}</p>
-                              ) : null}
-                              {line.extras.length > 0 ? (
+                              )}
+                              {line.customWeight && (
+                                <p className="mt-0.5 text-xs text-brand-400">{line.customWeight.display}</p>
+                              )}
+                              {line.extras.length > 0 && (
                                 <p className="mt-0.5 truncate text-xs text-[var(--tw-text-muted)]">
                                   {line.extras.map((e) => e.name).join(' + ')}
                                 </p>
-                              ) : null}
+                              )}
                             </div>
                             <button
                               onClick={() => dispatch(removeLine(index))}
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--tw-text-muted)] opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--tw-text-subtle)] opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
                               aria-label={t('cart.remove')}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -128,10 +133,10 @@ export function CartDrawer() {
 
                           {/* Price + Qty */}
                           <div className="mt-2.5 flex items-center justify-between">
-                            <div className="flex items-center gap-0.5 rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]">
+                            <div className="flex items-center gap-0.5 rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]">
                               <button
                                 onClick={() => dispatch(updateQty({ index, qty: line.qty - 1 }))}
-                                className="flex h-7 w-7 items-center justify-center rounded-l-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+                                className="flex h-7 w-7 items-center justify-center rounded-l-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
                                 aria-label="minus"
                               >
                                 <Minus className="h-3 w-3" />
@@ -139,7 +144,7 @@ export function CartDrawer() {
                               <span className="min-w-7 text-center text-sm font-bold tabular-nums text-[var(--tw-text)]">{line.qty}</span>
                               <button
                                 onClick={() => dispatch(updateQty({ index, qty: line.qty + 1 }))}
-                                className="flex h-7 w-7 items-center justify-center rounded-r-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+                                className="flex h-7 w-7 items-center justify-center rounded-r-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
                                 aria-label="plus"
                               >
                                 <Plus className="h-3 w-3" />
@@ -156,12 +161,12 @@ export function CartDrawer() {
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-[var(--tw-border)] bg-[var(--tw-surface)] px-5 py-4">
+                <div className="border-t border-[var(--tw-border)] bg-[var(--tw-surface)] px-6 py-5">
                   <div className="mb-4 flex items-center justify-between">
-                    <span className="text-sm text-[var(--tw-text-muted)]">{t('cart.subtotal')}</span>
+                    <span className="text-sm font-medium text-[var(--tw-text-muted)]">{t('cart.subtotal')}</span>
                     <span className="text-lg font-extrabold text-[var(--tw-text)]">{formatPrice(subtotal, i18n.language)}</span>
                   </div>
-                  <div className="flex gap-2.5">
+                  <div className="flex gap-3">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -175,6 +180,7 @@ export function CartDrawer() {
                       className="flex-[2]"
                       onClick={() => goTo('/checkout')}
                     >
+                      <ArrowRight className="h-4 w-4 rtl:rotate-180" />
                       {t('cart.checkout')}
                     </Button>
                   </div>

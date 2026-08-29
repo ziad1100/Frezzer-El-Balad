@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   adminListCategories,
@@ -147,12 +147,10 @@ export function AdminProductsPage() {
   const [formError, setFormError] = useState('');
   const [deleting, setDeleting] = useState<ProductListItem | null>(null);
 
-  // Inline category creation
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatNameEn, setNewCatNameEn] = useState('');
 
-  // Inline label creation
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelNameEn, setNewLabelNameEn] = useState('');
@@ -184,23 +182,16 @@ export function AdminProductsPage() {
   const invalidate = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
     void queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
-    // Also invalidate customer-facing product caches so the Menu shows fresh data
     void queryClient.invalidateQueries({ queryKey: ['products'] });
     void queryClient.invalidateQueries({ queryKey: ['product'] });
     void queryClient.invalidateQueries({ queryKey: ['categories'] });
     void queryClient.invalidateQueries({ queryKey: ['offers'] });
   };
 
-  // ── Inline category creation ──
   const createCategoryMutation = useMutation({
     mutationFn: async () => {
       if (!newCatName.trim()) throw new Error(lang === 'ar' ? 'اسم القسم مطلوب' : 'Category name is required');
-      const cat = await createCategory({
-        name: newCatName.trim(),
-        nameEn: newCatNameEn.trim(),
-        type: 'sub' as const,
-      });
-      return cat;
+      return await createCategory({ name: newCatName.trim(), nameEn: newCatNameEn.trim(), type: 'sub' as const });
     },
     onSuccess: (cat) => {
       toast.success(lang === 'ar' ? 'تم إنشاء القسم' : 'Category created');
@@ -213,16 +204,10 @@ export function AdminProductsPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : t('admin.saveFailed')),
   });
 
-  // ── Inline label creation ──
   const createLabelMutation = useMutation({
     mutationFn: async () => {
       if (!newLabelName.trim()) throw new Error(lang === 'ar' ? 'اسم البطاقة مطلوب' : 'Label name is required');
-      const lbl = await createLabel({
-        name: newLabelName.trim(),
-        nameEn: newLabelNameEn.trim(),
-        color: newLabelColor,
-      });
-      return lbl;
+      return await createLabel({ name: newLabelName.trim(), nameEn: newLabelNameEn.trim(), color: newLabelColor });
     },
     onSuccess: (lbl) => {
       toast.success(lang === 'ar' ? 'تم إنشاء البطاقة' : 'Label created');
@@ -244,7 +229,6 @@ export function AdminProductsPage() {
         description: form.description.trim(),
         descriptionEn: form.descriptionEn.trim(),
         category: form.category,
-        // Only send images if the product actually has one (avoids 422 from min(1) on create)
         ...(form.images.length > 0 ? { images: form.images } : {}),
         sizes: form.sizes.map((s) => ({ name: s.name, nameEn: s.nameEn, price: Number(s.price), isAvailable: s.isAvailable ?? true })),
         extras: form.extras.map((e) => ({ name: e.name, nameEn: e.nameEn, price: Number(e.price) })),
@@ -275,8 +259,7 @@ export function AdminProductsPage() {
       closeModal();
     },
     onError: (err) => {
-      const msg = err instanceof Error ? err.message : t('admin.saveFailed');
-      setFormError(msg);
+      setFormError(err instanceof Error ? err.message : t('admin.saveFailed'));
     },
   });
 
@@ -299,7 +282,6 @@ export function AdminProductsPage() {
       setFormError(lang === 'ar' ? 'يجب إدخال سعر أساسي أكبر من صفر أو سعر على الأقل لمتغير واحد' : 'Enter a base price greater than 0 or at least one variant price');
       return;
     }
-    // Validate size prices individually
     for (const size of form.sizes) {
       if (size.name.trim() && (!Number.isFinite(Number(size.price)) || Number(size.price) <= 0)) {
         setFormError(lang === 'ar' ? `سعر المتغير "${size.name}" يجب أن يكون أكبر من صفر` : `Size "${size.name}" price must be greater than 0`);
@@ -317,19 +299,12 @@ export function AdminProductsPage() {
 
   const toggleMutation = useMutation({
     mutationFn: (id: string) => toggleProduct(id),
-    onSuccess: () => {
-      toast.success(t('admin.saved'));
-      invalidate();
-    },
+    onSuccess: () => { toast.success(t('admin.saved')); invalidate(); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProduct(id),
-    onSuccess: () => {
-      toast.success(t('common.delete'));
-      invalidate();
-      setDeleting(null);
-    },
+    onSuccess: () => { toast.success(t('common.delete')); invalidate(); setDeleting(null); },
   });
 
   const setSizeField = (idx: number, patch: Partial<SizeField>): void => {
@@ -362,34 +337,22 @@ export function AdminProductsPage() {
         }
       />
 
-      <div className="mb-5 flex flex-wrap items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <SearchBox value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder={t('admin.searchPlaceholder')} />
-        <Select
-          value={category}
-          onChange={(e) => { setCategory(e.target.value); setPage(1); }}
-          className="h-10 w-48"
-        >
+        <Select value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }} className="h-10 w-48">
           <option value="">{t('admin.allCategories')}</option>
           <optgroup label={t('admin.isSection')}>
             {sectionOptions.map((c) => (
-              <option key={c._id} value={c._id}>
-                {lang === 'ar' ? c.name : c.nameEn || c.name}
-              </option>
+              <option key={c._id} value={c._id}>{lang === 'ar' ? c.name : c.nameEn || c.name}</option>
             ))}
           </optgroup>
           <optgroup label={t('admin.isSub')}>
             {subOptions.map((c) => (
-              <option key={c._id} value={c._id}>
-                {lang === 'ar' ? c.name : c.nameEn || c.name}
-              </option>
+              <option key={c._id} value={c._id}>{lang === 'ar' ? c.name : c.nameEn || c.name}</option>
             ))}
           </optgroup>
         </Select>
-        <Select
-          value={availability}
-          onChange={(e) => { setAvailability(e.target.value); setPage(1); }}
-          className="h-10 w-40"
-        >
+        <Select value={availability} onChange={(e) => { setAvailability(e.target.value); setPage(1); }} className="h-10 w-40">
           <option value="">{t('common.all')}</option>
           <option value="available">{t('admin.enabled')}</option>
           <option value="hidden">{t('admin.disabled')}</option>
@@ -414,23 +377,23 @@ export function AdminProductsPage() {
             </thead>
             <tbody>
               {(products.data.items as ProductListItem[]).map((p) => (
-                <tr key={p._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+                <tr key={p._id} className="transition-colors hover:bg-[var(--tw-hover)]">
                   <Td>
                     {p.images && p.images[0] ? (
                       <img src={p.images[0]} alt="" className="h-12 w-12 rounded-xl border border-[var(--tw-border-strong)] object-cover" />
                     ) : (
-                      <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] text-xs text-[var(--tw-text-muted)]">
-                        —
+                      <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)]">
+                        <Package className="h-5 w-5 text-[var(--tw-text-subtle)]" />
                       </span>
                     )}
                   </Td>
                   <Td>
                     <p className="font-bold text-[var(--tw-text)]">{p.name}</p>
-                    {p.nameEn ? <p className="text-xs text-[var(--tw-text-muted)]">{p.nameEn}</p> : null}
+                    {p.nameEn && <p className="text-xs text-[var(--tw-text-muted)]">{p.nameEn}</p>}
                   </Td>
                   <Td>{typeof p.category === 'object' && p.category ? p.category.name : '—'}</Td>
-                  <Td>{formatPrice(p.basePrice, lang)}</Td>
-                  <Td>{p.discount ? `${p.discount}%` : '—'}</Td>
+                  <Td className="font-semibold text-[var(--tw-text)]">{formatPrice(p.basePrice, lang)}</Td>
+                  <Td>{p.discount ? <span className="rounded-full bg-gold-500/15 px-2 py-0.5 text-xs font-bold text-gold-400">{p.discount}%</span> : '—'}</Td>
                   <Td>
                     <ToggleSwitch checked={p.isAvailable} onChange={() => toggleMutation.mutate(p._id)} disabled={toggleMutation.isPending} />
                   </Td>
@@ -458,6 +421,7 @@ export function AdminProductsPage() {
         </Card>
       )}
 
+      {/* Product Form Modal */}
       <Modal open={creating} onClose={closeModal} title={editing ? (lang === 'ar' ? 'تعديل المنتج' : 'Edit Product') : (lang === 'ar' ? 'إضافة منتج جديد' : 'Add New Product')} size="lg">
         <div className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -475,29 +439,22 @@ export function AdminProductsPage() {
             <div>
               <Label htmlFor="p-cat">{t('admin.category')}</Label>
               <Select id="p-cat" value={form.category} onChange={(e) => {
-                if (e.target.value === '__new__') {
-                  setShowCategoryModal(true);
-                } else {
-                  setField('category', e.target.value);
-                }
+                if (e.target.value === '__new__') setShowCategoryModal(true);
+                else setField('category', e.target.value);
               }}>
                 <option value="">—</option>
                 <optgroup label={t('admin.isSection')}>
                   {sectionOptions.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {lang === 'ar' ? c.name : c.nameEn || c.name}
-                    </option>
+                    <option key={c._id} value={c._id}>{lang === 'ar' ? c.name : c.nameEn || c.name}</option>
                   ))}
                 </optgroup>
                 <optgroup label={t('admin.isSub')}>
                   {subOptions.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {lang === 'ar' ? c.name : c.nameEn || c.name}
-                    </option>
+                    <option key={c._id} value={c._id}>{lang === 'ar' ? c.name : c.nameEn || c.name}</option>
                   ))}
                 </optgroup>
               </Select>
-              <button type="button" className="mt-1 text-xs font-semibold text-brand-400 hover:text-brand-300" onClick={() => setShowCategoryModal(true)}>
+              <button type="button" className="mt-1.5 text-xs font-semibold text-brand-400 hover:text-brand-300" onClick={() => setShowCategoryModal(true)}>
                 + {lang === 'ar' ? 'إنشاء قسم جديد' : 'Create New Category'}
               </button>
             </div>
@@ -507,45 +464,20 @@ export function AdminProductsPage() {
             </div>
           </div>
 
-          {/* Inventory / Stock */}
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="p-track"
-                checked={form.trackInventory}
-                onChange={(e) => setField('trackInventory', e.target.checked)}
-                className="h-4 w-4 rounded border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] text-brand-500 focus:ring-brand-500"
-              />
-              <Label htmlFor="p-track">
-                {lang === 'ar' ? 'تتبع المخزون' : 'Track Inventory'}
-              </Label>
+              <input type="checkbox" id="p-track" checked={form.trackInventory} onChange={(e) => setField('trackInventory', e.target.checked)} className="h-4 w-4 rounded border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] text-brand-500 focus:ring-brand-500" />
+              <Label htmlFor="p-track">{lang === 'ar' ? 'تتبع المخزون' : 'Track Inventory'}</Label>
             </div>
             {form.trackInventory && (
               <>
                 <div>
-                  <Label htmlFor="p-stock">
-                    {lang === 'ar' ? 'كمية المخزون' : 'Stock Quantity'}
-                  </Label>
-                  <Input
-                    id="p-stock"
-                    type="number"
-                    min={0}
-                    value={form.stockQuantity}
-                    onChange={(e) => setField('stockQuantity', e.target.value)}
-                  />
+                  <Label htmlFor="p-stock">{lang === 'ar' ? 'كمية المخزون' : 'Stock Quantity'}</Label>
+                  <Input id="p-stock" type="number" min={0} value={form.stockQuantity} onChange={(e) => setField('stockQuantity', e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="p-threshold">
-                    {lang === 'ar' ? 'حد المخزون المنخفض' : 'Low Stock Threshold'}
-                  </Label>
-                  <Input
-                    id="p-threshold"
-                    type="number"
-                    min={0}
-                    value={form.lowStockThreshold}
-                    onChange={(e) => setField('lowStockThreshold', e.target.value)}
-                  />
+                  <Label htmlFor="p-threshold">{lang === 'ar' ? 'حد المخزون المنخفض' : 'Low Stock Threshold'}</Label>
+                  <Input id="p-threshold" type="number" min={0} value={form.lowStockThreshold} onChange={(e) => setField('lowStockThreshold', e.target.value)} />
                 </div>
               </>
             )}
@@ -573,50 +505,23 @@ export function AdminProductsPage() {
             <p className="mb-2 text-xs text-[var(--tw-text-muted)]">
               {lang === 'ar' ? 'كل وزن له سعر مستقل. تغيير سعر لن يؤثر على الباقي.' : 'Each weight has its own independent price.'}
             </p>
-            {sizeList.length > 0 ? (
+            {sizeList.length > 0 && (
               <div className="space-y-2">
                 {sizeList.map((size, idx) => (
                   <div key={idx} className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <Input
-                      value={size.name}
-                      onChange={(e) => setSizeField(idx, { name: e.target.value })}
-                      placeholder={lang === 'ar' ? 'الوزن بالعربي (مثلاً 500 جم)' : 'Weight in Arabic (e.g. 500 جم)'}
-                    />
-                    <Input
-                      value={size.nameEn}
-                      onChange={(e) => setSizeField(idx, { nameEn: e.target.value })}
-                      placeholder={lang === 'ar' ? 'الوزن بالإنجليزي (مثلاً 500g)' : 'Weight in English (e.g. 500g)'}
-                    />
+                    <Input value={size.name} onChange={(e) => setSizeField(idx, { name: e.target.value })} placeholder={lang === 'ar' ? 'الوزن بالعربي (مثلاً 500 جم)' : 'Weight in Arabic'} />
+                    <Input value={size.nameEn} onChange={(e) => setSizeField(idx, { nameEn: e.target.value })} placeholder={lang === 'ar' ? 'الوزن بالإنجليزي (مثلاً 500g)' : 'Weight in English'} />
                     <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={size.price}
-                        onChange={(e) => setSizeField(idx, { price: e.target.value })}
-                        placeholder={lang === 'ar' ? 'السعر (ج.م)' : 'Price (EGP)'}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0 text-red-400"
-                        onClick={() => setField('sizes', sizeList.filter((_, i) => i !== idx))}
-                        aria-label={t('common.delete')}
-                      >
+                      <Input type="number" min={0} value={size.price} onChange={(e) => setSizeField(idx, { price: e.target.value })} placeholder={lang === 'ar' ? 'السعر (ج.م)' : 'Price (EGP)'} />
+                      <Button variant="ghost" size="icon" className="shrink-0 text-red-400" onClick={() => setField('sizes', sizeList.filter((_, i) => i !== idx))} aria-label={t('common.delete')}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-[var(--tw-text-muted)]">—</p>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() => setField('sizes', [...sizeList, { name: '', nameEn: '', price: '', isAvailable: true }])}
-            >
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => setField('sizes', [...sizeList, { name: '', nameEn: '', price: '', isAvailable: true }])}>
               <Plus className="h-4 w-4" />
               {t('admin.addSize')}
             </Button>
@@ -624,50 +529,23 @@ export function AdminProductsPage() {
 
           <div>
             <Label>{t('admin.addExtra')}</Label>
-            {extraList.length > 0 ? (
+            {extraList.length > 0 && (
               <div className="space-y-2">
                 {extraList.map((extra, idx) => (
                   <div key={idx} className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <Input
-                      value={extra.name}
-                      onChange={(e) => setExtraField(idx, { name: e.target.value })}
-                      placeholder={lang === 'ar' ? 'الإضافة بالعربي' : 'Extra name in Arabic'}
-                    />
-                    <Input
-                      value={extra.nameEn}
-                      onChange={(e) => setExtraField(idx, { nameEn: e.target.value })}
-                      placeholder={lang === 'ar' ? 'الإضافة بالإنجليزي' : 'Extra name in English'}
-                    />
+                    <Input value={extra.name} onChange={(e) => setExtraField(idx, { name: e.target.value })} placeholder={lang === 'ar' ? 'الإضافة بالعربي' : 'Extra name in Arabic'} />
+                    <Input value={extra.nameEn} onChange={(e) => setExtraField(idx, { nameEn: e.target.value })} placeholder={lang === 'ar' ? 'الإضافة بالإنجليزي' : 'Extra name in English'} />
                     <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={extra.price}
-                        onChange={(e) => setExtraField(idx, { price: e.target.value })}
-                        placeholder={lang === 'ar' ? 'سعر الإضافة (ج.م)' : 'Extra price (EGP)'}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0 text-red-400"
-                        onClick={() => setField('extras', extraList.filter((_, i) => i !== idx))}
-                        aria-label={t('common.delete')}
-                      >
+                      <Input type="number" min={0} value={extra.price} onChange={(e) => setExtraField(idx, { price: e.target.value })} placeholder={lang === 'ar' ? 'سعر الإضافة (ج.م)' : 'Extra price (EGP)'} />
+                      <Button variant="ghost" size="icon" className="shrink-0 text-red-400" onClick={() => setField('extras', extraList.filter((_, i) => i !== idx))} aria-label={t('common.delete')}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-[var(--tw-text-muted)]">—</p>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() => setField('extras', [...extraList, { name: '', nameEn: '', price: '' }])}
-            >
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => setField('extras', [...extraList, { name: '', nameEn: '', price: '' }])}>
               <Plus className="h-4 w-4" />
               {t('admin.addExtra')}
             </Button>
@@ -689,7 +567,6 @@ export function AdminProductsPage() {
             <Input id="p-tags" value={form.tags} onChange={(e) => setField('tags', e.target.value)} />
           </div>
 
-          {/* Labels multi-select */}
           <div>
             <Label>{lang === 'ar' ? 'البطاقات / التسميات' : 'Labels'}</Label>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -701,29 +578,20 @@ export function AdminProductsPage() {
                     key={lbl._id}
                     type="button"
                     onClick={() => {
-                      if (isSelected) {
-                        setField('labelIds', form.labelIds.filter((id) => id !== lbl._id));
-                      } else {
-                        setField('labelIds', [...form.labelIds, lbl._id]);
-                      }
+                      if (isSelected) setField('labelIds', form.labelIds.filter((id) => id !== lbl._id));
+                      else setField('labelIds', [...form.labelIds, lbl._id]);
                     }}
-                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                      isSelected
-                        ? 'border-brand-500 bg-brand-500/20 text-brand-300'
-                        : 'border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]'
+                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-all duration-200 ${
+                      isSelected ? 'border-brand-500 bg-brand-500/20 text-brand-300' : 'border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]'
                     }`}
                     style={isSelected ? { borderColor: lbl.color, backgroundColor: `${lbl.color}20`, color: lbl.color } : {}}
                   >
                     {labelName}
-                    {isSelected ? <span className="ml-1">×</span> : null}
+                    {isSelected && <span className="ml-1">×</span>}
                   </button>
                 );
               })}
-              <button
-                type="button"
-                onClick={() => setShowLabelModal(true)}
-                className="inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--tw-border-strong)] px-3 py-1 text-xs font-semibold text-[var(--tw-text-muted)] hover:border-brand-500 hover:text-brand-400 transition-colors"
-              >
+              <button type="button" onClick={() => setShowLabelModal(true)} className="inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--tw-border-strong)] px-3 py-1 text-xs font-semibold text-[var(--tw-text-muted)] hover:border-brand-500 hover:text-brand-400 transition-colors">
                 + {lang === 'ar' ? 'بطاقة جديدة' : 'New Label'}
               </button>
             </div>
@@ -755,15 +623,11 @@ export function AdminProductsPage() {
             ))}
           </div>
 
-          {formError ? <p className="text-sm text-red-400">{formError}</p> : null}
+          {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={closeModal}>
-              {t('common.cancel')}
-            </Button>
-            <Button loading={saveMutation.isPending} onClick={handleSave}>
-              {t('common.save')}
-            </Button>
+          <div className="flex justify-end gap-2 border-t border-[var(--tw-border)] pt-5">
+            <Button variant="outline" onClick={closeModal}>{t('common.cancel')}</Button>
+            <Button loading={saveMutation.isPending} onClick={handleSave}>{t('common.save')}</Button>
           </div>
         </div>
       </Modal>
@@ -777,7 +641,6 @@ export function AdminProductsPage() {
         loading={deleteMutation.isPending}
       />
 
-      {/* Create New Category Modal */}
       <Modal open={showCategoryModal} onClose={() => setShowCategoryModal(false)} title={lang === 'ar' ? 'إنشاء قسم جديد' : 'Create New Category'}>
         <div className="space-y-4">
           <div>
@@ -795,7 +658,6 @@ export function AdminProductsPage() {
         </div>
       </Modal>
 
-      {/* Create New Label Modal */}
       <Modal open={showLabelModal} onClose={() => setShowLabelModal(false)} title={lang === 'ar' ? 'إنشاء بطاقة جديدة' : 'Create New Label'}>
         <div className="space-y-4">
           <div>
@@ -808,7 +670,7 @@ export function AdminProductsPage() {
           </div>
           <div>
             <Label>{lang === 'ar' ? 'اللون' : 'Color'}</Label>
-            <input type="color" value={newLabelColor} onChange={(e) => setNewLabelColor(e.target.value)} className="h-10 w-20 rounded border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)]" />
+            <input type="color" value={newLabelColor} onChange={(e) => setNewLabelColor(e.target.value)} className="h-10 w-20 rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)]" />
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowLabelModal(false)}>{t('common.cancel')}</Button>

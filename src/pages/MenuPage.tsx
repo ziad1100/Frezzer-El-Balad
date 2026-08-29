@@ -153,7 +153,6 @@ export function MenuPage() {
   const activeSectionId = activeSection?._id ?? activeSub?.parentId ?? '';
   const categoryName = (c: Category): string => (lang === 'ar' ? c.name : c.nameEn || c.name);
 
-  // Count products per section for tab badges
   const sectionCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const g of grouped) {
@@ -186,10 +185,10 @@ export function MenuPage() {
   return (
     <div>
       {/* Header */}
-      <section className="border-b border-[var(--tw-border)] bg-[var(--tw-surface-alt)] py-10">
+      <section className="border-b border-[var(--tw-border)] bg-[var(--tw-surface-alt)] py-12">
         <div className="container-px">
-          <h1 className="text-2xl font-extrabold text-[var(--tw-text)] sm:text-3xl">{t('menu.title')}</h1>
-          <p className="mt-1 text-sm text-[var(--tw-text-muted)]">{t('menu.subtitle')}</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--tw-text)] sm:text-3xl">{t('menu.title')}</h1>
+          <p className="mt-1.5 text-sm text-[var(--tw-text-muted)]">{t('menu.subtitle')}</p>
           <div className="mt-6 max-w-md">
             <ProductSearch
               onSelect={(product) => {
@@ -205,21 +204,21 @@ export function MenuPage() {
         </div>
       </section>
 
-      <section className="container-px py-6">
+      <section className="container-px py-8">
         {/* Category Tabs */}
         <div className="mb-6 flex flex-wrap gap-2">
           <button
             onClick={() => setCategory('')}
             className={cn(
-              'flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-150',
+              'flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200',
               !activeCategory
-                ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20'
+                ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20'
                 : 'border border-[var(--tw-border-strong)] bg-[var(--tw-card-bg)] text-[var(--tw-text-muted)] hover:border-brand-500/40 hover:text-[var(--tw-text)]',
             )}
           >
             {t('common.all')}
             <span className={cn(
-              'ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+              'rounded-full px-2 py-0.5 text-[10px] font-bold',
               !activeCategory ? 'bg-white/20' : 'bg-[var(--tw-surface-alt)]',
             )}>
               {totalProducts}
@@ -233,16 +232,16 @@ export function MenuPage() {
                 key={section._id}
                 onClick={() => setCategory(section._id)}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-150',
+                  'flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200',
                   isActive
-                    ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20'
+                    ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20'
                     : 'border border-[var(--tw-border-strong)] bg-[var(--tw-card-bg)] text-[var(--tw-text-muted)] hover:border-brand-500/40 hover:text-[var(--tw-text)]',
                 )}
               >
                 {categoryName(section)}
                 {count > 0 && (
                   <span className={cn(
-                    'rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+                    'rounded-full px-2 py-0.5 text-[10px] font-bold',
                     isActive ? 'bg-white/20' : 'bg-[var(--tw-surface-alt)]',
                   )}>
                     {count}
@@ -261,7 +260,7 @@ export function MenuPage() {
                 key={sub._id}
                 onClick={() => setCategory(sub._id)}
                 className={cn(
-                  'rounded-xl border px-4 py-2 text-xs font-medium transition-all duration-150',
+                  'rounded-xl border px-4 py-2 text-xs font-semibold transition-all duration-200',
                   activeCategory === sub._id
                     ? 'border-brand-500 bg-brand-500/10 text-brand-500 shadow-sm shadow-brand-500/5'
                     : 'border-[var(--tw-border-strong)] bg-[var(--tw-card-bg)] text-[var(--tw-text-muted)] hover:border-brand-500/40 hover:text-brand-500',
@@ -288,20 +287,20 @@ export function MenuPage() {
           <EmptyState title={t('menu.noResults')} icon={<Search className="h-14 w-14" />} />
         ) : (
           <>
-            <div className="space-y-14">
+            <div className="space-y-16">
               {pageGroups.map((group) => (
                 <section key={group.section._id}>
-                  <h2 className="mb-6 flex items-center gap-3 text-2xl font-extrabold text-[var(--tw-text)]">
-                    <span className="h-7 w-1.5 rounded-full bg-brand-500" aria-hidden="true" />
+                  <h2 className="mb-6 flex items-center gap-3 text-2xl font-extrabold tracking-tight text-[var(--tw-text)]">
+                    <span className="h-8 w-1.5 rounded-full bg-brand-500" aria-hidden="true" />
                     {categoryName(group.section)}
                   </h2>
                   {group.items.length > 0 ? productGrid(group.items) : null}
                   {group.subs.map((subGroup) => {
                     const showSubTitle = group.subs.length > 1 || group.items.length > 0;
                     return (
-                      <div key={subGroup.sub._id} className="mt-9 first:mt-0">
+                      <div key={subGroup.sub._id} className="mt-10 first:mt-0">
                         {showSubTitle ? (
-                          <h3 className="mb-4 text-lg font-bold text-[var(--tw-text)]">
+                          <h3 className="mb-5 text-lg font-bold text-[var(--tw-text)]">
                             {categoryName(subGroup.sub)}
                           </h3>
                         ) : null}
@@ -313,12 +312,12 @@ export function MenuPage() {
               ))}
             </div>
             {totalPages > 1 ? (
-              <div className="mt-10 flex items-center justify-center gap-3">
+              <div className="mt-12 flex items-center justify-center gap-4">
                 <Button variant="outline" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                   <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                   {t('common.back')}
                 </Button>
-                <span className="text-sm font-bold text-[var(--tw-text-muted)]">
+                <span className="min-w-[60px] text-center text-sm font-bold text-[var(--tw-text-muted)]">
                   {safePage} / {totalPages}
                 </span>
                 <Button variant="outline" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>

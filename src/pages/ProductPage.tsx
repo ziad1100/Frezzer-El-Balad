@@ -151,7 +151,7 @@ export function ProductPage() {
   return (
     <div className="container-px py-10">
       {/* Breadcrumb */}
-      <nav className="mb-6 flex items-center gap-1.5 text-xs text-[var(--tw-text-muted)]">
+      <nav className="mb-8 flex items-center gap-1.5 text-xs text-[var(--tw-text-muted)]">
         <Link to="/" className="hover:text-brand-500">{t('nav.home')}</Link>
         <ChevronRight className="h-4 w-4 rtl:rotate-180" />
         <Link to="/menu" className="hover:text-brand-500">{t('nav.menu')}</Link>
@@ -161,9 +161,9 @@ export function ProductPage() {
         </span>
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-10 lg:grid-cols-2">
         {/* Image */}
-        <div className="relative overflow-hidden rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)]">
+        <div className="relative overflow-hidden rounded-3xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)]">
           {image ? (
             <img
               src={image}
@@ -172,7 +172,7 @@ export function ProductPage() {
             />
           ) : (
             <div className="flex aspect-square items-center justify-center">
-              <ShoppingBag className="h-16 w-16 text-[var(--tw-text-muted)]" />
+              <ShoppingBag className="h-16 w-16 text-[var(--tw-text-subtle)]" />
             </div>
           )}
         </div>
@@ -192,9 +192,9 @@ export function ProductPage() {
                   key={lbl._id}
                   className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
                   style={{
-                    backgroundColor: `${lbl.color}20`,
+                    backgroundColor: `${lbl.color}15`,
                     color: lbl.color,
-                    border: `1px solid ${lbl.color}40`,
+                    border: `1px solid ${lbl.color}30`,
                   }}
                 >
                   {lbl.icon ? `${lbl.icon} ` : ''}{lang === 'ar' ? lbl.name : (lbl.nameEn || lbl.name)}
@@ -202,10 +202,10 @@ export function ProductPage() {
               ))}
             </div>
           ) : null}
-          <h1 className="text-2xl font-extrabold text-[var(--tw-text)] md:text-3xl">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--tw-text)] md:text-3xl">
             {lang === 'ar' ? product.name : product.nameEn || product.name}
           </h1>
-          <div className="mt-2.5 flex items-center gap-3 text-xs text-[var(--tw-text-muted)]">
+          <div className="mt-3 flex items-center gap-3 text-xs text-[var(--tw-text-muted)]">
             <span className="flex items-center gap-1 text-fresh-500">
               <Star className="h-4 w-4 fill-current" />
               {product.rating.toFixed(1)}
@@ -218,19 +218,19 @@ export function ProductPage() {
               {t('menu.preparationTime')}: {product.preparationTime} {t('menu.minutes')}
             </span>
           </div>
-          <p className="mt-3 text-sm leading-relaxed text-[var(--tw-text-muted)]">
+          <p className="mt-4 text-sm leading-relaxed text-[var(--tw-text-muted)]">
             {lang === 'ar' ? product.description : product.descriptionEn || product.description}
           </p>
 
           {/* Ingredients */}
           {product.ingredients.length > 0 ? (
             <div className="mt-6">
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+              <h3 className="mb-2.5 text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">
                 {t('menu.ingredients')}
               </h3>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {product.ingredients.map((ing) => (
-                  <span key={ing} className="rounded-full border border-[var(--tw-border-strong)] px-2.5 py-1 text-xs text-[var(--tw-text-muted)]">
+                  <span key={ing} className="rounded-full border border-[var(--tw-border-strong)] px-3 py-1 text-xs text-[var(--tw-text-muted)]">
                     {ing}
                   </span>
                 ))}
@@ -241,10 +241,10 @@ export function ProductPage() {
           {/* Sizes */}
           {product.sizes.length > 0 ? (
             <div className="mt-6">
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+              <h3 className="mb-2.5 text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">
                 {t('menu.size')}
               </h3>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-3">
                 {product.sizes.map((s) => {
                   const active = String(s._id) === String(size?._id);
                   return (
@@ -252,10 +252,10 @@ export function ProductPage() {
                       key={String(s._id)}
                       onClick={() => setSelectedSize(String(s._id))}
                       className={cn(
-                        'rounded-lg border p-2.5 text-center text-sm transition-all duration-150',
+                        'rounded-xl border-2 p-3 text-center transition-all duration-200',
                         active
-                          ? 'border-brand-500 bg-brand-500/10 text-[var(--tw-text)]'
-                          : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]',
+                          ? 'border-brand-500 bg-brand-500/10 text-[var(--tw-text)] shadow-sm shadow-brand-500/10'
+                          : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-brand-500/40',
                       )}
                     >
                       <p className="text-sm font-bold">{lang === 'ar' ? s.name : s.nameEn || s.name}</p>
@@ -270,7 +270,7 @@ export function ProductPage() {
           {/* Extras */}
           {product.extras.length > 0 ? (
             <div className="mt-6">
-              <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+              <h3 className="mb-2.5 text-sm font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">
                 {t('menu.extras')}
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -281,10 +281,10 @@ export function ProductPage() {
                       key={String(e._id)}
                       onClick={() => toggleExtra(String(e._id))}
                       className={cn(
-                        'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all duration-150',
+                        'flex items-center gap-2 rounded-xl border-2 px-4 py-2.5 text-sm transition-all duration-200',
                         active
                           ? 'border-fresh-500 bg-fresh-500/10 text-[var(--tw-text)]'
-                          : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]',
+                          : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-fresh-500/40',
                       )}
                     >
                       <span>{lang === 'ar' ? e.name : e.nameEn || e.name}</span>
@@ -306,7 +306,7 @@ export function ProductPage() {
                   if (customWeightEnabled) { setCustomWeightValue(''); setCustomWeightUnit('g'); }
                 }}
                 className={cn(
-                  'rounded-xl border px-4 py-2 text-sm font-semibold transition-all duration-150',
+                  'rounded-xl border-2 px-4 py-2 text-sm font-semibold transition-all duration-200',
                   customWeightEnabled
                     ? 'border-brand-500 bg-brand-500/20 text-brand-500'
                     : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]',
@@ -316,7 +316,7 @@ export function ProductPage() {
               </button>
               {customWeightEnabled && (
                 <div className="mt-3 rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] p-4">
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">
                     {lang === 'ar' ? 'الوزن المخصص' : 'Custom Weight'}
                   </label>
                   <div className="flex items-center gap-2">
@@ -325,13 +325,13 @@ export function ProductPage() {
                       value={customWeightValue}
                       onChange={(e) => setCustomWeightValue(e.target.value)}
                       placeholder={lang === 'ar' ? 'أدخل الوزن' : 'Enter weight'}
-                      className="w-28 rounded-lg border border-[var(--tw-input-border)] bg-[var(--tw-input-bg)] px-3 py-2 text-sm text-[var(--tw-text)] outline-none focus:border-brand-500"
+                      className="w-28 rounded-xl border border-[var(--tw-input-border)] bg-[var(--tw-input-bg)] px-3 py-2 text-sm text-[var(--tw-text)] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                       dir="ltr"
                     />
                     <select
                       value={customWeightUnit}
                       onChange={(e) => setCustomWeightUnit(e.target.value as 'g' | 'kg')}
-                      className="rounded-lg border border-[var(--tw-input-border)] bg-[var(--tw-input-bg)] px-3 py-2 text-sm text-[var(--tw-text)] outline-none"
+                      className="rounded-xl border border-[var(--tw-input-border)] bg-[var(--tw-input-bg)] px-3 py-2 text-sm text-[var(--tw-text)] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                     >
                       <option value="g">{lang === 'ar' ? 'جم' : 'g'}</option>
                       <option value="kg">{lang === 'ar' ? 'كيلو' : 'kg'}</option>
@@ -355,19 +355,19 @@ export function ProductPage() {
 
           {/* Qty + Add to Cart */}
           <div className="mt-8 flex items-center gap-4">
-            <div className="flex items-center gap-2 rounded-xl border border-[var(--tw-border-strong)]">
-              <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="p-3 text-[var(--tw-text-muted)] hover:text-brand-500" aria-label="minus">
+            <div className="flex items-center gap-1 rounded-xl border-2 border-[var(--tw-border-strong)]">
+              <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="p-3 text-[var(--tw-text-muted)] hover:text-brand-500 transition-colors" aria-label="minus">
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="min-w-8 text-center font-bold text-[var(--tw-text)]">{qty}</span>
-              <button onClick={() => setQty((q) => q + 1)} className="p-3 text-[var(--tw-text-muted)] hover:text-brand-500" aria-label="plus">
+              <span className="min-w-10 text-center font-bold text-[var(--tw-text)]">{qty}</span>
+              <button onClick={() => setQty((q) => q + 1)} className="p-3 text-[var(--tw-text-muted)] hover:text-brand-500 transition-colors" aria-label="plus">
                 <Plus className="h-4 w-4" />
               </button>
             </div>
             <button
               onClick={() => dispatch(toggleWishlist(product._id))}
               className={cn(
-                'flex h-13 w-13 items-center justify-center rounded-xl border transition-all duration-150',
+                'flex h-12 w-12 items-center justify-center rounded-xl border-2 transition-all duration-200',
                 isWished
                   ? 'border-brand-500 bg-brand-500/10 text-brand-500'
                   : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:text-brand-500',
@@ -397,8 +397,8 @@ export function ProductPage() {
           )}
 
           {/* Total */}
-          <div className="mt-6 flex items-center justify-between rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-4">
-            <span className="text-[var(--tw-text-muted)]">{t('cart.subtotal')}</span>
+          <div className="mt-6 flex items-center justify-between rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-5">
+            <span className="text-sm text-[var(--tw-text-muted)]">{t('cart.subtotal')}</span>
             <span className="text-2xl font-extrabold text-brand-500">
               {formatPrice(lineTotal * qty, lang)}
             </span>

@@ -138,12 +138,13 @@ export function AdminBannersPage() {
           </thead>
           <tbody>
             {(banners.data ?? []).map((b) => (
-              <tr key={b._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+              <tr key={b._id} className="group transition-colors hover:bg-[var(--tw-hover)]">
                 <Td>
-                  <p className="flex items-center gap-2 font-bold text-[var(--tw-text)]">
-                    <ImageIcon className="h-4 w-4 text-brand-500" />
+                  <p className="flex items-center gap-2 font-bold tracking-tight text-[var(--tw-text)]">
+                    <ImageIcon className="h-4 w-4 text-brand-400" />
                     {b.title}
                   </p>
+                  {b.subtitle ? <p className="mt-0.5 text-xs text-[var(--tw-text-muted)]">{b.subtitle}</p> : null}
                 </Td>
                 <Td>
                   {b.image ? (

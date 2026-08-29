@@ -33,6 +33,16 @@
   --color-gold-600: #D97706;
   --color-gold-700: #B45309;
 
+  /* ── Ice Blue (accent for frozen/fresh theme) ──────────────── */
+  --color-ice-50: #F0F9FF;
+  --color-ice-100: #E0F2FE;
+  --color-ice-200: #BAE6FD;
+  --color-ice-300: #7DD3FC;
+  --color-ice-400: #38BDF8;
+  --color-ice-500: #0EA5E9;
+  --color-ice-600: #0284C7;
+  --color-ice-700: #0369A1;
+
   /* ── Semantic tokens ──────────────────────────────────────── */
   --color-discount: #F97316;
   --color-fresh: #22C55E;
@@ -60,7 +70,9 @@
   /* ── Animations ───────────────────────────────────────────── */
   --animate-fade-in: fade-in 0.3s ease both;
   --animate-slide-up: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-down: slide-down 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-scale-in: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-shimmer: shimmer 1.5s ease-in-out infinite;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -70,9 +82,17 @@
     from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @keyframes slide-down {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   @keyframes scale-in {
     from { opacity: 0; transform: scale(0.97); }
     to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
   }
 }
 
@@ -82,18 +102,23 @@
   --tw-bg: #F8FAFC;
   --tw-surface: #FFFFFF;
   --tw-surface-alt: #F1F5F9;
+  --tw-surface-elevated: #FFFFFF;
   --tw-text: #1E293B;
   --tw-text-muted: #64748B;
+  --tw-text-subtle: #94A3B8;
   --tw-border: #E2E8F0;
   --tw-border-strong: #CBD5E1;
   --tw-card-bg: #FFFFFF;
   --tw-card-border: #E2E8F0;
+  --tw-card-hover: #F8FAFC;
   --tw-sidebar-bg: #FFFFFF;
   --tw-sidebar-border: #E2E8F0;
-  --tw-header-bg: rgba(255,255,255,0.9);
+  --tw-header-bg: rgba(255,255,255,0.92);
   --tw-input-bg: #F8FAFC;
   --tw-input-border: #CBD5E1;
   --tw-hover: #F1F5F9;
+  --tw-focus-ring: rgba(99,102,241,0.4);
+  --tw-overlay: rgba(0,0,0,0.4);
 }
 
 /* ── Dark Mode ──────────────────────────────────────────────────── */
@@ -101,18 +126,23 @@
   --tw-bg: #0B1120;
   --tw-surface: #0F172A;
   --tw-surface-alt: #172033;
+  --tw-surface-elevated: #1E293B;
   --tw-text: #F1F5F9;
   --tw-text-muted: #64748B;
+  --tw-text-subtle: #475569;
   --tw-border: #1E293B;
   --tw-border-strong: #334155;
   --tw-card-bg: rgba(15,23,42,0.8);
   --tw-card-border: rgba(30,41,59,0.6);
+  --tw-card-hover: rgba(30,41,59,0.4);
   --tw-sidebar-bg: rgba(15,23,42,0.95);
   --tw-sidebar-border: rgba(30,41,59,0.6);
-  --tw-header-bg: rgba(11,17,32,0.95);
+  --tw-header-bg: rgba(11,17,32,0.92);
   --tw-input-bg: rgba(15,23,42,0.8);
   --tw-input-border: rgba(51,65,85,0.8);
   --tw-hover: rgba(30,41,59,0.6);
+  --tw-focus-ring: rgba(99,102,241,0.5);
+  --tw-overlay: rgba(0,0,0,0.6);
 }
 
 @layer base {
@@ -160,6 +190,16 @@
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
+  /* Respect reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @utility text-balance {
@@ -168,6 +208,31 @@
 
 @utility container-px {
   @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+@utility container-wide {
+  @apply mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8;
+}
+
+/* ── Premium Card Styles ─────────────────────────────────────────── */
+@utility card-premium {
+  @apply rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] transition-all duration-200;
+  &:hover {
+    border-color: var(--tw-border-strong);
+    box-shadow: 0 4px 24px -4px rgba(0,0,0,0.1);
+  }
+}
+
+@utility card-elevated {
+  @apply rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-surface-elevated)] shadow-lg shadow-black/5;
+}
+
+/* ── Focus Ring ─────────────────────────────────────────────────── */
+@utility focus-ring {
+  @apply outline-none focus-visible:outline-2 focus-visible:outline-offset-2;
+  &:focus-visible {
+    outline-color: var(--tw-focus-ring);
+  }
 }
 
 /* ── Recharts Overrides ─────────────────────────────────────────── */
@@ -184,4 +249,33 @@
 
 .recharts-tooltip-wrapper {
   outline: none;
+}
+
+.recharts-tooltip {
+  @apply rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] shadow-xl;
+}
+
+/* ── Responsive Mobile Optimizations ─────────────────────────────── */
+@media (max-width: 640px) {
+  /* Larger touch targets on mobile */
+  button, a, [role="button"] {
+    min-height: 44px;
+  }
+
+  /* Better mobile table experience */
+  table {
+    font-size: 13px;
+  }
+
+  /* Prevent horizontal overflow on admin pages */
+  main > div {
+    overflow-x: hidden;
+  }
+}
+
+/* ── Smooth page transitions ─────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    scroll-behavior: smooth;
+  }
 }

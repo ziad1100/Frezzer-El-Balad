@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save } from 'lucide-react';
+import { Save, Truck, Phone, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminSettings, updateSettings } from '@/api/admin';
 import { Button } from '@/components/ui/Button';
@@ -43,7 +43,7 @@ const toForm = (s: SettingsMap | undefined): SettingsForm => {
 };
 
 export function AdminSettingsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
 
   const settings = useQuery({ queryKey: ['admin', 'settings'], queryFn: getAdminSettings });
@@ -55,7 +55,7 @@ export function AdminSettingsPage() {
   return (
     <div>
       <PageHeader title={t('admin.nav.settings')} />
-      <SettingsFormView key={settingsKey} settings={settings.data} queryClient={queryClient} t={t} />
+      <SettingsFormView key={settingsKey} settings={settings.data} queryClient={queryClient} t={t} i18n={i18n} />
     </div>
   );
 }
@@ -64,10 +64,12 @@ function SettingsFormView({
   settings,
   queryClient,
   t,
+  i18n,
 }: {
   settings: SettingsMap | undefined;
   queryClient: ReturnType<typeof useQueryClient>;
   t: ReturnType<typeof useTranslation>['t'];
+  i18n: ReturnType<typeof useTranslation>['i18n'];
 }) {
   const [form, setForm] = useState<SettingsForm>(() => toForm(settings));
 
@@ -94,79 +96,108 @@ function SettingsFormView({
   });
 
   return (
-    <Card>
-      <CardContent className="p-6">
-          <div className="space-y-6">
+    <div className="space-y-6">
+      {/* Delivery Settings */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
+              <Truck className="h-5 w-5" />
+            </span>
             <div>
-              <h3 className="mb-3 text-sm font-bold text-[var(--tw-text-muted)]">{t('admin.nav.commerce')}</h3>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <Label htmlFor="s-fee">{t('admin.deliveryFeeSetting')}</Label>
-                  <Input id="s-fee" type="number" min={0} value={form.deliveryFee} onChange={(e) => setForm({ ...form, deliveryFee: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="s-min">{t('admin.minimumOrderSetting')}</Label>
-                  <Input id="s-min" type="number" min={0} value={form.minimumOrder} onChange={(e) => setForm({ ...form, minimumOrder: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="s-free">{t('admin.freeDeliverySetting')}</Label>
-                  <Input id="s-free" type="number" min={0} value={form.freeDeliveryOver} onChange={(e) => setForm({ ...form, freeDeliveryOver: e.target.value })} />
-                </div>
-              </div>
+              <h3 className="text-sm font-bold text-[var(--tw-text)]">{t('admin.nav.commerce')}</h3>
+              <p className="text-xs text-[var(--tw-text-muted)]">{i18n.language === 'ar' ? 'إعدادات التوصيل والطلب' : 'Delivery and order settings'}</p>
             </div>
-
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <h3 className="mb-3 text-sm font-bold text-[var(--tw-text-muted)]">{t('admin.nav.contacts')}</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="s-phone">{t('admin.phoneSetting')}</Label>
-                  <Input id="s-phone" dir="ltr" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="s-wa">{t('admin.whatsappSetting')}</Label>
-                  <Input id="s-wa" dir="ltr" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="s-fb">{t('admin.facebookSetting')}</Label>
-                  <Input id="s-fb" dir="ltr" value={form.facebook} onChange={(e) => setForm({ ...form, facebook: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="s-ig">{t('admin.instagramSetting')}</Label>
-                  <Input id="s-ig" dir="ltr" value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} />
-                </div>
-              </div>
+              <Label htmlFor="s-fee">{t('admin.deliveryFeeSetting')}</Label>
+              <Input id="s-fee" type="number" min={0} value={form.deliveryFee} onChange={(e) => setForm({ ...form, deliveryFee: e.target.value })} />
             </div>
-
             <div>
-              <h3 className="mb-3 text-sm font-bold text-[var(--tw-text-muted)]">{t('admin.nav.content')}</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="s-hours">{t('admin.workingHoursSetting')}</Label>
-                  <Input id="s-hours" value={form.workingHoursAr} onChange={(e) => setForm({ ...form, workingHoursAr: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="s-hoursen">{t('admin.workingHoursEnSetting')}</Label>
-                  <Input id="s-hoursen" value={form.workingHoursEn} onChange={(e) => setForm({ ...form, workingHoursEn: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="s-tag">{t('footer.tagline')}</Label>
-                  <Input id="s-tag" value={form.taglineAr} onChange={(e) => setForm({ ...form, taglineAr: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="s-tagen">{t('admin.taglineEn')}</Label>
-                  <Input id="s-tagen" value={form.taglineEn} onChange={(e) => setForm({ ...form, taglineEn: e.target.value })} />
-                </div>
-              </div>
+              <Label htmlFor="s-min">{t('admin.minimumOrderSetting')}</Label>
+              <Input id="s-min" type="number" min={0} value={form.minimumOrder} onChange={(e) => setForm({ ...form, minimumOrder: e.target.value })} />
             </div>
-
-            <div className="flex justify-end">
-              <Button loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
-                <Save className="h-4 w-4" />
-                {t('common.save')}
-              </Button>
+            <div>
+              <Label htmlFor="s-free">{t('admin.freeDeliverySetting')}</Label>
+              <Input id="s-free" type="number" min={0} value={form.freeDeliveryOver} onChange={(e) => setForm({ ...form, freeDeliveryOver: e.target.value })} />
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Contact Settings */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-fresh-500/10 text-fresh-500">
+              <Phone className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="text-sm font-bold text-[var(--tw-text)]">{t('admin.nav.contacts')}</h3>
+              <p className="text-xs text-[var(--tw-text-muted)]">{i18n.language === 'ar' ? 'بيانات التواصل' : 'Contact information'}</p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="s-phone">{t('admin.phoneSetting')}</Label>
+              <Input id="s-phone" dir="ltr" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </div>
+            <div>
+              <Label htmlFor="s-wa">{t('admin.whatsappSetting')}</Label>
+              <Input id="s-wa" dir="ltr" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} />
+            </div>
+            <div>
+              <Label htmlFor="s-fb">{t('admin.facebookSetting')}</Label>
+              <Input id="s-fb" dir="ltr" value={form.facebook} onChange={(e) => setForm({ ...form, facebook: e.target.value })} />
+            </div>
+            <div>
+              <Label htmlFor="s-ig">{t('admin.instagramSetting')}</Label>
+              <Input id="s-ig" dir="ltr" value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Content Settings */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-500/10 text-gold-500">
+              <Clock className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="text-sm font-bold text-[var(--tw-text)]">{t('admin.nav.content')}</h3>
+              <p className="text-xs text-[var(--tw-text-muted)]">{i18n.language === 'ar' ? 'ساعات العمل والشعار' : 'Working hours and tagline'}</p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="s-hours">{t('admin.workingHoursSetting')}</Label>
+              <Input id="s-hours" value={form.workingHoursAr} onChange={(e) => setForm({ ...form, workingHoursAr: e.target.value })} />
+            </div>
+            <div>
+              <Label htmlFor="s-hoursen">{t('admin.workingHoursEnSetting')}</Label>
+              <Input id="s-hoursen" value={form.workingHoursEn} onChange={(e) => setForm({ ...form, workingHoursEn: e.target.value })} />
+            </div>
+            <div>
+              <Label htmlFor="s-tag">{t('footer.tagline')}</Label>
+              <Input id="s-tag" value={form.taglineAr} onChange={(e) => setForm({ ...form, taglineAr: e.target.value })} />
+            </div>
+            <div>
+              <Label htmlFor="s-tagen">{t('admin.taglineEn')}</Label>
+              <Input id="s-tagen" value={form.taglineEn} onChange={(e) => setForm({ ...form, taglineEn: e.target.value })} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button loading={saveMutation.isPending} onClick={() => saveMutation.mutate()} size="lg">
+          <Save className="h-4 w-4" />
+          {t('common.save')}
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -5,7 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Lock, AlertTriangle, Tag, ShoppingBag } from 'lucide-react';
+import { Lock, AlertTriangle, Tag, ShoppingBag, Check, CreditCard, Banknote, Smartphone, Building, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { createOrder, getSettings } from '@/api/orders';
 import { getPaymentSettings, type PaymentSettings } from '@/api/payment';
@@ -18,7 +18,6 @@ import { useAppDispatch, useAppSelector } from '@/hooks';
 import { getErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { ProductSearch, type SearchableProduct } from '@/components/ProductSearch';
-import { adminSearchProducts, type AdminSearchProduct } from '@/api/admin';
 import { Card, CardContent, EmptyState } from '@/components/ui/Card';
 import { FieldError, Input, Label, Textarea } from '@/components/ui/Input';
 import { EGYPTIAN_MOBILE_REGEX } from '@/lib/validation';
@@ -246,8 +245,8 @@ export function CheckoutPage() {
   return (
     <div className="container-px py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-extrabold text-[var(--tw-text)]">{t('checkout.title')}</h1>
-        <p className="mt-1 text-sm text-[var(--tw-text-muted)]">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--tw-text)]">{t('checkout.title')}</h1>
+        <p className="mt-1.5 text-sm text-[var(--tw-text-muted)]">
           {i18n.language === 'ar' ? 'أكمل بياناتك لإتمام الطلب' : 'Complete your details to place the order'}
         </p>
       </div>
@@ -255,7 +254,7 @@ export function CheckoutPage() {
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Form */}
         <Card className="lg:col-span-3">
-          <CardContent className="p-5">
+          <CardContent className="p-6">
             {isAdmin ? (
               <form onSubmit={adminHandleSubmit((values) => adminOrderMutation.mutate(values))} className="space-y-6">
                 <Section title={i18n.language === 'ar' ? 'بحث سريع عن منتج' : 'Quick Product Search'}>
@@ -272,7 +271,7 @@ export function CheckoutPage() {
                           <img
                             src={selectedSearchProduct.images[0]}
                             alt={i18n.language === 'ar' ? selectedSearchProduct.name : selectedSearchProduct.nameEn || selectedSearchProduct.name}
-                            className="h-12 w-12 rounded-lg object-cover"
+                            className="h-12 w-12 rounded-xl object-cover"
                           />
                         )}
                         <div className="min-w-0 flex-1">
@@ -294,7 +293,7 @@ export function CheckoutPage() {
 
                       {selectedSearchProduct.sizes && selectedSearchProduct.sizes.length > 0 && (
                         <div className="mb-3">
-                          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                          <label className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">
                             {i18n.language === 'ar' ? 'النوع / الوزن' : 'Variant / Weight'}
                           </label>
                           <div className="flex flex-wrap gap-2">
@@ -305,7 +304,7 @@ export function CheckoutPage() {
                                 disabled={!size.isAvailable}
                                 onClick={() => setSearchSizeId(size._id!)}
                                 className={cn(
-                                  'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all',
+                                  'rounded-xl border-2 px-3 py-1.5 text-xs font-semibold transition-all duration-200',
                                   searchSizeId === size._id
                                     ? 'border-brand-500 bg-brand-500/15 text-brand-400 shadow-sm'
                                     : size.isAvailable
@@ -322,14 +321,14 @@ export function CheckoutPage() {
                       )}
 
                       <div className="mb-3 flex items-center gap-3">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+                        <label className="text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">
                           {i18n.language === 'ar' ? 'الكمية' : 'Qty'}
                         </label>
-                        <div className="flex items-center gap-0.5 rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]">
+                        <div className="flex items-center gap-0.5 rounded-xl border-2 border-[var(--tw-border-strong)] bg-[var(--tw-surface)]">
                           <button
                             type="button"
                             onClick={() => setSearchQty((q) => Math.max(1, q - 1))}
-                            className="flex h-7 w-7 items-center justify-center rounded-l-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+                            className="flex h-7 w-7 items-center justify-center rounded-l-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
                           >
                             −
                           </button>
@@ -344,7 +343,7 @@ export function CheckoutPage() {
                           <button
                             type="button"
                             onClick={() => setSearchQty((q) => Math.min(99, q + 1))}
-                            className="flex h-7 w-7 items-center justify-center rounded-r-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+                            className="flex h-7 w-7 items-center justify-center rounded-r-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
                           >
                             +
                           </button>
@@ -394,24 +393,24 @@ export function CheckoutPage() {
                 </Section>
 
                 <Section title={i18n.language === 'ar' ? 'السعر المخصص' : 'Custom Pricing'}>
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     {lines.map((line, idx) => {
                       const normalPrice = line.unitPrice;
                       const isEnabled = customPriceEnabled[idx] ?? line.isCustomPrice ?? false;
                       const currentCustom = customPrices[idx] ?? line.customPrice;
                       return (
-                        <div key={`${line.productId}-${line.size ?? ''}`} className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-3.5">
+                        <div key={`${line.productId}-${line.size ?? ''}`} className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-4">
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-[var(--tw-text-muted)]">
                               {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
-                              {line.sizeName ? <span className="text-[var(--tw-text-muted)]"> ({line.sizeName})</span> : null}
+                              {line.sizeName && <span className="text-[var(--tw-text-muted)]"> ({line.sizeName})</span>}
                               <span className="text-[var(--tw-text-muted)]"> × {line.qty}</span>
                             </span>
                             <span className="text-sm font-bold text-[var(--tw-text)]">
                               {formatPrice(normalPrice, i18n.language)}
                             </span>
                           </div>
-                          <div className="mt-2.5 flex items-center gap-3">
+                          <div className="mt-3 flex items-center gap-3">
                             <label className="flex items-center gap-2 text-xs text-[var(--tw-text-muted)]">
                               <input
                                 type="checkbox"
@@ -517,10 +516,10 @@ export function CheckoutPage() {
 
         {/* Order Summary */}
         <Card className="h-fit lg:col-span-2">
-          <CardContent className="p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500">
-                <ShoppingBag className="h-4 w-4" />
+          <CardContent className="p-6">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
+                <ShoppingBag className="h-5 w-5" />
               </span>
               <h2 className="text-base font-bold text-[var(--tw-text)]">{t('cart.title')}</h2>
             </div>
@@ -549,7 +548,7 @@ export function CheckoutPage() {
             <div className="mt-4">
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Tag className="absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--tw-text-muted)]" />
+                  <Tag className="absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--tw-text-subtle)]" />
                   <Input
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value)}
@@ -566,37 +565,37 @@ export function CheckoutPage() {
                   {t('cart.couponApply')}
                 </Button>
               </div>
-              {couponError ? <p className="mt-1.5 text-xs text-red-400">{couponError}</p> : null}
+              {couponError && <p className="mt-1.5 text-xs text-red-400">{couponError}</p>}
             </div>
 
             {/* Totals */}
-            <div className="mt-4 space-y-2.5 text-sm">
+            <div className="mt-5 space-y-3 text-sm">
               <Row label={t('cart.subtotal')} value={formatPrice(subtotal, i18n.language)} />
               <Row
                 label={t('cart.delivery')}
                 value={effectiveFee === 0 ? t('common.freeDelivery') : formatPrice(effectiveFee, i18n.language)}
                 free={effectiveFee === 0}
               />
-              {couponDiscount > 0 ? (
+              {couponDiscount > 0 && (
                 <Row label={`${t('cart.discount')} (${couponCode})`} value={formatPrice(-couponDiscount, i18n.language)} accent />
-              ) : null}
+              )}
             </div>
 
-            <div className="mt-4 flex items-center justify-between border-t border-[var(--tw-border)] pt-4">
+            <div className="mt-5 flex items-center justify-between border-t border-[var(--tw-border)] pt-5">
               <span className="font-bold text-[var(--tw-text)]">{t('cart.total')}</span>
               <span className="text-2xl font-extrabold text-brand-500">
                 {formatPrice(Math.max(0, total), i18n.language)}
               </span>
             </div>
 
-            {subtotal < minimumOrder ? (
-              <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+            {subtotal < minimumOrder && (
+              <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
                 <p className="text-xs leading-relaxed text-amber-400">
                   {t('checkout.minOrderRequired')}: {formatPrice(minimumOrder, i18n.language)}
                 </p>
               </div>
-            ) : null}
+            )}
           </CardContent>
         </Card>
       </div>
@@ -676,12 +675,12 @@ function Row({ label, value, accent, free }: { label: string; value: string; acc
 
 type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'bank_transfer' | 'instapay';
 
-const PAYMENT_METHODS: Array<{ value: PaymentMethod; icon: string; labelAr: string; labelEn: string; requiresSettings?: keyof PaymentSettings }> = [
-  { value: 'cash', icon: '💵', labelAr: 'الدفع عند الاستلام', labelEn: 'Cash on Delivery', requiresSettings: 'cashOnDelivery' },
-  { value: 'vodafone_cash', icon: '📱', labelAr: 'فودافون كاش', labelEn: 'Vodafone Cash', requiresSettings: 'vodafoneCash' },
-  { value: 'bank_transfer', icon: '🏦', labelAr: 'تحويل بنكي', labelEn: 'Bank Transfer', requiresSettings: 'bankTransfer' },
-  { value: 'instapay', icon: '⚡', labelAr: 'انستاباي', labelEn: 'InstaPay', requiresSettings: 'instapay' },
-  { value: 'card', icon: '💳', labelAr: 'بطاقة ائتمان', labelEn: 'Credit Card', requiresSettings: 'card' },
+const PAYMENT_METHODS: Array<{ value: PaymentMethod; icon: ReactNode; labelAr: string; labelEn: string; requiresSettings?: keyof PaymentSettings }> = [
+  { value: 'cash', icon: <Banknote className="h-5 w-5" />, labelAr: 'الدفع عند الاستلام', labelEn: 'Cash on Delivery', requiresSettings: 'cashOnDelivery' },
+  { value: 'vodafone_cash', icon: <Smartphone className="h-5 w-5" />, labelAr: 'فودافون كاش', labelEn: 'Vodafone Cash', requiresSettings: 'vodafoneCash' },
+  { value: 'bank_transfer', icon: <Building className="h-5 w-5" />, labelAr: 'تحويل بنكي', labelEn: 'Bank Transfer', requiresSettings: 'bankTransfer' },
+  { value: 'instapay', icon: <Zap className="h-5 w-5" />, labelAr: 'انستاباي', labelEn: 'InstaPay', requiresSettings: 'instapay' },
+  { value: 'card', icon: <CreditCard className="h-5 w-5" />, labelAr: 'بطاقة ائتمان', labelEn: 'Credit Card', requiresSettings: 'card' },
 ];
 
 function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
@@ -705,7 +704,7 @@ function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
         <label
           key={method.value}
           className={cn(
-            'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all',
+            'flex cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3.5 transition-all duration-200',
             value === method.value
               ? 'border-brand-500 bg-brand-500/10 shadow-sm shadow-brand-500/5'
               : 'border-[var(--tw-border-strong)] hover:border-brand-500/30 hover:bg-[var(--tw-hover)]',
@@ -719,15 +718,21 @@ function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
             onChange={() => onChange(method.value)}
             className="sr-only"
           />
-          <span className="text-lg">{method.icon}</span>
+          <span className={cn('text-brand-500', value === method.value ? '' : 'text-[var(--tw-text-subtle)]')}>{method.icon}</span>
           <span className={cn('text-sm font-semibold', value === method.value ? 'text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)]')}>
             {lang === 'ar' ? method.labelAr : method.labelEn}
           </span>
           {value === method.value && (
-            <span className="ms-auto h-2 w-2 rounded-full bg-brand-500" />
+            <span className="ms-auto flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-white">
+              <Check className="h-3 w-3" />
+            </span>
           )}
         </label>
       ))}
     </div>
   );
 }
+
+// Import type for AdminSearchProduct
+import type { AdminSearchProduct } from '@/api/admin';
+import { adminSearchProducts } from '@/api/admin';

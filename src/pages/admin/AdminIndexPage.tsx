@@ -376,16 +376,16 @@ export function AdminIndexPage() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {stats.map(({ key, value, icon: Icon }) => (
-            <Card key={key}>
-              <CardContent className="flex items-center gap-3 p-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-600/15 text-brand-400">
+            <Card key={key} variant="interactive">
+              <CardContent className="flex items-center gap-4 p-5">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
                   <Icon className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-xs text-[var(--tw-text-muted)]">{key}</p>
-                  <p className="mt-0.5 text-xl font-extrabold text-[var(--tw-text)]">{value}</p>
+                  <p className="text-xs font-medium text-[var(--tw-text-muted)]">{key}</p>
+                  <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">{value}</p>
                 </div>
               </CardContent>
             </Card>
@@ -394,18 +394,18 @@ export function AdminIndexPage() {
       )}
 
       {/* Sales / Outgoing & Inventory Stats */}
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {/* Sales / Outgoing Value */}
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600/15 text-emerald-400">
+        <Card variant="interactive">
+          <CardContent className="flex items-center gap-4 p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
               <TrendingUp className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-xs text-[var(--tw-text-muted)]">
+              <p className="text-xs font-medium text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'المبيعات / المنصرف' : 'Sales / Outgoing'}
               </p>
-              <p className="mt-0.5 text-xl font-extrabold text-[var(--tw-text)]">
+              <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
                 {salesStats.data ? formatPrice(salesStats.data.salesValue, lang) : '—'}
               </p>
               {salesStats.data && (
@@ -418,16 +418,16 @@ export function AdminIndexPage() {
         </Card>
 
         {/* Purchases */}
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-600/15 text-violet-400">
+        <Card variant="interactive">
+          <CardContent className="flex items-center gap-4 p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500">
               <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-xs text-[var(--tw-text-muted)]">
+              <p className="text-xs font-medium text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'المشتريات' : 'Purchases'}
               </p>
-              <p className="mt-0.5 text-xl font-extrabold text-[var(--tw-text)]">
+              <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
                 {purchaseStats.data ? formatPrice(purchaseStats.data.totalCost, lang) : '—'}
               </p>
               {purchaseStats.data && (
@@ -440,16 +440,16 @@ export function AdminIndexPage() {
         </Card>
 
         {/* Available Stock */}
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600/15 text-blue-400">
+        <Card variant="interactive">
+          <CardContent className="flex items-center gap-4 p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ice-500/10 text-ice-500">
               <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-xs text-[var(--tw-text-muted)]">
+              <p className="text-xs font-medium text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'المخزون المتاح' : 'Available Stock'}
               </p>
-              <p className="mt-0.5 text-xl font-extrabold text-[var(--tw-text)]">
+              <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
                 {inventoryStats.data ? inventoryStats.data.totalStockQuantity : '—'}
               </p>
               {inventoryStats.data && (
@@ -462,16 +462,16 @@ export function AdminIndexPage() {
         </Card>
 
         {/* Low Stock */}
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-600/15 text-amber-400">
+        <Card variant="interactive">
+          <CardContent className="flex items-center gap-4 p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
               <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-xs text-[var(--tw-text-muted)]">
+              <p className="text-xs font-medium text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'مخزون منخفض' : 'Low Stock'}
               </p>
-              <p className="mt-0.5 text-xl font-extrabold text-amber-400">
+              <p className="mt-0.5 text-xl font-extrabold tracking-tight text-amber-500">
                 {inventoryStats.data ? inventoryStats.data.lowStockCount : '—'}
               </p>
             </div>
@@ -479,16 +479,16 @@ export function AdminIndexPage() {
         </Card>
 
         {/* Out of Stock */}
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600/15 text-red-400">
+        <Card variant="interactive">
+          <CardContent className="flex items-center gap-4 p-5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
               <Package className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-xs text-[var(--tw-text-muted)]">
+              <p className="text-xs font-medium text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'غير متوفر' : 'Out of Stock'}
               </p>
-              <p className="mt-0.5 text-xl font-extrabold text-red-400">
+              <p className="mt-0.5 text-xl font-extrabold tracking-tight text-red-500">
                 {inventoryStats.data ? inventoryStats.data.outOfStockCount : '—'}
               </p>
             </div>
@@ -497,19 +497,19 @@ export function AdminIndexPage() {
       </div>
 
       {/* ═══ CHARTS SECTION ═══ */}
-      <div className="mt-5">
-        <h2 className="mb-3 text-base font-bold text-[var(--tw-text)]">{lang === 'ar' ? 'الرسوم البيانية' : 'Charts & Analytics'}</h2>
+      <div className="mt-6">
+        <h2 className="mb-4 text-lg font-bold tracking-tight text-[var(--tw-text)]">{lang === 'ar' ? 'الرسوم البيانية' : 'Charts & Analytics'}</h2>
 
         {/* Period filter for all charts */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="inline-flex rounded-lg border border-[var(--tw-border)] bg-[var(--tw-surface)] p-0.5">
+          <div className="inline-flex rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-0.5">
             {(['today', 'week', 'month', 'custom'] as PeriodKey[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={cn(
-                  'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
-                  period === p ? 'bg-brand-600 text-white' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
+                  'rounded-lg px-4 py-1.5 text-xs font-semibold transition-all duration-200',
+                  period === p ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
                 )}
               >
                 {t(PERIOD_KEYS[p])}
@@ -550,22 +550,22 @@ export function AdminIndexPage() {
           const netProfit = totalRevenue - totalCost;
           const margin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
           return (
-            <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي المبيعات' : 'Total Sales'}</p>
-                <p className="mt-1 text-xl font-extrabold text-brand-500">{formatPrice(totalRevenue, lang)}</p>
+            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي المبيعات' : 'Total Sales'}</p>
+                <p className="mt-1.5 text-xl font-extrabold tracking-tight text-brand-500">{formatPrice(totalRevenue, lang)}</p>
               </div>
-              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي التكلفة' : 'Total Cost'}</p>
-                <p className="mt-1 text-xl font-extrabold text-violet-400">{formatPrice(totalCost, lang)}</p>
+              <div className="rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي التكلفة' : 'Total Cost'}</p>
+                <p className="mt-1.5 text-xl font-extrabold tracking-tight text-violet-400">{formatPrice(totalCost, lang)}</p>
               </div>
-              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'صافي الربح' : 'Net Profit'}</p>
-                <p className={cn('mt-1 text-xl font-extrabold', netProfit >= 0 ? 'text-fresh-400' : 'text-red-400')}>{formatPrice(netProfit, lang)}</p>
+              <div className="rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">{lang === 'ar' ? 'صافي الربح' : 'Net Profit'}</p>
+                <p className={cn('mt-1.5 text-xl font-extrabold tracking-tight', netProfit >= 0 ? 'text-fresh-400' : 'text-red-400')}>{formatPrice(netProfit, lang)}</p>
               </div>
-              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-card-bg)] p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'هامش الربح' : 'Margin'}</p>
-                <p className={cn('mt-1 text-xl font-extrabold', margin >= 0 ? 'text-fresh-400' : 'text-red-400')}>{margin.toFixed(1)}%</p>
+              <div className="rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">{lang === 'ar' ? 'هامش الربح' : 'Margin'}</p>
+                <p className={cn('mt-1.5 text-xl font-extrabold tracking-tight', margin >= 0 ? 'text-fresh-400' : 'text-red-400')}>{margin.toFixed(1)}%</p>
               </div>
             </div>
           );

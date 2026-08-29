@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Calendar, Weight } from 'lucide-react';
+import { Plus, Trash2, Calendar, Weight, TrendingUp, Package, ShoppingCart, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createPurchase,
@@ -137,23 +137,25 @@ export function AdminPurchasesPage() {
 
       {/* Date Filter */}
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Calendar className="h-4 w-4 text-[var(--tw-text-muted)]" />
-        {(['today', 'week', 'month', 'custom'] as DateFilter[]).map((f) => (
-          <button
-            key={f}
-            onClick={() => setDateFilter(f)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              dateFilter === f
-                ? 'bg-brand-500/20 text-brand-400'
-                : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]'
-            }`}
-          >
-            {f === 'today' ? (lang === 'ar' ? 'اليوم' : 'Today')
-              : f === 'week' ? (lang === 'ar' ? 'هذا الأسبوع' : 'This Week')
-              : f === 'month' ? (lang === 'ar' ? 'هذا الشهر' : 'This Month')
-              : (lang === 'ar' ? 'مخصص' : 'Custom')}
-          </button>
-        ))}
+        <div className="flex items-center gap-1.5 rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface)] p-1">
+          <Calendar className="h-4 w-4 text-[var(--tw-text-muted)] ms-1" />
+          {(['today', 'week', 'month', 'custom'] as DateFilter[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setDateFilter(f)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                dateFilter === f
+                  ? 'bg-brand-500/20 text-brand-400 shadow-sm'
+                  : 'text-[var(--tw-text-muted)] hover:bg-[var(--tw-hover)]'
+              }`}
+            >
+              {f === 'today' ? (lang === 'ar' ? 'اليوم' : 'Today')
+                : f === 'week' ? (lang === 'ar' ? 'هذا الأسبوع' : 'This Week')
+                : f === 'month' ? (lang === 'ar' ? 'هذا الشهر' : 'This Month')
+                : (lang === 'ar' ? 'مخصص' : 'Custom')}
+            </button>
+          ))}
+        </div>
         {dateFilter === 'custom' && (
           <div className="flex items-center gap-2">
             <Input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="w-36" />
@@ -165,28 +167,49 @@ export function AdminPurchasesPage() {
 
       {/* Stats Cards */}
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Card>
+        <Card className="group transition-all hover:shadow-md">
           <CardContent className="p-5">
-            <p className="text-sm text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي التكلفة' : 'Total Cost'}</p>
-            <p className="mt-1 text-2xl font-extrabold text-[var(--tw-text)]">
-              {stats.data ? formatPrice(stats.data.totalCost, lang) : '—'}
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 transition-colors group-hover:bg-emerald-500/20">
+                <DollarSign className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي التكلفة' : 'Total Cost'}</p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
+                  {stats.data ? formatPrice(stats.data.totalCost, lang) : '—'}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="group transition-all hover:shadow-md">
           <CardContent className="p-5">
-            <p className="text-sm text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي الكمية' : 'Total Quantity'}</p>
-            <p className="mt-1 text-2xl font-extrabold text-[var(--tw-text)]">
-              {stats.data?.totalQuantity ?? '—'}
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 transition-colors group-hover:bg-blue-500/20">
+                <Package className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي الكمية' : 'Total Quantity'}</p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
+                  {stats.data?.totalQuantity ?? '—'}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="group transition-all hover:shadow-md">
           <CardContent className="p-5">
-            <p className="text-sm text-[var(--tw-text-muted)]">{lang === 'ar' ? 'عدد المشتريات' : 'Purchases'}</p>
-            <p className="mt-1 text-2xl font-extrabold text-[var(--tw-text)]">
-              {stats.data?.purchaseCount ?? '—'}
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-400 transition-colors group-hover:bg-brand-500/20">
+                <ShoppingCart className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{lang === 'ar' ? 'عدد المشتريات' : 'Purchases'}</p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
+                  {stats.data?.purchaseCount ?? '—'}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -195,22 +218,45 @@ export function AdminPurchasesPage() {
       <Card>
         <CardContent>
           {purchases.isLoading ? (
-            <div className="py-8 text-center text-[var(--tw-text-muted)]">{lang === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+            <div className="space-y-3 py-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 rounded-xl border border-[var(--tw-border)] px-4 py-3">
+                  <div className="h-4 w-20 animate-pulse rounded bg-[var(--tw-surface)]" />
+                  <div className="h-4 w-32 animate-pulse rounded bg-[var(--tw-surface)]" />
+                  <div className="h-4 w-16 animate-pulse rounded bg-[var(--tw-surface)]" />
+                  <div className="h-4 w-24 animate-pulse rounded bg-[var(--tw-surface)]" />
+                </div>
+              ))}
+            </div>
           ) : purchases.isError ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-red-400">
-                {lang === 'ar' ? 'تعذر تحميل المشتريات — يرجى المحاولة مرة أخرى' : 'Failed to load purchases — please try again'}
+            <div className="py-12 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+                <svg className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+              </div>
+              <p className="text-sm font-semibold text-[var(--tw-text)]">
+                {lang === 'ar' ? 'حدث خطأ أثناء تحميل المشتريات' : 'Failed to load purchases'}
+              </p>
+              <p className="mt-1 text-xs text-[var(--tw-text-muted)]">
+                {lang === 'ar' ? 'يرجى المحاولة مرة أخرى' : 'Please try again'}
               </p>
               <button
                 onClick={() => purchases.refetch()}
-                className="mt-2 text-sm font-semibold text-brand-400 hover:text-brand-300"
+                className="mt-3 rounded-lg bg-brand-500/10 px-4 py-2 text-sm font-semibold text-brand-400 transition-colors hover:bg-brand-500/20"
               >
                 {lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}
               </button>
             </div>
           ) : !purchases.data?.items.length ? (
-            <div className="py-8 text-center text-[var(--tw-text-muted)]">
-              {lang === 'ar' ? 'لا توجد مشتريات' : 'No purchases found'}
+            <div className="py-12 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--tw-surface)]">
+                <Package className="h-6 w-6 text-[var(--tw-text-muted)]" />
+              </div>
+              <p className="text-sm font-semibold text-[var(--tw-text)]">
+                {lang === 'ar' ? 'لا توجد مشتريات' : 'No purchases found'}
+              </p>
+              <p className="mt-1 text-xs text-[var(--tw-text-muted)]">
+                {lang === 'ar' ? 'لم يتم تسجيل أي مشتريات في الفترة المحددة' : 'No purchases recorded for the selected period'}
+              </p>
             </div>
           ) : (
             <TableWrap>
@@ -230,19 +276,28 @@ export function AdminPurchasesPage() {
                 </thead>
                 <tbody>
                   {purchases.data.items.map((p) => (
-                    <tr key={p._id} className="border-b border-[var(--tw-border)]/50">
-                      <Td>{new Date(p.purchaseDate).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</Td>
+                    <tr key={p._id} className="group border-b border-[var(--tw-border)]/50 transition-colors hover:bg-[var(--tw-hover)]">
+                      <Td className="text-xs text-[var(--tw-text-muted)]">
+                        {new Date(p.purchaseDate).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}
+                      </Td>
                       <Td>
                         <span className="font-semibold text-[var(--tw-text)]">{p.productName}</span>
                       </Td>
-                      <Td className="text-xs text-[var(--tw-text-muted)]">
-                        {p.weightDisplay || p.productSize || '—'}
+                      <Td>
+                        <span className="inline-flex items-center gap-1 rounded-md bg-[var(--tw-surface)] px-2 py-0.5 text-xs font-semibold text-[var(--tw-text-muted)]">
+                          <Weight className="h-3 w-3" />
+                          {p.weightDisplay || p.productSize || '—'}
+                        </span>
                       </Td>
-                      <Td>{p.quantity}</Td>
-                      <Td>{formatPrice(p.unitCost, lang)}</Td>
-                      <Td className="font-bold text-[var(--tw-text)]">{formatPrice(p.totalCost, lang)}</Td>
+                      <Td>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-bold text-blue-400">
+                          {p.quantity}
+                        </span>
+                      </Td>
+                      <Td className="text-[var(--tw-text-muted)]">{formatPrice(p.unitCost, lang)}</Td>
+                      <Td className="font-bold tracking-tight text-[var(--tw-text)]">{formatPrice(p.totalCost, lang)}</Td>
                       <Td className="text-[var(--tw-text-muted)]">{p.supplier || '—'}</Td>
-                      <Td className="text-xs text-[var(--tw-text-muted)] max-w-[120px] truncate" title={p.notes || ''}>{p.notes || '—'}</Td>
+                      <Td className="max-w-[120px] truncate text-xs text-[var(--tw-text-muted)]" title={p.notes || ''}>{p.notes || '—'}</Td>
                       <Td>
                         <button
                           onClick={() => {
@@ -250,7 +305,8 @@ export function AdminPurchasesPage() {
                               deleteMutation.mutate(p._id);
                             }
                           }}
-                          className="text-[var(--tw-text-muted)] hover:text-red-400"
+                          className="rounded-lg p-1.5 text-[var(--tw-text-muted)] opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                          title={lang === 'ar' ? 'حذف' : 'Delete'}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -398,11 +454,16 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
   const productName = (p: AdminSearchProduct) => isAr ? p.name : (p.nameEn || p.name);
 
   return (
-    <Modal open onClose={onClose}>
-      <div className="w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-bold text-[var(--tw-text)]">
-          {isAr ? 'إضافة مشتريات' : 'Add Purchase'}
-        </h2>
+    <Modal open onClose={onClose} size="lg">
+      <div className="w-full max-w-lg space-y-5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10">
+            <ShoppingCart className="h-5 w-5 text-brand-400" />
+          </div>
+          <h2 className="text-lg font-bold tracking-tight text-[var(--tw-text)]">
+            {isAr ? 'إضافة مشتريات' : 'Add Purchase'}
+          </h2>
+        </div>
 
         {/* Product Select — Searchable Combobox */}
         <div>
@@ -418,15 +479,16 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
 
         {/* Selected Product Info */}
         {selectedProduct && (
-          <div className="rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]/50 p-3">
+          <div className="rounded-xl border border-brand-500/20 bg-brand-500/5 p-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-[var(--tw-text)]">{productName(selectedProduct)}</span>
+              <Package className="h-4 w-4 text-brand-400" />
+              <span className="text-sm font-bold text-[var(--tw-text)]">{productName(selectedProduct)}</span>
               {selectedProduct.basePrice > 0 && (
-                <span className="text-xs text-[var(--tw-text-muted)]">• {formatPrice(selectedProduct.basePrice, lang)}</span>
+                <span className="rounded-md bg-[var(--tw-surface)] px-2 py-0.5 text-xs font-semibold text-[var(--tw-text-muted)]">{formatPrice(selectedProduct.basePrice, lang)}</span>
               )}
             </div>
             {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
-              <p className="mt-1 text-xs text-[var(--tw-text-muted)]">
+              <p className="mt-2 text-xs text-[var(--tw-text-muted)]">
                 {isAr ? 'الأوزان المتاحة:' : 'Available variants:'}{' '}
                 {selectedProduct.sizes.map((s) => isAr ? s.name : (s.nameEn || s.name)).join(' • ')}
               </p>
@@ -542,9 +604,12 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
 
         {/* Total */}
         {selectedProduct && quantity && unitCost && (
-          <div className="rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] p-3 text-center">
-            <span className="text-sm text-[var(--tw-text-muted)]">{isAr ? 'الإجمالي' : 'Total'}: </span>
-            <span className="text-lg font-bold text-brand-400">{formatPrice(totalCost, lang)}</span>
+          <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-4 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <TrendingUp className="h-4 w-4 text-brand-400" />
+              <span className="text-sm font-semibold text-[var(--tw-text-muted)]">{isAr ? 'الإجمالي' : 'Total'}</span>
+            </div>
+            <p className="mt-1 text-2xl font-extrabold tracking-tight text-brand-400">{formatPrice(totalCost, lang)}</p>
           </div>
         )}
 

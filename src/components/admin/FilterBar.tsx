@@ -33,15 +33,15 @@ export function FilterBar({
 }: FilterBarProps) {
   return (
     <div className={cn('flex flex-wrap items-center gap-3', className)}>
-      <div className="inline-flex rounded-lg border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-0.5">
+      <div className="inline-flex rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-0.5">
         {(['today', 'week', 'month', 'custom'] as PeriodKey[]).map((p) => (
           <button
             key={p}
             onClick={() => onPeriodChange(p)}
             className={cn(
-              'rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all duration-150',
+              'rounded-lg px-4 py-1.5 text-xs font-semibold transition-all duration-200',
               period === p
-                ? 'bg-brand-500 text-white shadow-sm'
+                ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20'
                 : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
             )}
           >
@@ -55,14 +55,14 @@ export function FilterBar({
             type="date"
             value={customStart ?? ''}
             onChange={(e) => onCustomStartChange(e.target.value)}
-            className="h-8 rounded-lg border border-[var(--tw-input-border)] bg-[var(--tw-input-bg)] px-2.5 text-xs text-[var(--tw-text)] outline-none focus:border-brand-500"
+            className="h-9 rounded-xl border border-[var(--tw-input-border)] bg-[var(--tw-input-bg)] px-3 text-xs text-[var(--tw-text)] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
           />
-          <span className="text-[var(--tw-text-muted)]">—</span>
+          <span className="text-[var(--tw-text-subtle)]">—</span>
           <input
             type="date"
             value={customEnd ?? ''}
             onChange={(e) => onCustomEndChange(e.target.value)}
-            className="h-8 rounded-lg border border-[var(--tw-input-border)] bg-[var(--tw-input-bg)] px-2.5 text-xs text-[var(--tw-text)] outline-none focus:border-brand-500"
+            className="h-9 rounded-xl border border-[var(--tw-input-border)] bg-[var(--tw-input-bg)] px-3 text-xs text-[var(--tw-text)] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
           />
         </div>
       )}

@@ -134,17 +134,27 @@ export function AdminCouponsPage() {
           </thead>
           <tbody>
             {(coupons.data ?? []).map((c) => (
-              <tr key={c._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
-                <Td className="font-bold text-[var(--tw-text)]">
-                  <span className="flex items-center gap-2">
-                    <Percent className="h-4 w-4 text-brand-500" />
+              <tr key={c._id} className="group transition-colors hover:bg-[var(--tw-hover)]">
+                <Td>
+                  <span className="inline-flex items-center gap-2 rounded-lg bg-brand-500/10 px-2.5 py-1 text-sm font-bold tracking-tight text-brand-400">
+                    <Percent className="h-3.5 w-3.5" />
                     {c.code}
                   </span>
                 </Td>
-                <Td>{c.type === 'percent' ? t('admin.percent') : t('admin.fixed')}</Td>
-                <Td>{c.type === 'percent' ? `${c.value}%` : `${c.value} EGP`}</Td>
-                <Td>{c.minOrder || 0}</Td>
-                <Td>{c.isActive ? t('admin.enabled') : t('admin.disabled')}</Td>
+                <Td>
+                  <span className="inline-flex rounded-md bg-[var(--tw-surface)] px-2 py-0.5 text-xs font-semibold text-[var(--tw-text-muted)]">
+                    {c.type === 'percent' ? t('admin.percent') : t('admin.fixed')}
+                  </span>
+                </Td>
+                <Td className="font-bold tracking-tight text-[var(--tw-text)]">{c.type === 'percent' ? `${c.value}%` : `${c.value} EGP`}</Td>
+                <Td className="text-[var(--tw-text-muted)]">{c.minOrder || 0}</Td>
+                <Td>
+                  <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    c.isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-[var(--tw-surface)] text-[var(--tw-text-muted)]'
+                  }`}>
+                    {c.isActive ? t('admin.enabled') : t('admin.disabled')}
+                  </span>
+                </Td>
                 <Td className="text-end">
                   <div className="inline-flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(c)} aria-label={t('common.edit')}>
