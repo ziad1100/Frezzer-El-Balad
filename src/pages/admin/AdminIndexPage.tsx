@@ -21,12 +21,13 @@ import { OrdersDonutChart } from '@/components/admin/charts/OrdersDonutChart';
 import { InventoryChart } from '@/components/admin/charts/InventoryChart';
 import { RevenuesChart } from '@/components/admin/charts/RevenuesChart';
 
-type PeriodKey = 'today' | 'week' | 'month';
+type PeriodKey = 'today' | 'week' | 'month' | 'custom';
 
 const PERIOD_KEYS: Record<PeriodKey, string> = {
   today: 'admin.overview.today',
   week: 'admin.overview.thisWeek',
   month: 'admin.overview.thisMonth',
+  custom: 'admin.overview.custom',
 };
 
 export function AdminIndexPage() {
@@ -46,6 +47,8 @@ export function AdminIndexPage() {
   const purchaseStats = useQuery({ queryKey: ['admin', 'purchases', 'stats'], queryFn: () => getPurchaseStats() });
 
   const [period, setPeriod] = useState<PeriodKey>('today');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
   const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
 
   const refreshMutation = useMutation({
@@ -198,7 +201,10 @@ export function AdminIndexPage() {
       const me = today.toISOString().slice(0, 10);
       return { startDate: ms, endDate: me + 'T23:59:59' };
     }
-    // week
+    if (period === 'custom' && customStart && customEnd) {
+      return { startDate: customStart, endDate: customEnd + 'T23:59:59' };
+    }
+    // week (default)
     const ws = new Date(today);
     ws.setDate(ws.getDate() - 6);
     return { startDate: ws.toISOString().slice(0, 10), endDate: today.toISOString().slice(0, 10) + 'T23:59:59' };
@@ -279,7 +285,7 @@ export function AdminIndexPage() {
   const statuses = dashboard.data?.statusBreakdown ?? [];
   const top = dashboard.data?.topProducts ?? [];
 
-  const metrics = dashboard.data?.periodOverview?.[period];
+  const metrics = period === 'custom' ? undefined : dashboard.data?.periodOverview?.[period];
   const periodCards = [
     { key: t('admin.revenue'), value: metrics ? formatPrice(metrics.revenue, lang) : '—', icon: Banknote },
     { key: t('admin.nav.orders'), value: metrics?.orders ?? '—', icon: ShoppingBag },
@@ -294,8 +300,11 @@ export function AdminIndexPage() {
     ? new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 10)
     : period === 'month'
       ? new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString().slice(0, 10);
-  const unitsWindow = dailyStats.filter((d) => d.date >= periodStart);
+      : period === 'custom' && customStart
+        ? customStart
+        : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString().slice(0, 10);
+  const periodEnd = period === 'custom' && customEnd ? customEnd : undefined;
+  const unitsWindow = dailyStats.filter((d) => d.date >= periodStart && (!periodEnd || d.date <= periodEnd));
   const periodTop = metrics?.topProducts ?? [];
 
   return (
@@ -492,19 +501,41 @@ export function AdminIndexPage() {
         <h2 className="mb-3 text-base font-bold text-[var(--tw-text)]">{lang === 'ar' ? 'الرسوم البيانية' : 'Charts & Analytics'}</h2>
 
         {/* Period filter for all charts */}
-        <div className="mb-4 inline-flex rounded-lg border border-[var(--tw-border)] bg-[var(--tw-surface)] p-0.5">
-          {(['today', 'week', 'month'] as PeriodKey[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={cn(
-                'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
-                period === p ? 'bg-brand-600 text-white' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
-              )}
-            >
-              {t(PERIOD_KEYS[p])}
-            </button>
-          ))}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-lg border border-[var(--tw-border)] bg-[var(--tw-surface)] p-0.5">
+            {(['today', 'week', 'month', 'custom'] as PeriodKey[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
+                  period === p ? 'bg-brand-600 text-white' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
+                )}
+              >
+                {t(PERIOD_KEYS[p])}
+              </button>
+            ))}
+          </div>
+          {period === 'custom' ? (
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="h-8 w-36 text-xs"
+                max={customEnd || undefined}
+              />
+              <span className="text-xs text-[var(--tw-text-muted)]">—</span>
+              <Input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="h-8 w-36 text-xs"
+                min={customStart || undefined}
+                max={new Date().toISOString().slice(0, 10)}
+              />
+            </div>
+          ) : null}
         </div>
 
         {/* Row 1: Sales + Purchases */}
