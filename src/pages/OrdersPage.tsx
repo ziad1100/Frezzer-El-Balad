@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Package, XCircle } from 'lucide-react';
+import { Package, XCircle, Calendar, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { cancelOrder, getMyOrders } from '@/api/orders';
 import { getErrorMessage } from '@/lib/api';
@@ -46,7 +46,7 @@ export function OrdersPage() {
     return (
       <div className="container-px space-y-4 py-12">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-32" />
+          <Skeleton key={i} className="h-36" />
         ))}
       </div>
     );
@@ -60,7 +60,7 @@ export function OrdersPage() {
           title={t('order.empty')}
           action={
             <Link to="/menu">
-              <Button variant="gold">{t('cart.browseMenu')}</Button>
+              <Button variant="fresh">{t('cart.browseMenu')}</Button>
             </Link>
           }
         />
@@ -69,40 +69,60 @@ export function OrdersPage() {
   }
 
   return (
-    <div className="container-px py-12">
-      <h1 className="mb-8 text-3xl font-extrabold text-[var(--tw-text)]">{t('order.title')}</h1>
-      <div className="space-y-4">
+    <div className="container-px py-10">
+      <div className="mb-8">
+        <h1 className="text-2xl font-extrabold text-[var(--tw-text)]">{t('order.title')}</h1>
+        <p className="mt-1 text-sm text-[var(--tw-text-muted)]">
+          {i18n.language === 'ar' ? `${orders.length} طلب` : `${orders.length} orders`}
+        </p>
+      </div>
+
+      <div className="space-y-3">
         {orders.map((order) => (
           <Card key={order._id}>
-            <CardContent className="p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tw-border)] pb-4">
+            <CardContent className="p-4">
+              {/* Order Header */}
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="rounded-lg bg-[var(--tw-surface-alt)] px-3 py-1.5 font-mono text-sm font-bold text-gold-400" dir="ltr">
-                    {order.orderNo}
+                  <span className="rounded-lg bg-brand-500/10 px-2.5 py-1 font-mono text-sm font-bold text-brand-500" dir="ltr">
+                    #{order.orderNo}
                   </span>
                   <Badge tone={statusTone[order.status as keyof typeof statusTone] ?? 'neutral'}>
                     {t(`order.status.${order.status}`)}
                   </Badge>
                 </div>
-                <div className="text-sm text-[var(--tw-text-muted)]">
+                <div className="flex items-center gap-1.5 text-xs text-[var(--tw-text-muted)]">
+                  <Calendar className="h-3.5 w-3.5" />
                   {new Date(order.createdAt).toLocaleString(i18n.language === 'ar' ? 'ar-EG' : 'en-GB')}
                 </div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
-                <div className="text-sm text-[var(--tw-text-muted)]">
-                  {order.items.map((item) => `${item.name} × ${item.qty}`).join(', ')}
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-lg font-extrabold text-brand-500">
-                    {formatPrice(order.total, i18n.language)}
+
+              {/* Items */}
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {order.items.map((item, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1 rounded-lg bg-[var(--tw-surface-alt)] px-2 py-1 text-xs text-[var(--tw-text-muted)]"
+                  >
+                    <ShoppingBag className="h-3 w-3" />
+                    {item.name} × {item.qty}
                   </span>
+                ))}
+              </div>
+
+              {/* Footer: Price + Actions */}
+              <div className="flex items-center justify-between border-t border-[var(--tw-border)] pt-3">
+                <span className="text-lg font-extrabold text-brand-500">
+                  {formatPrice(order.total, i18n.language)}
+                </span>
+                <div className="flex items-center gap-2">
                   {order.status === 'pending' || order.status === 'confirmed' ? (
                     <Button
                       variant="ghost"
                       size="sm"
                       loading={cancelMutation.isPending}
                       onClick={() => cancelMutation.mutate(order._id)}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-red-400 hover:bg-red-500/10 hover:text-red-400"
                     >
                       <XCircle className="h-4 w-4" />
                       {t('order.cancel')}
@@ -110,6 +130,8 @@ export function OrdersPage() {
                   ) : null}
                 </div>
               </div>
+
+              {/* Review Panel */}
               {order.status === 'completed' ? (
                 <OrderReviewPanel orderId={order._id} orderNo={order.orderNo} />
               ) : null}
