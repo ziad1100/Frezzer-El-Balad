@@ -125,10 +125,10 @@ export function AdminLayout() {
                   onClick={onNavigate}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors',
+                      'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                       isActive
-                        ? 'bg-brand-600/15 text-brand-500'
-                        : 'text-night-300 hover:bg-night-800 hover:text-night-50',
+                        ? 'bg-brand-600/15 text-brand-400'
+                        : 'text-night-300 hover:bg-night-800/60 hover:text-night-50',
                     )
                   }
                 >
@@ -145,9 +145,9 @@ export function AdminLayout() {
           </div>
         ))}
       </nav>
-      <div className="border-t border-night-800 p-2">
-        <div className="flex items-center gap-3 px-2 py-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white">
+      <div className="border-t border-night-800/60 p-2">
+        <div className="flex items-center gap-2.5 px-2 py-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
             {user?.fullName.charAt(0) ?? 'A'}
           </span>
           <div className="min-w-0">
@@ -157,7 +157,7 @@ export function AdminLayout() {
         </div>
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-red-400 hover:bg-night-800"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-400 hover:bg-night-800/60"
         >
           <LogOut className="h-4 w-4" />
           {t('nav.logout')}
@@ -168,10 +168,10 @@ export function AdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-night-950">
-      <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 border-e border-night-800 bg-night-900 p-4 lg:block">
-        <Link to="/" className="mb-6 flex items-center gap-2 px-2">
-          <Logo className="h-9 w-9 rounded-lg" />
-          <span className="text-lg font-extrabold text-brand-500">
+      <aside className="fixed inset-y-0 start-0 z-30 hidden w-60 border-e border-night-800/60 bg-night-900/80 p-3 lg:block">
+        <Link to="/" className="mb-5 flex items-center gap-2 px-2">
+          <Logo className="h-8 w-8 rounded-lg" />
+          <span className="text-base font-bold text-brand-400">
             {t('nav.brand')}
           </span>
         </Link>

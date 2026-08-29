@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/Button';
 export function Card({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
-      className={cn('rounded-2xl border border-night-800 bg-night-900', className)}
+      className={cn('rounded-xl border border-night-800/60 bg-night-900/80', className)}
       {...props}
     />
   );
 }
 
 export function CardContent({ className, ...props }: ComponentProps<'div'>) {
-  return <div className={cn('p-5', className)} {...props} />;
+  return <div className={cn('p-4', className)} {...props} />;
 }
 
 type BadgeTone = 'brand' | 'gold' | 'success' | 'neutral';
@@ -47,12 +47,7 @@ export function Skeleton({ className, ...props }: ComponentProps<'div'>) {
 }
 
 export function Spinner({ className }: { className?: string }) {
-  return (
-    <div
-      role="status"
-      aria-label="loading"
-      className={cn('h-8 w-8 animate-spin rounded-full border-2 border-night-600 border-t-brand-500', className)}
-    />
+  return (    <div role="status" aria-label="loading" className={cn('h-7 w-7 animate-spin rounded-full border-2 border-night-600 border-t-brand-500', className)} />
   );
 }
 
@@ -68,7 +63,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       {icon ? <div className="text-night-500">{icon}</div> : null}
       <h3 className="text-lg font-bold text-night-100">{title}</h3>
       {hint ? <p className="max-w-sm text-sm text-night-400">{hint}</p> : null}

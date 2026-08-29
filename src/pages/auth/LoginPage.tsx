@@ -99,11 +99,11 @@ export function LoginPage() {
   });
 
   return (
-    <div className="container-px flex min-h-[70vh] items-center justify-center py-16">
-      <div className="w-full max-w-md rounded-3xl border border-night-800 bg-night-900 p-8">
-        <div className="mb-8 text-center">
-          <Logo className="mx-auto h-14 w-14 rounded-2xl" />
-          <h1 className="mt-4 text-2xl font-extrabold text-night-50">{t('auth.loginTitle')}</h1>
+    <div className="container-px flex min-h-[70vh] items-center justify-center py-12">
+      <div className="w-full max-w-sm rounded-2xl border border-night-700/80 bg-night-900 p-6">
+        <div className="mb-6 text-center">
+          <Logo className="mx-auto h-12 w-12 rounded-xl" />
+          <h1 className="mt-3 text-xl font-extrabold text-night-50">{t('auth.loginTitle')}</h1>
           <p className="mt-1 text-sm text-night-400">{t('auth.loginSubtitle')}</p>
         </div>
 
@@ -113,7 +113,7 @@ export function LoginPage() {
           </p>
         ) : null}
 
-        <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
+        <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-3.5">
           <div>
             <Label htmlFor="email">{t('auth.email')}</Label>
             <Input id="email" type="email" {...register('email')} error={Boolean(errors.email)} />
@@ -146,7 +146,7 @@ export function LoginPage() {
               {providers?.google ? (
                 <a
                   href={`${apiBaseUrl}/auth/google`}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-night-700 text-sm font-semibold text-night-100 transition-colors hover:border-brand-500 hover:text-brand-400"
+                  className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-night-700/80 text-sm font-semibold text-night-100 transition-colors hover:border-brand-500/60 hover:text-brand-400"
                 >
                   <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z" />
@@ -160,7 +160,7 @@ export function LoginPage() {
               {providers?.facebook ? (
                 <a
                   href={`${apiBaseUrl}/auth/facebook`}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-night-700 text-sm font-semibold text-night-100 transition-colors hover:border-brand-500 hover:text-brand-400"
+                  className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-night-700/80 text-sm font-semibold text-night-100 transition-colors hover:border-brand-500/60 hover:text-brand-400"
                 >
                   <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                     <path fill="#1877F2" d="M24 12a12 12 0 1 0-13.88 11.85v-8.38H7.08V12h3.04V9.36c0-3 1.79-4.67 4.53-4.67 1.31 0 2.68.24 2.68.24v2.95h-1.51c-1.49 0-1.95.92-1.95 1.87V12h3.32l-.53 3.47h-2.79v8.38A12 12 0 0 0 24 12Z" />

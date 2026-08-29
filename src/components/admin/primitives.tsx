@@ -9,10 +9,10 @@ import { cn } from '@/lib/utils';
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 className="text-xl font-bold text-night-50">{title}</h2>
-        {subtitle ? <p className="mt-1 text-sm text-night-500">{subtitle}</p> : null}
+        <h2 className="text-lg font-bold text-night-50">{title}</h2>
+        {subtitle ? <p className="mt-0.5 text-xs text-night-500">{subtitle}</p> : null}
       </div>
       {action}
     </div>
@@ -21,7 +21,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 
 export function TableWrap({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-night-800 bg-night-900">
+    <div className="overflow-x-auto rounded-xl border border-night-800/60 bg-night-900/80">
       <table className="w-full min-w-[640px] text-start text-sm">{children}</table>
     </div>
   );
@@ -29,7 +29,7 @@ export function TableWrap({ children }: { children: ReactNode }) {
 
 export function Th({ children, className }: { children?: ReactNode; className?: string }) {
   return (
-    <th className={cn('px-4 py-3 text-start text-xs font-bold uppercase tracking-wider text-night-500', className)}>
+    <th className={cn('px-3.5 py-2.5 text-start text-[11px] font-bold uppercase tracking-wider text-night-500', className)}>
       {children}
     </th>
   );
@@ -37,7 +37,7 @@ export function Th({ children, className }: { children?: ReactNode; className?: 
 
 export function Td({ children, className, ...props }: ComponentProps<'td'>) {
   return (
-    <td className={cn('border-t border-night-800 px-4 py-3 align-middle text-night-200', className)} {...props}>
+    <td className={cn('border-t border-night-800/60 px-3.5 py-2.5 align-middle text-night-200', className)} {...props}>
       {children}
     </td>
   );
@@ -47,7 +47,7 @@ export function SearchBox({ value, onChange, placeholder }: { value: string; onC
   return (
     <div className="relative">
       <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-night-500" />
-      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-10 w-64 ps-10" />
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-9 w-56 ps-9 text-xs" />
     </div>
   );
 }

@@ -11,9 +11,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     <input
       ref={ref}
       className={cn(
-        'h-11 w-full rounded-xl border bg-night-900 px-4 text-base text-night-100 placeholder:text-night-500',
+        'h-10 w-full rounded-lg border bg-night-900/80 px-3.5 text-sm text-night-100 placeholder:text-night-500',
         'transition-colors focus:border-brand-500 focus:outline-none',
-        error ? 'border-red-500' : 'border-night-700 hover:border-night-600',
+        error ? 'border-red-500' : 'border-night-700/80 hover:border-night-600',
         className,
       )}
       {...props}
@@ -58,9 +58,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     <textarea
       ref={ref}
       className={cn(
-        'w-full rounded-xl border bg-night-900 px-4 py-3 text-base text-night-100 placeholder:text-night-500',
+        'w-full rounded-lg border bg-night-900/80 px-3.5 py-2.5 text-sm text-night-100 placeholder:text-night-500',
         'transition-colors focus:border-brand-500 focus:outline-none',
-        error ? 'border-red-500' : 'border-night-700 hover:border-night-600',
+        error ? 'border-red-500' : 'border-night-700/80 hover:border-night-600',
         className,
       )}
       {...props}
@@ -79,9 +79,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     <select
       ref={ref}
       className={cn(
-        'h-11 w-full appearance-none rounded-xl border bg-night-900 px-4 text-base text-night-100',
+        'h-10 w-full appearance-none rounded-lg border bg-night-900/80 px-3.5 text-sm text-night-100',
         'transition-colors focus:border-brand-500 focus:outline-none',
-        error ? 'border-red-500' : 'border-night-700 hover:border-night-600',
+        error ? 'border-red-500' : 'border-night-700/80 hover:border-night-600',
         className,
       )}
       {...props}
@@ -101,7 +101,7 @@ export function FieldError({ message }: { message?: string }) {
 export function Label({ className, ...props }: ComponentProps<'label'>) {
   return (
     <label
-      className={cn('mb-1.5 block text-sm font-medium text-night-200', className)}
+      className={cn('mb-1.5 block text-xs font-semibold text-night-300', className)}
       {...props}
     />
   );

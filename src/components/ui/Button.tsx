@@ -6,21 +6,21 @@ type Variant = 'primary' | 'gold' | 'outline' | 'ghost';
 type Size = 'sm' | 'md' | 'lg' | 'icon';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-lg shadow-brand-600/25',
-  gold: 'bg-gold-500 text-night-950 hover:bg-gold-400 shadow-lg shadow-gold-500/25',
-  outline: 'border border-night-700 text-night-100 hover:border-brand-500 hover:text-brand-400',
-  ghost: 'text-night-200 hover:text-night-50 hover:bg-night-800',
+  primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-md shadow-brand-600/20',
+  gold: 'bg-gold-500 text-night-950 hover:bg-gold-400 shadow-md shadow-gold-500/20',
+  outline: 'border border-night-700/80 text-night-200 hover:border-brand-500/60 hover:text-brand-400',
+  ghost: 'text-night-300 hover:text-night-50 hover:bg-night-800/60',
 };
 
 const sizes: Record<Size, string> = {
-  sm: 'h-9 px-3 text-sm',
-  md: 'h-11 px-5 text-base',
-  lg: 'h-13 px-7 text-lg',
-  icon: 'h-10 w-10',
+  sm: 'h-8 px-3 text-xs',
+  md: 'h-10 px-4 text-sm',
+  lg: 'h-12 px-6 text-base',
+  icon: 'h-9 w-9',
 };
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:pointer-events-none disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:pointer-events-none disabled:opacity-50';
 
 export interface ButtonProps extends ComponentProps<'button'> {
   variant?: Variant;

@@ -233,10 +233,10 @@ export function MenuPage() {
 
   return (
     <div>
-      <section className="border-b border-night-800 bg-night-900 py-12">
+      <section className="border-b border-night-800/60 bg-night-900/50 py-10">
         <div className="container-px">
-          <h1 className="text-3xl font-extrabold text-night-50 md:text-4xl">{t('menu.title')}</h1>
-          <p className="mt-2 text-night-400">{t('menu.subtitle')}</p>
+          <h1 className="text-2xl font-extrabold text-night-50 sm:text-3xl">{t('menu.title')}</h1>
+          <p className="mt-1 text-sm text-night-400">{t('menu.subtitle')}</p>
           <div className="mt-6 max-w-md">
             <ProductSearch
               onSelect={(product) => {
@@ -257,13 +257,13 @@ export function MenuPage() {
         </div>
       </section>
 
-      <section className="container-px py-8">
-        <div className="mb-8 flex flex-wrap gap-2">
+      <section className="container-px py-6">
+        <div className="mb-6 flex flex-wrap gap-1.5">
           <button
             onClick={() => setCategory('')}
             className={cn(
-              'rounded-xl px-4 py-2 text-sm font-bold transition-colors',
-              !activeCategory ? 'bg-brand-600 text-white' : 'border border-night-700 text-night-300 hover:text-night-50',
+              'rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors',
+              !activeCategory ? 'bg-brand-600 text-white' : 'border border-night-700/80 text-night-300 hover:text-night-50',
             )}
           >
             {t('common.all')}
@@ -273,10 +273,10 @@ export function MenuPage() {
               key={section._id}
               onClick={() => setCategory(section._id)}
               className={cn(
-                'rounded-xl px-4 py-2 text-sm font-bold transition-colors',
+                'rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors',
                 activeSectionId === section._id
                   ? 'bg-brand-600 text-white'
-                  : 'border border-night-700 text-night-300 hover:text-night-50',
+                  : 'border border-night-700/80 text-night-300 hover:text-night-50',
               )}
             >
               {categoryName(section)}
@@ -285,16 +285,16 @@ export function MenuPage() {
         </div>
 
         {activeSection && activeSectionSubs.length > 0 ? (
-          <div className="mb-8 flex flex-wrap gap-2">
+          <div className="mb-6 flex flex-wrap gap-1.5">
             {activeSectionSubs.map((sub) => (
               <button
                 key={sub._id}
                 onClick={() => setCategory(sub._id)}
                 className={cn(
-                  'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                  'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
                   activeCategory === sub._id
-                    ? 'border-brand-500 bg-brand-500/10 text-brand-500'
-                    : 'border-night-700 text-night-300 hover:border-brand-500 hover:text-brand-500',
+                    ? 'border-brand-500/60 bg-brand-500/10 text-brand-400'
+                    : 'border-night-700/60 text-night-300 hover:border-brand-500/60 hover:text-brand-400',
                 )}
               >
                 {categoryName(sub)}

@@ -170,8 +170,8 @@ export function ProductPage() {
   };
 
   return (
-    <div className="container-px py-14">
-      <nav className="mb-8 flex items-center gap-1.5 text-sm text-night-400">
+    <div className="container-px py-10">
+      <nav className="mb-6 flex items-center gap-1.5 text-xs text-night-400">
         <Link to="/" className="hover:text-brand-500">
           {t('nav.home')}
         </Link>
@@ -185,8 +185,8 @@ export function ProductPage() {
         </span>
       </nav>
 
-      <div className="grid gap-10 lg:grid-cols-2">
-        <div className="relative overflow-hidden rounded-3xl border border-night-800 bg-night-900">
+      <div className="grid gap-8 lg:grid-cols-2">
+        <div className="relative overflow-hidden rounded-2xl border border-night-800/60 bg-night-900/80">
           {image ? (
             <img
               src={image}
@@ -224,10 +224,10 @@ export function ProductPage() {
             ))}
           </div>
         ) : null}
-        <h1 className="text-3xl font-extrabold text-night-50 md:text-4xl">
+        <h1 className="text-2xl font-extrabold text-night-50 md:text-3xl">
           {lang === 'ar' ? product.name : product.nameEn || product.name}
         </h1>
-          <div className="mt-3 flex items-center gap-3 text-sm text-night-400">
+          <div className="mt-2.5 flex items-center gap-3 text-xs text-night-400">
             <span className="flex items-center gap-1 text-gold-500">
               <Star className="h-4 w-4 fill-current" />
               {product.rating.toFixed(1)}
@@ -240,18 +240,18 @@ export function ProductPage() {
               {t('menu.preparationTime')}: {product.preparationTime} {t('menu.minutes')}
             </span>
           </div>
-          <p className="mt-4 leading-relaxed text-night-300">
+          <p className="mt-3 text-sm leading-relaxed text-night-300">
             {lang === 'ar' ? product.description : product.descriptionEn || product.description}
           </p>
 
           {product.ingredients.length > 0 ? (
             <div className="mt-6">
-              <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-night-300">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-night-400">
                 {t('menu.ingredients')}
               </h3>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {product.ingredients.map((ing) => (
-                  <span key={ing} className="rounded-full border border-night-700 px-3 py-1 text-xs text-night-300">
+                  <span key={ing} className="rounded-full border border-night-700/60 px-2.5 py-1 text-xs text-night-300">
                     {ing}
                   </span>
                 ))}
@@ -261,7 +261,7 @@ export function ProductPage() {
 
           {product.sizes.length > 0 ? (
             <div className="mt-6">
-              <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-night-300">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-night-400">
                 {t('menu.size')}
               </h3>
               <div className="grid grid-cols-3 gap-2">
@@ -272,10 +272,10 @@ export function ProductPage() {
                       key={String(s._id)}
                       onClick={() => setSelectedSize(String(s._id))}
                       className={cn(
-                        'rounded-xl border p-3 text-center transition-colors',
+                        'rounded-lg border p-2.5 text-center text-sm transition-colors',
                         active
                           ? 'border-brand-500 bg-brand-600/10 text-night-50'
-                          : 'border-night-700 text-night-300 hover:border-night-500',
+                          : 'border-night-700/60 text-night-300 hover:border-night-500',
                       )}
                     >
                       <p className="text-sm font-bold">{lang === 'ar' ? s.name : s.nameEn || s.name}</p>
