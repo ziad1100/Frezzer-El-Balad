@@ -395,6 +395,98 @@ export async function getMovementReport(
     movementRows = [];
   }
 
+  // FALLBACK: If stock_movements is empty, build movement data from purchases + order_items
+  if (movementRows.length === 0) {
+    try {
+      // Get purchases in the date range
+      const purchaseRows = await query<{
+        productId: string; productName: string; productSize: string;
+        categoryId: string | null; categoryName: string;
+        quantity: number; unitCost: number; totalCost: number;
+        supplier: string; notes: string; purchaseDate: string;
+      }>(
+        `SELECT
+          pu."productId"::text AS "productId",
+          pu."productName",
+          pu."productSize",
+          pr."categoryId"::text AS "categoryId",
+          COALESCE(c.name, '') AS "categoryName",
+          pu.quantity,
+          pu."unitCost"::float8 AS "unitCost",
+          pu."totalCost"::float8 AS "totalCost",
+          pu.supplier,
+          pu.notes,
+          pu."purchaseDate"::text AS "purchaseDate"
+        FROM purchases pu
+        LEFT JOIN products pr ON pr.id = pu."productId"
+        LEFT JOIN categories c ON c.id = pr."categoryId"
+        WHERE pu."purchaseDate" >= $1::timestamptz
+          AND pu."purchaseDate" <= $2::timestamptz
+        ORDER BY pu."purchaseDate", pu."productName"`,
+        [startDate, endDate],
+      );
+      for (const p of purchaseRows) {
+        movementRows.push({
+          productId: p.productId, productName: p.productName, productSize: p.productSize,
+          categoryId: p.categoryId, categoryName: p.categoryName,
+          movementType: 'purchase', quantity: p.quantity,
+          unitSellingPrice: null, totalSellingPrice: null,
+          unitPurchasePrice: p.unitCost, totalPurchasePrice: p.totalCost,
+          paymentMethod: '', orderNo: '', customerName: '',
+          supplier: p.supplier, reason: '', notes: p.notes,
+          movementDate: p.purchaseDate,
+        });
+      }
+
+      // Get order items (sales) in the date range
+      const saleRows = await query<{
+        productId: string; productName: string; productSize: string;
+        categoryId: string | null; categoryName: string;
+        quantity: number; unitPrice: number; lineTotal: number;
+        orderNo: string; customerName: string; paymentMethod: string;
+        orderDate: string;
+      }>(
+        `SELECT
+          oi."productId"::text AS "productId",
+          oi."name" AS "productName",
+          COALESCE(oi."size", '') AS "productSize",
+          pr."categoryId"::text AS "categoryId",
+          COALESCE(c.name, '') AS "categoryName",
+          oi.qty AS "quantity",
+          oi."unitPrice"::float8 AS "unitPrice",
+          oi."lineTotal"::float8 AS "lineTotal",
+          o."orderNo",
+          o."customerName",
+          o."paymentMethod",
+          o."createdAt"::text AS "orderDate"
+        FROM order_items oi
+        JOIN orders o ON o.id = oi."orderId"
+        LEFT JOIN products pr ON pr.id = oi."productId"
+        LEFT JOIN categories c ON c.id = pr."categoryId"
+        WHERE o."createdAt" >= $1::timestamptz
+          AND o."createdAt" <= $2::timestamptz
+          AND o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')
+        ORDER BY o."createdAt", oi."name"`,
+        [startDate, endDate],
+      );
+      for (const s of saleRows) {
+        movementRows.push({
+          productId: s.productId, productName: s.productName, productSize: s.productSize,
+          categoryId: s.categoryId, categoryName: s.categoryName,
+          movementType: 'sale', quantity: s.quantity,
+          unitSellingPrice: s.unitPrice, totalSellingPrice: s.lineTotal,
+          unitPurchasePrice: null, totalPurchasePrice: null,
+          paymentMethod: s.paymentMethod, orderNo: s.orderNo,
+          customerName: s.customerName, supplier: '',
+          reason: '', notes: '',
+          movementDate: s.orderDate,
+        });
+      }
+    } catch (err) {
+      console.error('[stock-movements] fallback query failed:', err);
+    }
+  }
+
   // Build summary by product
   const summaryMap = new Map<string, MovementReportItem>();
   for (const m of movementRows) {
