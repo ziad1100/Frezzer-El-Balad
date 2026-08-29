@@ -107,12 +107,12 @@ export function PrinterScanner({ agentUrl, onAgentUrlChange, onSelectPrinter, on
       <CardContent className="p-5">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-night-200">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--tw-text-muted)]">
             <Search className="h-4 w-4 text-brand-400" />
             {lang === 'ar' ? 'البحث عن الطابعات المتاحة' : 'Scan for Available Printers'}
           </h3>
           {onClose && (
-            <button onClick={onClose} className="text-night-500 hover:text-night-300">
+            <button onClick={onClose} className="text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]">
               <X className="h-4 w-4" />
             </button>
           )}
@@ -120,7 +120,7 @@ export function PrinterScanner({ agentUrl, onAgentUrlChange, onSelectPrinter, on
 
         {/* Agent URL Input */}
         <div className="mb-4 space-y-2">
-          <label className="text-xs font-semibold text-night-400">
+          <label className="text-xs font-semibold text-[var(--tw-text-muted)]">
             {lang === 'ar' ? 'عنوان خدمة الطباعة المحلية' : 'Local Print Agent URL'}
           </label>
           <div className="flex gap-2">
@@ -144,7 +144,7 @@ export function PrinterScanner({ agentUrl, onAgentUrlChange, onSelectPrinter, on
               {lang === 'ar' ? 'بحث' : 'Scan'}
             </Button>
           </div>
-          <p className="text-xs text-night-500">
+          <p className="text-xs text-[var(--tw-text-muted)]">
             {lang === 'ar'
               ? 'عنوان IP المحلي لجهاز الكمبيوتر الذي عليه خدمة الطباعة (مثال: http://192.168.1.50:9200)'
               : 'Local IP of the machine running the print service (e.g. http://192.168.1.50:9200)'}
@@ -162,7 +162,7 @@ export function PrinterScanner({ agentUrl, onAgentUrlChange, onSelectPrinter, on
         {/* Summary */}
         {summary && scanned && (
           <div className="mb-4 flex flex-wrap gap-2">
-            <span className="rounded-md bg-night-800 px-2 py-1 text-xs font-bold text-night-300">
+            <span className="rounded-md bg-[var(--tw-surface-alt)] px-2 py-1 text-xs font-bold text-[var(--tw-text-muted)]">
               {lang === 'ar' ? 'المجموع' : 'Total'}: {summary.total}
             </span>
             {summary.usb > 0 && (
@@ -196,7 +196,7 @@ export function PrinterScanner({ agentUrl, onAgentUrlChange, onSelectPrinter, on
         {/* Printer List */}
         {printers.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-night-400">
+            <p className="text-xs font-semibold text-[var(--tw-text-muted)]">
               {lang === 'ar' ? 'الطابعات المكتشفة' : 'Discovered Printers'}
             </p>
             {printers.map((printer) => {
@@ -207,20 +207,20 @@ export function PrinterScanner({ agentUrl, onAgentUrlChange, onSelectPrinter, on
               return (
                 <div
                   key={printer.id}
-                  className="flex items-center justify-between rounded-xl border border-night-700 bg-night-900/50 px-4 py-3 transition-colors hover:border-night-600"
+                  className="flex items-center justify-between rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]/50 px-4 py-3 transition-colors hover:border-[var(--tw-border-strong)]"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-night-800">
-                      <Icon className="h-5 w-5 text-night-300" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--tw-surface-alt)]">
+                      <Icon className="h-5 w-5 text-[var(--tw-text-muted)]" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="font-bold text-night-50">{printer.name}</p>
+                        <p className="font-bold text-[var(--tw-text)]">{printer.name}</p>
                         {printer.model && (
-                          <span className="text-xs text-night-500">{printer.model}</span>
+                          <span className="text-xs text-[var(--tw-text-muted)]">{printer.model}</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-night-400">
+                      <div className="flex items-center gap-2 text-xs text-[var(--tw-text-muted)]">
                         <span className="font-semibold">{connLabel}</span>
                         {printer.paperWidth && <span>• {printer.paperWidth}mm</span>}
                         {printer.ip && <span>• {printer.ip}</span>}
@@ -272,8 +272,8 @@ export function PrinterScanner({ agentUrl, onAgentUrlChange, onSelectPrinter, on
         {/* No results after scan */}
         {scanned && printers.length === 0 && !error && !scanning && (
           <div className="flex flex-col items-center gap-2 py-6 text-center">
-            <Printer className="h-8 w-8 text-night-600" />
-            <p className="text-sm text-night-500">
+            <Printer className="h-8 w-8 text-[var(--tw-text-muted)]" />
+            <p className="text-sm text-[var(--tw-text-muted)]">
               {lang === 'ar'
                 ? 'لم يتم العثور على طابعات. جرب إضافة طابعة يدوياً.'
                 : 'No printers found. Try adding a printer manually.'}

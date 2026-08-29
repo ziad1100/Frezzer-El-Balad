@@ -132,7 +132,7 @@ export function AdminLabelsPage() {
               <tr key={l._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
                 <Td>
                   <span
-                    className="inline-block h-6 w-6 rounded-full border border-night-600"
+                    className="inline-block h-6 w-6 rounded-full border border-[var(--tw-border-strong)]"
                     style={{ backgroundColor: l.color }}
                   />
                 </Td>

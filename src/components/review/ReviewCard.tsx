@@ -23,18 +23,18 @@ export function ReviewCard({ review, canEdit = false, onEdit, onDelete }: Review
   });
 
   return (
-    <article className="rounded-2xl border border-night-800 bg-night-900 p-5">
+    <article className="rounded-2xl border border-[var(--tw-border)] bg-[var(--tw-surface)] p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           {author?.avatar ? (
-            <img src={author.avatar} alt="" className="h-10 w-10 rounded-full border border-night-700 object-cover" />
+            <img src={author.avatar} alt="" className="h-10 w-10 rounded-full border border-[var(--tw-border-strong)] object-cover" />
           ) : (
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-600/20 text-sm font-bold text-brand-400">
               {initial}
             </span>
           )}
           <div>
-            <p className="flex items-center gap-2 font-semibold text-night-100">
+            <p className="flex items-center gap-2 font-semibold text-[var(--tw-text)]">
               {fullName}
               {review.isVerifiedPurchase ? (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400">
@@ -45,7 +45,7 @@ export function ReviewCard({ review, canEdit = false, onEdit, onDelete }: Review
             </p>
             <div className="mt-1 flex items-center gap-2">
               <StarRating value={review.rating} readOnly size="sm" />
-              <span className="text-xs text-night-500">{date}</span>
+              <span className="text-xs text-[var(--tw-text-muted)]">{date}</span>
             </div>
           </div>
         </div>
@@ -61,7 +61,7 @@ export function ReviewCard({ review, canEdit = false, onEdit, onDelete }: Review
           </div>
         ) : null}
       </div>
-      {review.comment ? <p className="mt-3 whitespace-pre-wrap leading-relaxed text-night-300">{review.comment}</p> : null}
+      {review.comment ? <p className="mt-3 whitespace-pre-wrap leading-relaxed text-[var(--tw-text-muted)]">{review.comment}</p> : null}
     </article>
   );
 }

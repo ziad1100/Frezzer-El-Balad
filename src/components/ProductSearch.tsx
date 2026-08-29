@@ -341,7 +341,7 @@ export function ProductSearch({
         placeholder={ph}
         autoFocus={autoFocus}
         className={cn(
-          'w-full rounded-xl border bg-[var(--tw-surface)] py-3 ps-10 pe-9 text-sm text-[var(--tw-text)] placeholder-night-500 outline-none transition-colors',
+          'w-full rounded-xl border bg-[var(--tw-surface)] py-3 ps-10 pe-9 text-sm text-[var(--tw-text)] placeholder-[var(--tw-text-muted)] outline-none transition-colors',
           isOpen
             ? 'border-brand-500 ring-1 ring-brand-500'
             : 'border-[var(--tw-border-strong)] hover:border-[var(--tw-border-strong)]',

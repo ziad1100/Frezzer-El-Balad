@@ -122,7 +122,7 @@ export function AdminContactsPage() {
             <p className="text-sm text-[var(--tw-text-muted)]">
               <span dir="ltr">{selected.email}</span> · <span dir="ltr">{selected.phone}</span>
             </p>
-            <p className="rounded-xl border border-[var(--tw-border)] bg-night-950 p-4 text-sm leading-relaxed text-[var(--tw-text-muted)]">
+            <p className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-bg)] p-4 text-sm leading-relaxed text-[var(--tw-text-muted)]">
               {selected.message}
             </p>
             <p className="text-xs text-[var(--tw-text-muted)]">{fmt(selected.createdAt)}</p>

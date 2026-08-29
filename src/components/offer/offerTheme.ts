@@ -2,13 +2,13 @@ import type { Offer } from '@/types';
 import { cn } from '@/lib/utils';
 
 export const offerThemeGradients: Record<Offer['theme'], string> = {
-  dark: 'from-night-800 via-night-900 to-night-950',
+  dark: 'from-[var(--tw-surface-alt)] via-[var(--tw-surface)] to-[var(--tw-bg)]',
   red: 'from-brand-700 via-brand-800 to-brand-900',
-  gold: 'from-gold-600 via-gold-700 to-night-900',
+  gold: 'from-gold-600 via-gold-700 to-[var(--tw-surface)]',
 };
 
 export const offerThemeBorders: Record<Offer['theme'], string> = {
-  dark: 'border-night-700',
+  dark: 'border-[var(--tw-border-strong)]',
   red: 'border-brand-600/50',
   gold: 'border-gold-500/50',
 };

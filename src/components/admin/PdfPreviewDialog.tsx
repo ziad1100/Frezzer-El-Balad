@@ -203,7 +203,7 @@ export function PdfPreviewDialog({ open, onClose, order }: PdfPreviewDialogProps
                   return (
                     <span key={s} className={cn(
                       'inline-block h-1.5 w-1.5 rounded-full',
-                      isComplete ? 'bg-emerald-400' : isCurrent ? 'bg-brand-400 animate-pulse' : 'bg-night-700',
+                      isComplete ? 'bg-emerald-400' : isCurrent ? 'bg-brand-400 animate-pulse' : 'bg-[var(--tw-border-strong)]',
                     )} />
                   );
                 })}

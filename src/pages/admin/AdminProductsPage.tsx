@@ -515,7 +515,7 @@ export function AdminProductsPage() {
                 id="p-track"
                 checked={form.trackInventory}
                 onChange={(e) => setField('trackInventory', e.target.checked)}
-                className="h-4 w-4 rounded border-night-600 bg-[var(--tw-surface-alt)] text-brand-500 focus:ring-brand-500"
+                className="h-4 w-4 rounded border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] text-brand-500 focus:ring-brand-500"
               />
               <Label htmlFor="p-track">
                 {lang === 'ar' ? 'تتبع المخزون' : 'Track Inventory'}
@@ -722,7 +722,7 @@ export function AdminProductsPage() {
               <button
                 type="button"
                 onClick={() => setShowLabelModal(true)}
-                className="inline-flex items-center gap-1 rounded-full border border-dashed border-night-600 px-3 py-1 text-xs font-semibold text-[var(--tw-text-muted)] hover:border-brand-500 hover:text-brand-400 transition-colors"
+                className="inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--tw-border-strong)] px-3 py-1 text-xs font-semibold text-[var(--tw-text-muted)] hover:border-brand-500 hover:text-brand-400 transition-colors"
               >
                 + {lang === 'ar' ? 'بطاقة جديدة' : 'New Label'}
               </button>

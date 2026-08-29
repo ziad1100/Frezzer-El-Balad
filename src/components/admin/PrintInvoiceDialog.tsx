@@ -210,7 +210,7 @@ export function PrintInvoiceDialog({
                    (fmt.id === 'thermal_80' && paperWidth === '80') ||
                    (fmt.id === 'pdf'))
                     ? 'border-brand-500 bg-brand-500/10 text-brand-400'
-                    : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-night-600 hover:text-[var(--tw-text-muted)]',
+                    : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)] hover:text-[var(--tw-text-muted)]',
                 )}
               >
                 {lang === 'ar' ? fmt.ar : fmt.en}
@@ -260,7 +260,7 @@ export function PrintInvoiceDialog({
                 onClick={() => setPreviewMode('text')}
                 className={cn(
                   'rounded-md px-2 py-1 text-xs font-semibold transition-colors',
-                  previewMode === 'text' ? 'bg-night-700 text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]',
+                  previewMode === 'text' ? 'bg-[var(--tw-border-strong)] text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]',
                 )}
               >
                 Text
@@ -270,7 +270,7 @@ export function PrintInvoiceDialog({
                 onClick={() => setPreviewMode('image')}
                 className={cn(
                   'rounded-md px-2 py-1 text-xs font-semibold transition-colors',
-                  previewMode === 'image' ? 'bg-night-700 text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]',
+                  previewMode === 'image' ? 'bg-[var(--tw-border-strong)] text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]',
                 )}
               >
                 <Image className="inline h-3 w-3" />

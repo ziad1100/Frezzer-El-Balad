@@ -39,7 +39,7 @@ export function OfferCard({ offer }: { offer: OfferWithProducts }) {
   const ctaStyles =
     offer.theme === 'gold'
       ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-lg shadow-brand-600/25'
-      : 'bg-gold-500 text-night-950 hover:bg-gold-400 shadow-lg shadow-gold-500/25';
+      : 'bg-gold-500 text-[var(--tw-bg)] hover:bg-gold-400 shadow-lg shadow-gold-500/25';
 
   return (
     <Link
@@ -57,7 +57,7 @@ export function OfferCard({ offer }: { offer: OfferWithProducts }) {
           tone="gold"
           className={cn(
             'text-sm',
-            offer.theme === 'gold' && 'border-night-900/50 bg-[var(--tw-bg)]/60 text-gold-200',
+            offer.theme === 'gold' && 'border-[var(--tw-border)]/50 bg-[var(--tw-bg)]/60 text-gold-200',
           )}
         >
           <Percent className="h-3.5 w-3.5" />

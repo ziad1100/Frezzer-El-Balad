@@ -595,7 +595,7 @@ export function AdminPrinterPage() {
                             {(p.connection === 'lan' || p.connection === 'wifi') && p.ipAddress ? ` · ${p.ipAddress}:${p.port}` : ''}
                           </p>
                           {p.deviceModel && (
-                            <p className="text-[10px] text-night-600">
+                            <p className="text-[10px] text-[var(--tw-text-muted)]">
                               {p.deviceModel}
                             </p>
                           )}
@@ -671,7 +671,7 @@ export function AdminPrinterPage() {
                             role="switch"
                             aria-checked={p.isActive}
                             onClick={() => handleUpdatePrinter(p.id, { isActive: !p.isActive })}
-                            className={cn('relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors', p.isActive ? 'bg-emerald-500' : 'bg-night-700')}
+                            className={cn('relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors', p.isActive ? 'bg-emerald-500' : 'bg-[var(--tw-border-strong)]')}
                           >
                             <span className={cn('inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform', p.isActive ? 'translate-x-[18px]' : 'translate-x-[3px]')} />
                           </button>
@@ -866,7 +866,7 @@ export function AdminPrinterPage() {
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] text-night-600">
+                        <span className="text-[10px] text-[var(--tw-text-muted)]">
                           {new Date(evt.data.timestamp).toLocaleTimeString()}
                         </span>
                       </div>
@@ -905,7 +905,7 @@ export function AdminPrinterPage() {
                                 ? (lang === 'ar' ? 'متصل الآن' : 'Connected now')
                                 : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
                             </span>
-                            <span className="text-night-600">·</span>
+                            <span className="text-[var(--tw-text-muted)]">·</span>
                             <span className="text-[var(--tw-text-muted)]">{new Date(agent.lastSeen).toLocaleTimeString()}</span>
                           </div>
                         </div>
@@ -928,13 +928,13 @@ export function AdminPrinterPage() {
               {/* No agent found */}
               {!agentSSE.connected && (!agentStatusQuery.data || agentStatusQuery.data.length === 0) && (
                 <div className="py-6 text-center">
-                  <Monitor className="mx-auto mb-2 h-8 w-8 text-night-600" />
+                  <Monitor className="mx-auto mb-2 h-8 w-8 text-[var(--tw-text-muted)]" />
                   <p className="text-sm text-[var(--tw-text-muted)]">
                     {lang === 'ar'
                       ? 'لا توجد خدمة طباعة محلية متصلة'
                       : 'No local print agent connected'}
                   </p>
-                  <p className="mt-1 text-xs text-night-600">
+                  <p className="mt-1 text-xs text-[var(--tw-text-muted)]">
                     {lang === 'ar'
                       ? 'قم بتشغيل خدمة الطباعة المحلية على جهاز المحل'
                       : 'Start the local print service on the shop computer'}
@@ -962,7 +962,7 @@ export function AdminPrinterPage() {
                   {lang === 'ar' ? '⚠️ احفظ هذا الرمز — لن يظهر مرة أخرى' : '⚠️ Save this token — it will not be shown again'}
                 </p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 break-all rounded-lg bg-night-950 p-2 text-xs text-emerald-300">{generatedToken}</code>
+                  <code className="flex-1 break-all rounded-lg bg-[var(--tw-bg)] p-2 text-xs text-emerald-300">{generatedToken}</code>
                   <Button
                     variant="outline"
                     size="sm"

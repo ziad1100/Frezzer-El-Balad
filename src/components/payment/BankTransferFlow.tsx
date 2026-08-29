@@ -166,7 +166,7 @@ export function BankTransferFlow({ orderId, amount, settings, onSuccess, onCance
       <div>
         <Label>{isAr ? 'إرفاق إثبات التحويل (اختياري)' : 'Attach transfer proof (optional)'}</Label>
         <label className={cn(
-          'mt-1 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-night-600 px-4 py-3 text-sm text-[var(--tw-text-muted)] transition-colors hover:border-brand-500',
+          'mt-1 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[var(--tw-border-strong)] px-4 py-3 text-sm text-[var(--tw-text-muted)] transition-colors hover:border-brand-500',
           proofFile && 'border-emerald-500/50 bg-emerald-500/5 text-emerald-400',
         )}>
           <Upload className="h-4 w-4" />

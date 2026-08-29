@@ -107,7 +107,7 @@ export function AdminReviewsPage() {
         <div className="mb-6 rounded-2xl border border-[var(--tw-border)] bg-[var(--tw-surface)] p-5">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             {statCards.map((c) => (
-              <div key={c.label} className="rounded-xl border border-[var(--tw-border)] bg-night-950/60 px-4 py-3">
+              <div key={c.label} className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-bg)]/60 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{c.label}</p>
                 <p className={cn('mt-1 text-2xl font-extrabold text-[var(--tw-text)]', c.tone)} dir="ltr">{c.value}</p>
               </div>
@@ -305,14 +305,14 @@ function MealList({
   const lang = i18n.language;
   if (!meals.length) {
     return (
-      <div className="rounded-xl border border-[var(--tw-border)] bg-night-950/60 p-4">
+      <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-bg)]/60 p-4">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{title}</p>
         <p className="text-sm text-[var(--tw-text-muted)]">{t('admin.noMealStats')}</p>
       </div>
     );
   }
   return (
-    <div className="rounded-xl border border-[var(--tw-border)] bg-night-950/60 p-4">
+    <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-bg)]/60 p-4">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{title}</p>
       <ul className="space-y-1.5">
         {meals.slice(0, 5).map((m) => (

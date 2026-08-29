@@ -9,9 +9,9 @@ export function ThemedToaster() {
       theme={theme}
       toastOptions={{
         style: {
-          background: 'var(--color-night-900)',
-          color: 'var(--color-night-100)',
-          border: '1px solid var(--color-night-700)',
+          background: 'var(--tw-surface)',
+          color: 'var(--tw-text)',
+          border: '1px solid var(--tw-border-strong)',
         },
       }}
     />

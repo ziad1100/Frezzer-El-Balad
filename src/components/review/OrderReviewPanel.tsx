@@ -138,8 +138,8 @@ export function OrderReviewPanel({ orderId, orderNo }: { orderId: string; orderN
   const restaurant = state.data?.restaurant ?? null;
 
   return (
-    <div className="mt-4 border-t border-night-800 pt-4">
-      <p className="mb-3 flex items-center gap-2 text-sm font-bold text-night-200">
+    <div className="mt-4 border-t border-[var(--tw-border)] pt-4">
+      <p className="mb-3 flex items-center gap-2 text-sm font-bold text-[var(--tw-text-muted)]">
         <ClipboardCheck className="h-4 w-4 text-gold-400" />
         {t('review.rateYourOrder')}
       </p>
@@ -149,13 +149,13 @@ export function OrderReviewPanel({ orderId, orderNo }: { orderId: string; orderN
           {items.map((item) => (
             <div
               key={item.productId}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-night-800 bg-night-950/50 px-3 py-2.5"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--tw-border)] bg-[var(--tw-bg)]/50 px-3 py-2.5"
             >
               <div className="flex items-center gap-2">
                 {item.images?.[0] ? (
-                  <img src={item.images[0]} alt="" className="h-9 w-9 rounded-lg border border-night-700 object-cover" />
+                  <img src={item.images[0]} alt="" className="h-9 w-9 rounded-lg border border-[var(--tw-border-strong)] object-cover" />
                 ) : null}
-                <span className="text-sm text-night-200">{item.itemName}</span>
+                <span className="text-sm text-[var(--tw-text-muted)]">{item.itemName}</span>
               </div>
               {item.reviewId ? (
                 <div className="flex flex-wrap items-center gap-2">
@@ -179,8 +179,8 @@ export function OrderReviewPanel({ orderId, orderNo }: { orderId: string; orderN
         </div>
       ) : null}
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-night-800 bg-night-950/50 px-3 py-2.5">
-        <span className="text-sm text-night-200">{t('review.experienceTitle')}</span>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--tw-border)] bg-[var(--tw-bg)]/50 px-3 py-2.5">
+        <span className="text-sm text-[var(--tw-text-muted)]">{t('review.experienceTitle')}</span>
         {restaurant ? (
           <div className="flex flex-wrap items-center gap-2">
             <StarRating value={restaurant.rating} readOnly size="sm" />
@@ -198,7 +198,7 @@ export function OrderReviewPanel({ orderId, orderNo }: { orderId: string; orderN
       </div>
 
       <Modal open={dialog?.mode === 'meal-create'} onClose={() => setDialog(null)} title={t('review.writeTitle')}>
-        <p className="mb-4 text-sm text-night-400">
+        <p className="mb-4 text-sm text-[var(--tw-text-muted)]">
           {orderNo} — {dialog?.mode === 'meal-create' ? dialog.product.name : ''}
         </p>
         <ReviewForm submitLabel={t('review.submit')} onSubmit={(values) => mealCreate.mutateAsync(values)} />
@@ -214,7 +214,7 @@ export function OrderReviewPanel({ orderId, orderNo }: { orderId: string; orderN
               onSubmit={(values) => reviewEdit.mutateAsync({ id: dialog.review._id as string, values })}
               onCancel={() => setDialog(null)}
             />
-            <div className="mt-4 border-t border-night-800 pt-4">
+            <div className="mt-4 border-t border-[var(--tw-border)] pt-4">
               <Button variant="ghost" className="text-red-400 hover:bg-red-500/10 hover:text-red-400" onClick={() => setDialog({ mode: 'delete', review: dialog.review as Review })}>
                 <Trash2 className="h-4 w-4" />
                 {t('review.delete')}

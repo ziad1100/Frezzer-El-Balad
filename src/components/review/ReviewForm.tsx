@@ -59,7 +59,7 @@ export function ReviewForm({ submitLabel, onSubmit, onCancel, initialRating = 0,
         />
         <div className="mt-1 flex items-center justify-between">
           <FieldError message={comment.length >= MAX_COMMENT ? t('review.commentTooLong') : undefined} />
-          <span className="ms-auto text-xs text-night-500" dir="ltr">
+          <span className="ms-auto text-xs text-[var(--tw-text-muted)]" dir="ltr">
             {comment.length}/{MAX_COMMENT}
           </span>
         </div>

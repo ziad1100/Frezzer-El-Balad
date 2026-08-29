@@ -55,7 +55,7 @@ function ScrollToTop() {
 
 function PageFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-night-950">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--tw-bg)]">
       <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
     </div>
   );

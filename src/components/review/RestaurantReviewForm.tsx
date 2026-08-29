@@ -78,12 +78,12 @@ export function RestaurantReviewForm({ onSubmit, onCancel, initial = {} }: Resta
         <Label className="mb-2">{t('review.experienceTitle')}</Label>
         <StarRating value={rating} onChange={setRating} size="lg" ariaLabel={t('review.experienceTitle')} />
         {error ? <FieldError message={error} /> : null}
-        <p className="mt-2 text-xs text-night-500">{t('review.categoriesOptional')}</p>
+        <p className="mt-2 text-xs text-[var(--tw-text-muted)]">{t('review.categoriesOptional')}</p>
       </div>
       <div className="mt-4 space-y-2.5">
         {CATEGORIES.map((c) => (
-          <div key={c.key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-night-800 bg-night-950/50 px-3 py-2">
-            <span className="text-sm text-night-200">{t(`review.${c.labelKey}`)}</span>
+          <div key={c.key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--tw-border)] bg-[var(--tw-bg)]/50 px-3 py-2">
+            <span className="text-sm text-[var(--tw-text-muted)]">{t(`review.${c.labelKey}`)}</span>
             <StarRating value={categories[c.key]} onChange={(v) => setCategory(c.key, v)} size="sm" ariaLabel={t(`review.${c.labelKey}`)} />
           </div>
         ))}
@@ -99,7 +99,7 @@ export function RestaurantReviewForm({ onSubmit, onCancel, initial = {} }: Resta
         />
         <div className="mt-1 flex items-center justify-between">
           <FieldError message={comment.length >= MAX_COMMENT ? t('review.commentTooLong') : undefined} />
-          <span className="ms-auto text-xs text-night-500" dir="ltr">
+          <span className="ms-auto text-xs text-[var(--tw-text-muted)]" dir="ltr">
             {comment.length}/{MAX_COMMENT}
           </span>
         </div>

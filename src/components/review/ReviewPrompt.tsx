@@ -101,7 +101,7 @@ export function ReviewPrompt() {
 
   return (
     <div className="container-px">
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-600/30 bg-gradient-to-r from-brand-600/10 via-night-900 to-brand-500/10 px-5 py-4">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-600/30 bg-gradient-to-r from-brand-600/10 via-[var(--tw-surface)] to-brand-500/10 px-5 py-4">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600/15 text-brand-400">
             <Snowflake className="h-6 w-6" />

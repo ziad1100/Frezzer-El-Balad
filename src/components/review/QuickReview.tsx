@@ -57,11 +57,11 @@ export function QuickReview({ productId }: QuickReviewProps) {
 
   if (done) {
     return rejected ? (
-      <p className="border-t border-night-800 pt-3 text-xs font-semibold text-amber-400">
+      <p className="border-t border-[var(--tw-border)] pt-3 text-xs font-semibold text-amber-400">
         {t('review.alreadyReviewed')}
       </p>
     ) : (
-      <p className="flex items-center gap-1.5 border-t border-night-800 pt-3 text-xs font-semibold text-emerald-400">
+      <p className="flex items-center gap-1.5 border-t border-[var(--tw-border)] pt-3 text-xs font-semibold text-emerald-400">
         <Check className="h-3.5 w-3.5" />
         {t('review.published')}
       </p>
@@ -70,8 +70,8 @@ export function QuickReview({ productId }: QuickReviewProps) {
 
   if (!user) {
     return (
-      <div className="border-t border-night-800 pt-3">
-        <Link to="/login" className="text-xs font-semibold text-night-400 transition-colors hover:text-brand-500">
+      <div className="border-t border-[var(--tw-border)] pt-3">
+        <Link to="/login" className="text-xs font-semibold text-[var(--tw-text-muted)] transition-colors hover:text-brand-500">
           {t('review.loginToRate')} ⭐
         </Link>
       </div>
@@ -89,9 +89,9 @@ export function QuickReview({ productId }: QuickReviewProps) {
   };
 
   return (
-    <form className="border-t border-night-800 pt-3" onSubmit={handleSubmit}>
+    <form className="border-t border-[var(--tw-border)] pt-3" onSubmit={handleSubmit}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-night-300">{t('review.rateThisMeal')}</span>
+        <span className="text-xs font-bold text-[var(--tw-text-muted)]">{t('review.rateThisMeal')}</span>
         <StarRating value={rating} onChange={setRating} size="sm" ariaLabel={t('review.rateThisMeal')} />
       </div>
       <div className="mt-2 flex items-center gap-2">

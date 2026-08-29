@@ -164,14 +164,14 @@ export function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean
       onClick={onChange}
       className={cn(
         'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-        checked ? 'bg-emerald-500' : 'bg-night-700',
+        checked ? 'bg-emerald-500' : 'bg-[var(--tw-border-strong)]',
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-night-900',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--tw-surface)]',
       )}
     >
       <span
         className={cn(
-          'inline-block h-4.5 w-4.5 transform rounded-full bg-night-50 shadow transition-transform',
+          'inline-block h-4.5 w-4.5 transform rounded-full bg-[var(--tw-text)] shadow transition-transform',
           checked ? 'translate-x-5.5 rtl:-translate-x-5.5' : 'translate-x-1 rtl:-translate-x-1',
         )}
       />
@@ -215,7 +215,7 @@ export function ImageUpload({ value, onChange, label }: { value: string; onChang
             </button>
           </div>
         ) : null}
-        <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-dashed border-night-600 px-4 text-sm font-semibold text-[var(--tw-text-muted)] transition-colors hover:border-brand-500 hover:text-brand-400">
+        <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[var(--tw-border-strong)] px-4 text-sm font-semibold text-[var(--tw-text-muted)] transition-colors hover:border-brand-500 hover:text-brand-400">
           <UploadCloud className="h-4 w-4" />
           {uploading ? t('common.loading') : t('admin.upload')}
           <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => void handleFile(e.target.files?.[0])} />
