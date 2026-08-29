@@ -110,10 +110,10 @@ export function AdminLayout() {
 
   const sidebarContent = (onNavigate?: () => void) => (
     <>
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
         {navGroups.map((group) => (
           <div key={group.label}>
-            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">
+            <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
               {t(group.label)}
             </p>
             <div className="space-y-0.5">
@@ -125,7 +125,7 @@ export function AdminLayout() {
                   onClick={onNavigate}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
                       isActive
                         ? 'bg-brand-500/10 text-brand-500 shadow-sm shadow-brand-500/5'
                         : 'text-[var(--tw-text-muted)] hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]',
@@ -147,8 +147,8 @@ export function AdminLayout() {
       </nav>
 
       {/* User Footer */}
-      <div className="border-t border-[var(--tw-border)] p-3">
-        <div className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+      <div className="border-t border-[var(--tw-border)] px-3 py-3">
+        <div className="flex items-center gap-3 rounded-xl px-3 py-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white shadow-sm">
             {user?.fullName.charAt(0) ?? 'A'}
           </span>
@@ -159,7 +159,7 @@ export function AdminLayout() {
         </div>
         <button
           onClick={handleLogout}
-          className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10"
+          className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10"
         >
           <LogOut className="h-4 w-4" />
           {t('nav.logout')}
@@ -173,7 +173,7 @@ export function AdminLayout() {
       {/* ── Desktop Sidebar ─────────────────────────────────────── */}
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-[var(--tw-sidebar-border)] bg-[var(--tw-sidebar-bg)] lg:flex">
         {/* Sidebar Header */}
-        <div className="flex h-16 items-center gap-3 border-b border-[var(--tw-border)] px-5">
+        <div className="flex h-16 items-center gap-3 border-b border-[var(--tw-border)] px-4">
           <Link to="/" className="flex items-center gap-2.5">
             <Logo className="h-8 w-8 rounded-lg" />
             <span className="text-sm font-bold tracking-tight text-[var(--tw-text)]">
@@ -194,7 +194,7 @@ export function AdminLayout() {
           />
           <aside className="absolute inset-y-0 start-0 flex w-72 flex-col bg-[var(--tw-sidebar-bg)] shadow-2xl">
             {/* Drawer Header */}
-            <div className="flex h-16 items-center justify-between border-b border-[var(--tw-border)] px-5">
+            <div className="flex h-16 items-center justify-between border-b border-[var(--tw-border)] px-4">
               <Link to="/" className="flex items-center gap-2.5" onClick={() => setDrawerOpen(false)}>
                 <Logo className="h-8 w-8 rounded-lg" />
                 <span className="text-sm font-bold tracking-tight text-[var(--tw-text)]">
@@ -223,12 +223,12 @@ export function AdminLayout() {
             <button
               onClick={() => setDrawerOpen(true)}
               aria-label={t('admin.openMenu')}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)] lg:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)] lg:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-lg font-bold text-[var(--tw-text)]">{t('admin.title')}</h1>
+              <h1 className="text-base font-bold text-[var(--tw-text)]">{t('admin.title')}</h1>
             </div>
           </div>
 
@@ -238,7 +238,7 @@ export function AdminLayout() {
             <button
               onClick={toggleLanguage}
               aria-label="language"
-              className="flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+              className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
             >
               <Languages className="h-4 w-4" />
               <span className="hidden sm:inline">{t('nav.language')}</span>
@@ -248,7 +248,7 @@ export function AdminLayout() {
             <button
               onClick={toggleTheme}
               aria-label="theme"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
             >
               {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
             </button>
@@ -257,7 +257,7 @@ export function AdminLayout() {
             {pendingReviews > 0 ? (
               <Link
                 to="/admin/reviews"
-                className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+                className="relative flex h-9 w-9 items-center justify-center rounded-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
               >
                 <Bell className="h-[18px] w-[18px]" />
                 <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[9px] font-bold text-white">
@@ -272,7 +272,7 @@ export function AdminLayout() {
             {/* Home Link */}
             <Link
               to="/"
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-brand-500"
+              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-brand-500"
             >
               <span className="hidden sm:inline">{t('nav.home')}</span>
               <ChevronRight className="h-4 w-4 rtl:rotate-180" />
