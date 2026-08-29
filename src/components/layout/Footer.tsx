@@ -71,7 +71,7 @@ export function Footer() {
               <li key={item.to}>
                 <Link
                   to={item.to}
-                  className="text-sm text-[var(--tw-text-muted)] transition-colors hover:text-brand-500"
+                  className="py-1.5 text-sm text-[var(--tw-text-muted)] transition-colors hover:text-brand-500"
                 >
                   {t(`nav.${item.key}`)}
                 </Link>

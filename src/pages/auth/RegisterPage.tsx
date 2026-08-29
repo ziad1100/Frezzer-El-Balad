@@ -175,7 +175,7 @@ export function RegisterPage() {
 
         <p className="mt-6 text-center text-sm text-[var(--tw-text-muted)]">
           {t('auth.haveAccount')}{' '}
-          <Link to="/login" className="font-bold text-brand-500 hover:text-brand-400">
+          <Link to="/login" className="inline-block py-1.5 font-bold text-brand-500 hover:text-brand-400">
             {t('auth.signIn')}
           </Link>
         </p>

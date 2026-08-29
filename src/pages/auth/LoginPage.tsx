@@ -129,7 +129,7 @@ export function LoginPage() {
             {t('auth.signIn')}
           </Button>
           <p className="text-center text-sm">
-            <Link to="/forgot-password" className="font-semibold text-brand-500 hover:text-brand-400">
+            <Link to="/forgot-password" className="inline-block py-1.5 font-semibold text-brand-500 hover:text-brand-400">
               {t('auth.forgotPassword')}
             </Link>
           </p>
@@ -174,7 +174,7 @@ export function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-[var(--tw-text-muted)]">
           {t('auth.noAccount')}{' '}
-          <Link to="/register" className="font-bold text-brand-500 hover:text-brand-400">
+          <Link to="/register" className="inline-block py-1.5 font-bold text-brand-500 hover:text-brand-400">
             {t('auth.register')}
           </Link>
         </p>

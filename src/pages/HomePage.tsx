@@ -132,13 +132,13 @@ export function HomePage() {
       </section>
 
       {/* Offers */}
-      <section className="container-px py-16">
+      <section className="container-px overflow-hidden py-16">
         <div className="mb-8 flex items-end justify-between">
           <div>
             <h2 className="text-2xl font-extrabold tracking-tight text-[var(--tw-text)] sm:text-3xl">{t('home.deals')}</h2>
             <p className="mt-1 text-sm text-[var(--tw-text-muted)]">{t('offers.subtitle')}</p>
           </div>
-          <Link to="/offers" className="hidden items-center gap-1 text-sm font-bold text-brand-500 hover:text-brand-400 sm:flex">
+          <Link to="/offers" className="hidden items-center gap-1 py-1.5 text-sm font-bold text-brand-500 hover:text-brand-400 sm:flex">
             {t('common.viewAll')}
             <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
           </Link>
@@ -172,7 +172,7 @@ export function HomePage() {
       </section>
 
       {/* Best Sellers */}
-      <section className="bg-[var(--tw-surface-alt)] py-16">
+      <section className="overflow-hidden bg-[var(--tw-surface-alt)] py-16">
         <div className="container-px">
           <div className="mb-8 text-center">
             <h2 className="text-2xl font-extrabold tracking-tight text-[var(--tw-text)] sm:text-3xl">{t('home.bestSellers')}</h2>
