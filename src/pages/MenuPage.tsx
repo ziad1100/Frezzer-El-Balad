@@ -153,6 +153,18 @@ export function MenuPage() {
   const activeSectionId = activeSection?._id ?? activeSub?.parentId ?? '';
   const categoryName = (c: Category): string => (lang === 'ar' ? c.name : c.nameEn || c.name);
 
+  // Count products per section for tab badges
+  const sectionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const g of grouped) {
+      const total = g.items.length + g.subs.reduce((sum, sg) => sum + sg.items.length, 0);
+      counts.set(g.section._id, total);
+    }
+    return counts;
+  }, [grouped]);
+
+  const totalProducts = useMemo(() => flatItems.length, [flatItems]);
+
   const searchMenuProducts = useCallback(async (q: string): Promise<SearchableProduct[]> => {
     const res = await listProducts({ limit: 20, search: q || undefined });
     return res.items.map((p) => ({
@@ -195,44 +207,64 @@ export function MenuPage() {
 
       <section className="container-px py-6">
         {/* Category Tabs */}
-        <div className="mb-6 flex flex-wrap gap-1.5">
+        <div className="mb-6 flex flex-wrap gap-2">
           <button
             onClick={() => setCategory('')}
             className={cn(
-              'rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-150',
-              !activeCategory ? 'bg-brand-500 text-white shadow-sm' : 'border border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
+              'flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-150',
+              !activeCategory
+                ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20'
+                : 'border border-[var(--tw-border-strong)] bg-[var(--tw-card-bg)] text-[var(--tw-text-muted)] hover:border-brand-500/40 hover:text-[var(--tw-text)]',
             )}
           >
             {t('common.all')}
+            <span className={cn(
+              'ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+              !activeCategory ? 'bg-white/20' : 'bg-[var(--tw-surface-alt)]',
+            )}>
+              {totalProducts}
+            </span>
           </button>
-          {visibleSections.map((section) => (
-            <button
-              key={section._id}
-              onClick={() => setCategory(section._id)}
-              className={cn(
-                'rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-150',
-                activeSectionId === section._id
-                  ? 'bg-brand-500 text-white shadow-sm'
-                  : 'border border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
-              )}
-            >
-              {categoryName(section)}
-            </button>
-          ))}
+          {visibleSections.map((section) => {
+            const count = sectionCounts.get(section._id) ?? 0;
+            const isActive = activeSectionId === section._id;
+            return (
+              <button
+                key={section._id}
+                onClick={() => setCategory(section._id)}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-150',
+                  isActive
+                    ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20'
+                    : 'border border-[var(--tw-border-strong)] bg-[var(--tw-card-bg)] text-[var(--tw-text-muted)] hover:border-brand-500/40 hover:text-[var(--tw-text)]',
+                )}
+              >
+                {categoryName(section)}
+                {count > 0 && (
+                  <span className={cn(
+                    'rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+                    isActive ? 'bg-white/20' : 'bg-[var(--tw-surface-alt)]',
+                  )}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Sub-category Tabs */}
         {activeSection && activeSectionSubs.length > 0 ? (
-          <div className="mb-6 flex flex-wrap gap-1.5">
+          <div className="mb-6 flex flex-wrap gap-2">
             {activeSectionSubs.map((sub) => (
               <button
                 key={sub._id}
                 onClick={() => setCategory(sub._id)}
                 className={cn(
-                  'rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-150',
+                  'rounded-xl border px-4 py-2 text-xs font-medium transition-all duration-150',
                   activeCategory === sub._id
-                    ? 'border-brand-500 bg-brand-500/10 text-brand-500'
-                    : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-brand-500/60 hover:text-brand-500',
+                    ? 'border-brand-500 bg-brand-500/10 text-brand-500 shadow-sm shadow-brand-500/5'
+                    : 'border-[var(--tw-border-strong)] bg-[var(--tw-card-bg)] text-[var(--tw-text-muted)] hover:border-brand-500/40 hover:text-brand-500',
                 )}
               >
                 {categoryName(sub)}
