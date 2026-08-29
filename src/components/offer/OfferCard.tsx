@@ -45,7 +45,7 @@ export function OfferCard({ offer }: { offer: OfferWithProducts }) {
     <Link
       to={`/offers/${offer._id}`}
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-3xl border bg-gradient-to-br p-7 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl md:p-8',
+        'group relative flex flex-col overflow-hidden rounded-2xl border bg-gradient-to-br p-6 shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl md:p-7',
         offerThemeClasses(offer.theme),
       )}
     >
@@ -69,7 +69,7 @@ export function OfferCard({ offer }: { offer: OfferWithProducts }) {
         </span>
       </div>
 
-      <h3 className="relative mt-5 text-2xl font-extrabold text-white group-hover:underline">
+      <h3 className="relative mt-4 text-xl font-extrabold text-white group-hover:underline">
         {title}
       </h3>
       {description ? (
@@ -119,10 +119,10 @@ export function OfferCard({ offer }: { offer: OfferWithProducts }) {
         </div>
       )}
 
-      <div className="relative mt-auto pt-7">
+      <div className="relative mt-auto pt-6">
         <span
           className={cn(
-            'inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-base font-semibold transition-colors duration-200',
+            'inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors duration-150',
             ctaStyles,
           )}
         >

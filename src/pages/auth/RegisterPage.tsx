@@ -79,15 +79,15 @@ export function RegisterPage() {
   });
 
   return (
-    <div className="container-px flex min-h-[70vh] items-center justify-center py-16">
-      <div className="w-full max-w-md rounded-3xl border border-night-800 bg-night-900 p-8">
-        <div className="mb-8 text-center">
-          <Logo className="mx-auto h-14 w-14 rounded-2xl" />
-          <h1 className="mt-4 text-2xl font-extrabold text-night-50">{t('auth.registerTitle')}</h1>
-          <p className="mt-1 text-sm text-night-400">{t('auth.registerSubtitle')}</p>
+    <div className="container-px flex min-h-[70vh] items-center justify-center py-12">
+      <div className="w-full max-w-sm rounded-2xl border border-night-700/80 bg-night-900 p-6">
+        <div className="mb-6 text-center">
+          <Logo className="mx-auto h-12 w-12 rounded-xl" />
+          <h1 className="mt-3 text-xl font-extrabold text-night-50">{t('auth.registerTitle')}</h1>
+          <p className="mt-1 text-xs text-night-400">{t('auth.registerSubtitle')}</p>
         </div>
 
-        <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
+        <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-3">
           <div>
             <Label htmlFor="fullName">{t('auth.fullName')}</Label>
             <Input id="fullName" {...register('fullName')} error={Boolean(errors.fullName)} />
@@ -128,10 +128,10 @@ export function RegisterPage() {
                 aria-checked={role === 'customer'}
                 onClick={() => setValue('role', 'customer', { shouldValidate: true })}
                 className={cn(
-                  'flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors',
+                  'flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
                   role === 'customer'
-                    ? 'border-brand-500 bg-brand-600/15 text-brand-500'
-                    : 'border-night-800 bg-night-900 text-night-300 hover:bg-night-800',
+                    ? 'border-brand-500/60 bg-brand-600/15 text-brand-400'
+                    : 'border-night-700/60 bg-night-900 text-night-300 hover:bg-night-800/60',
                 )}
               >
                 <UserRound className="h-4 w-4" />
@@ -143,10 +143,10 @@ export function RegisterPage() {
                 aria-checked={role === 'admin'}
                 onClick={() => setValue('role', 'admin', { shouldValidate: true })}
                 className={cn(
-                  'flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors',
+                  'flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
                   role === 'admin'
-                    ? 'border-brand-500 bg-brand-600/15 text-brand-500'
-                    : 'border-night-800 bg-night-900 text-night-300 hover:bg-night-800',
+                    ? 'border-brand-500/60 bg-brand-600/15 text-brand-400'
+                    : 'border-night-700/60 bg-night-900 text-night-300 hover:bg-night-800/60',
                 )}
               >
                 <ShieldCheck className="h-4 w-4" />

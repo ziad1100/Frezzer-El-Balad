@@ -18,10 +18,10 @@ export function OffersPage() {
   const empty = isError || !data || data.length === 0;
 
   return (
-    <div className="container-px py-16">
-      <header className="mb-10 text-center">
-        <h1 className="text-4xl font-extrabold text-night-50">{t('offers.title')}</h1>
-        <p className="mt-2 text-night-400">{t('offers.subtitle')}</p>
+    <div className="container-px py-12">
+      <header className="mb-8 text-center">
+        <h1 className="text-2xl font-extrabold text-night-50 sm:text-3xl">{t('offers.title')}</h1>
+        <p className="mt-1 text-sm text-night-400">{t('offers.subtitle')}</p>
       </header>
 
       {isLoading ? (

@@ -37,13 +37,13 @@ export function ContactPage() {
   });
 
   return (
-    <div className="container-px py-16">
-      <div className="mb-10 text-center">
-        <h1 className="text-4xl font-extrabold text-night-50">{t('nav.contact')}</h1>
+    <div className="container-px py-12">
+      <div className="mb-8 text-center">
+        <h1 className="text-2xl font-extrabold text-night-50 sm:text-3xl">{t('nav.contact')}</h1>
       </div>
-      <div className="mx-auto max-w-xl">
+      <div className="mx-auto max-w-lg">
         <Card>
-          <CardContent className="p-7">
+          <CardContent className="p-6">
             <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>

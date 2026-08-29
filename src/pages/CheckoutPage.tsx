@@ -257,9 +257,9 @@ export function CheckoutPage() {
   const total = subtotal + effectiveFee - couponDiscount;
 
   return (
-    <div className="container-px py-12">
-      <h1 className="mb-8 text-3xl font-extrabold text-night-50">{t('checkout.title')}</h1>
-      <div className="grid gap-8 lg:grid-cols-5">
+    <div className="container-px py-10">
+      <h1 className="mb-6 text-2xl font-extrabold text-night-50">{t('checkout.title')}</h1>
+      <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardContent>
             {isAdmin ? (
