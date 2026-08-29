@@ -1,52 +1,53 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── Brand: Deep Navy / Freezer Blue ──────────────────────────────── */
-  --color-brand-50: #EFF6FF;
-  --color-brand-100: #DBEAFE;
-  --color-brand-200: #BFDBFE;
-  --color-brand-300: #93C5FD;
-  --color-brand-400: #3B82F6;
-  --color-brand-500: #2563EB;
-  --color-brand-600: #1D4ED8;
-  --color-brand-700: #1E40AF;
-  --color-brand-800: #1E3A8A;
-  --color-brand-900: #172554;
+  /* ── Brand: Freezer Blue (primary) ──────────────────────────────── */
+  --color-brand-50: #EEF2FF;
+  --color-brand-100: #E0E7FF;
+  --color-brand-200: #C7D2FE;
+  --color-brand-300: #A5B4FC;
+  --color-brand-400: #818CF8;
+  --color-brand-500: #6366F1;
+  --color-brand-600: #4F46E5;
+  --color-brand-700: #4338CA;
+  --color-brand-800: #3730A3;
+  --color-brand-900: #312E81;
 
-  /* ── Gold / Fresh Green (success, availability) ───────────────────── */
-  --color-gold-50: #F0FDF4;
-  --color-gold-100: #DCFCE7;
-  --color-gold-200: #BBF7D0;
-  --color-gold-300: #86EFAC;
-  --color-gold-400: #4ADE80;
-  --color-gold-500: #22C55E;
-  --color-gold-600: #16A34A;
-  --color-gold-700: #15803D;
+  /* ── Fresh Green (success, availability) ───────────────────── */
+  --color-fresh-50: #F0FDF4;
+  --color-fresh-100: #DCFCE7;
+  --color-fresh-200: #BBF7D0;
+  --color-fresh-300: #86EFAC;
+  --color-fresh-400: #4ADE80;
+  --color-fresh-500: #22C55E;
+  --color-fresh-600: #16A34A;
+  --color-fresh-700: #15803D;
 
-  /* ── Semantic tokens ──────────────────────────────────────────────── */
+  /* ── Semantic tokens ──────────────────────────────────────── */
   --color-discount: #F97316;
   --color-fresh: #22C55E;
-  --color-ice: #EFF6FF;
+  --color-ice: #EEF2FF;
 
-  /* ── Night palette (dark mode default) ────────────────────────────── */
-  --color-night-50: var(--tw-night-50);
-  --color-night-100: var(--tw-night-100);
-  --color-night-200: var(--tw-night-200);
-  --color-night-300: var(--tw-night-300);
-  --color-night-400: var(--tw-night-400);
-  --color-night-500: var(--tw-night-500);
-  --color-night-600: var(--tw-night-600);
-  --color-night-700: var(--tw-night-700);
-  --color-night-800: var(--tw-night-800);
-  --color-night-850: var(--tw-night-850);
-  --color-night-900: var(--tw-night-900);
-  --color-night-950: var(--tw-night-950);
+  /* ── Night palette (dark mode default) ────────────────────── */
+  --color-night-50: #F8FAFC;
+  --color-night-100: #F1F5F9;
+  --color-night-200: #E2E8F0;
+  --color-night-300: #CBD5E1;
+  --color-night-400: #94A3B8;
+  --color-night-500: #64748B;
+  --color-night-600: #475569;
+  --color-night-700: #334155;
+  --color-night-750: #1E293B;
+  --color-night-800: #1E293B;
+  --color-night-850: #172033;
+  --color-night-900: #0F172A;
+  --color-night-950: #0B1120;
 
-  /* ── Typography ───────────────────────────────────────────────────── */
+  /* ── Typography ───────────────────────────────────────────── */
   --font-sans: "Inter", "Cairo", ui-sans-serif, system-ui, sans-serif;
   --font-arabic: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  /* ── Animations ───────────────────────────────────────────────────── */
+  /* ── Animations ───────────────────────────────────────────── */
   --animate-fade-in: fade-in 0.3s ease both;
   --animate-slide-up: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-scale-in: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -65,37 +66,43 @@
   }
 }
 
-/* ── Dark Mode (default) ─────────────────────────────────────────────── */
+/* ── Light Mode (default) ──────────────────────────────────────── */
 :root,
-[data-theme="dark"] {
-  --tw-night-50: #F1F5F9;
-  --tw-night-100: #CBD5E1;
-  --tw-night-200: #94A3B8;
-  --tw-night-300: #94A3B8;
-  --tw-night-400: #94A3B8;
-  --tw-night-500: #64748B;
-  --tw-night-600: #475569;
-  --tw-night-700: #334155;
-  --tw-night-800: #1E293B;
-  --tw-night-850: #172554;
-  --tw-night-900: #0F172A;
-  --tw-night-950: #0B1120;
+[data-theme="light"] {
+  --tw-bg: #F8FAFC;
+  --tw-surface: #FFFFFF;
+  --tw-surface-alt: #F1F5F9;
+  --tw-text: #1E293B;
+  --tw-text-muted: #64748B;
+  --tw-border: #E2E8F0;
+  --tw-border-strong: #CBD5E1;
+  --tw-card-bg: #FFFFFF;
+  --tw-card-border: #E2E8F0;
+  --tw-sidebar-bg: #FFFFFF;
+  --tw-sidebar-border: #E2E8F0;
+  --tw-header-bg: rgba(255,255,255,0.9);
+  --tw-input-bg: #F8FAFC;
+  --tw-input-border: #CBD5E1;
+  --tw-hover: #F1F5F9;
 }
 
-/* ── Light Mode ──────────────────────────────────────────────────────── */
-[data-theme="light"] {
-  --tw-night-50: #0F172A;
-  --tw-night-100: #1E293B;
-  --tw-night-200: #334155;
-  --tw-night-300: #475569;
-  --tw-night-400: #64748B;
-  --tw-night-500: #64748B;
-  --tw-night-600: #94A3B8;
-  --tw-night-700: #CBD5E1;
-  --tw-night-800: #E2E8F0;
-  --tw-night-850: #F1F5F9;
-  --tw-night-900: #F8FAFC;
-  --tw-night-950: #FFFFFF;
+/* ── Dark Mode ──────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --tw-bg: #0B1120;
+  --tw-surface: #0F172A;
+  --tw-surface-alt: #172033;
+  --tw-text: #F1F5F9;
+  --tw-text-muted: #64748B;
+  --tw-border: #1E293B;
+  --tw-border-strong: #334155;
+  --tw-card-bg: rgba(15,23,42,0.8);
+  --tw-card-border: rgba(30,41,59,0.6);
+  --tw-sidebar-bg: rgba(15,23,42,0.95);
+  --tw-sidebar-border: rgba(30,41,59,0.6);
+  --tw-header-bg: rgba(11,17,32,0.95);
+  --tw-input-bg: rgba(15,23,42,0.8);
+  --tw-input-border: rgba(51,65,85,0.8);
+  --tw-hover: rgba(30,41,59,0.6);
 }
 
 @layer base {
@@ -107,20 +114,9 @@
 
   body {
     @apply font-sans;
-    background: var(--tw-night-950, #0B1120);
-    color: var(--tw-night-100, #CBD5E1);
+    background: var(--tw-bg);
+    color: var(--tw-text);
     line-height: 1.6;
-  }
-
-  :root body,
-  [data-theme="dark"] body {
-    background: #0B1120;
-    color: #CBD5E1;
-  }
-
-  [data-theme="light"] body {
-    background: #F8FAFC;
-    color: #1E293B;
   }
 
   button:not(:disabled) {
@@ -132,13 +128,13 @@
   }
 
   ::selection {
-    background: #2563EB;
+    background: #6366F1;
     color: #FFFFFF;
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--tw-night-700) transparent;
+    scrollbar-color: var(--tw-border-strong) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -147,7 +143,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--tw-night-700);
+    background: var(--tw-border-strong);
     border-radius: 9999px;
   }
 
@@ -162,4 +158,20 @@
 
 @utility container-px {
   @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+/* ── Recharts Overrides ─────────────────────────────────────────── */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: var(--tw-border);
+  stroke-opacity: 0.5;
+}
+
+.recharts-text {
+  fill: var(--tw-text-muted);
+  font-size: 11px;
+}
+
+.recharts-tooltip-wrapper {
+  outline: none;
 }
