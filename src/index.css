@@ -23,6 +23,16 @@
   --color-fresh-600: #16A34A;
   --color-fresh-700: #15803D;
 
+  /* ── Gold (accents, stars, offers, payment) ───────────────── */
+  --color-gold-50: #FFFBEB;
+  --color-gold-100: #FEF3C7;
+  --color-gold-200: #FDE68A;
+  --color-gold-300: #FCD34D;
+  --color-gold-400: #FBBF24;
+  --color-gold-500: #F59E0B;
+  --color-gold-600: #D97706;
+  --color-gold-700: #B45309;
+
   /* ── Semantic tokens ──────────────────────────────────────── */
   --color-discount: #F97316;
   --color-fresh: #22C55E;

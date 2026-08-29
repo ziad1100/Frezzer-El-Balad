@@ -477,7 +477,7 @@ export function AdminOrdersPage() {
                       }
                       className={
                         next === 'refunded'
-                          ? 'border-slate-500/40 text-slate-300'
+                          ? 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)]'
                           : next === 'cancelled'
                           ? 'border-red-500/40 text-red-400'
                           : next === 'delivery_failed'

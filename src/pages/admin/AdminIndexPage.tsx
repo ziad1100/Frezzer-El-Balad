@@ -248,7 +248,7 @@ export function AdminIndexPage() {
         { key: t('admin.totalOrders'), value: String(dashboard.data.orders), tone: 'text-[var(--tw-text)]' },
         { key: t('admin.completedOrders'), value: String(dashboard.data.completedOrders), tone: 'text-emerald-400' },
         { key: t('admin.cancelledOrders'), value: String(dashboard.data.cancelledOrders), tone: 'text-red-400' },
-        { key: t('admin.refundedOrders'), value: String(dashboard.data.refundedOrders), tone: 'text-slate-300' },
+        { key: t('admin.refundedOrders'), value: String(dashboard.data.refundedOrders), tone: 'text-[var(--tw-text-muted)]' },
         { key: t('admin.complimentaryOrders'), value: String(dashboard.data.complimentaryOrders), tone: 'text-gold-400' },
         { key: t('admin.grossRevenue'), value: formatPrice(dashboard.data.grossRevenue, lang), tone: 'text-[var(--tw-text)]' },
         { key: t('admin.discounts'), value: formatPrice(dashboard.data.discounts, lang), tone: 'text-amber-400' },

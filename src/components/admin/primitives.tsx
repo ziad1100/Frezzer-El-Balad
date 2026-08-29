@@ -78,7 +78,7 @@ const statusStyles: Record<string, string> = {
   completed: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
   cancelled: 'bg-red-500/15 text-red-400 border-red-500/30',
   delivery_failed: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
-  refunded: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+  refunded: 'bg-[var(--tw-surface-alt)] text-[var(--tw-text-muted)] border-[var(--tw-border-strong)]',
   complimentary: 'bg-gold-500/15 text-gold-400 border-gold-500/30',
 };
 
