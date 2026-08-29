@@ -414,19 +414,19 @@ export function AdminProductsPage() {
             </thead>
             <tbody>
               {(products.data.items as ProductListItem[]).map((p) => (
-                <tr key={p._id} className="transition-colors hover:bg-night-800/40">
+                <tr key={p._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
                   <Td>
                     {p.images && p.images[0] ? (
-                      <img src={p.images[0]} alt="" className="h-12 w-12 rounded-xl border border-night-700 object-cover" />
+                      <img src={p.images[0]} alt="" className="h-12 w-12 rounded-xl border border-[var(--tw-border-strong)] object-cover" />
                     ) : (
-                      <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-night-700 bg-night-800 text-xs text-night-500">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] text-xs text-[var(--tw-text-muted)]">
                         —
                       </span>
                     )}
                   </Td>
                   <Td>
-                    <p className="font-bold text-night-50">{p.name}</p>
-                    {p.nameEn ? <p className="text-xs text-night-500">{p.nameEn}</p> : null}
+                    <p className="font-bold text-[var(--tw-text)]">{p.name}</p>
+                    {p.nameEn ? <p className="text-xs text-[var(--tw-text-muted)]">{p.nameEn}</p> : null}
                   </Td>
                   <Td>{typeof p.category === 'object' && p.category ? p.category.name : '—'}</Td>
                   <Td>{formatPrice(p.basePrice, lang)}</Td>
@@ -515,7 +515,7 @@ export function AdminProductsPage() {
                 id="p-track"
                 checked={form.trackInventory}
                 onChange={(e) => setField('trackInventory', e.target.checked)}
-                className="h-4 w-4 rounded border-night-600 bg-night-800 text-brand-500 focus:ring-brand-500"
+                className="h-4 w-4 rounded border-night-600 bg-[var(--tw-surface-alt)] text-brand-500 focus:ring-brand-500"
               />
               <Label htmlFor="p-track">
                 {lang === 'ar' ? 'تتبع المخزون' : 'Track Inventory'}
@@ -570,7 +570,7 @@ export function AdminProductsPage() {
 
           <div>
             <Label>{lang === 'ar' ? 'أوزاع / أحجام المنتج' : 'Product Sizes / Weights'}</Label>
-            <p className="mb-2 text-xs text-night-500">
+            <p className="mb-2 text-xs text-[var(--tw-text-muted)]">
               {lang === 'ar' ? 'كل وزن له سعر مستقل. تغيير سعر لن يؤثر على الباقي.' : 'Each weight has its own independent price.'}
             </p>
             {sizeList.length > 0 ? (
@@ -609,7 +609,7 @@ export function AdminProductsPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-night-500">—</p>
+              <p className="text-sm text-[var(--tw-text-muted)]">—</p>
             )}
             <Button
               variant="outline"
@@ -660,7 +660,7 @@ export function AdminProductsPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-night-500">—</p>
+              <p className="text-sm text-[var(--tw-text-muted)]">—</p>
             )}
             <Button
               variant="outline"
@@ -710,7 +710,7 @@ export function AdminProductsPage() {
                     className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                       isSelected
                         ? 'border-brand-500 bg-brand-500/20 text-brand-300'
-                        : 'border-night-700 bg-night-800 text-night-400 hover:border-night-500'
+                        : 'border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]'
                     }`}
                     style={isSelected ? { borderColor: lbl.color, backgroundColor: `${lbl.color}20`, color: lbl.color } : {}}
                   >
@@ -722,7 +722,7 @@ export function AdminProductsPage() {
               <button
                 type="button"
                 onClick={() => setShowLabelModal(true)}
-                className="inline-flex items-center gap-1 rounded-full border border-dashed border-night-600 px-3 py-1 text-xs font-semibold text-night-400 hover:border-brand-500 hover:text-brand-400 transition-colors"
+                className="inline-flex items-center gap-1 rounded-full border border-dashed border-night-600 px-3 py-1 text-xs font-semibold text-[var(--tw-text-muted)] hover:border-brand-500 hover:text-brand-400 transition-colors"
               >
                 + {lang === 'ar' ? 'بطاقة جديدة' : 'New Label'}
               </button>
@@ -748,8 +748,8 @@ export function AdminProductsPage() {
                 ['isOffer', form.isOffer, (v: boolean) => setField('isOffer', v)],
               ] as const
             ).map(([labelKey, checked, setter]) => (
-              <div key={labelKey} className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3">
-                <span className="text-sm font-semibold text-night-200">{t(`admin.${labelKey}`)}</span>
+              <div key={labelKey} className="flex items-center justify-between rounded-xl border border-[var(--tw-border)] px-4 py-3">
+                <span className="text-sm font-semibold text-[var(--tw-text-muted)]">{t(`admin.${labelKey}`)}</span>
                 <ToggleSwitch checked={checked} onChange={() => setter(!checked)} />
               </div>
             ))}
@@ -808,7 +808,7 @@ export function AdminProductsPage() {
           </div>
           <div>
             <Label>{lang === 'ar' ? 'اللون' : 'Color'}</Label>
-            <input type="color" value={newLabelColor} onChange={(e) => setNewLabelColor(e.target.value)} className="h-10 w-20 rounded border border-night-700 bg-night-800" />
+            <input type="color" value={newLabelColor} onChange={(e) => setNewLabelColor(e.target.value)} className="h-10 w-20 rounded border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)]" />
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowLabelModal(false)}>{t('common.cancel')}</Button>

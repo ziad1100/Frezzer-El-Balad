@@ -380,11 +380,11 @@ export function AdminOrdersPage() {
             </thead>
             <tbody>
               {(orders.data.items as AdminOrder[]).map((o) => (
-                <tr key={o._id} className="transition-colors hover:bg-night-800/40">
-                  <Td className="font-bold text-night-50">{o.orderNo}</Td>
+                <tr key={o._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+                  <Td className="font-bold text-[var(--tw-text)]">{o.orderNo}</Td>
                   <Td>
-                    <p className="font-semibold text-night-100">{o.customerName}</p>
-                    <p className="text-xs text-night-500">
+                    <p className="font-semibold text-[var(--tw-text)]">{o.customerName}</p>
+                    <p className="text-xs text-[var(--tw-text-muted)]">
                       {typeof o.user === 'object'
                         ? lang === 'ar'
                           ? o.user.fullName
@@ -393,9 +393,9 @@ export function AdminOrdersPage() {
                     </p>
                   </Td>
                   <Td dir="ltr">{o.phone}</Td>
-                  <Td className="font-bold text-night-50">{formatPrice(o.total, lang)}</Td>
+                  <Td className="font-bold text-[var(--tw-text)]">{formatPrice(o.total, lang)}</Td>
                   <Td>{o.items.reduce((sum, i) => sum + i.qty, 0)}</Td>
-                  <Td className="text-xs text-night-500">{fmtDate(o.createdAt)}</Td>
+                  <Td className="text-xs text-[var(--tw-text-muted)]">{fmtDate(o.createdAt)}</Td>
                   <Td>
                     <div className="flex items-center gap-2">
                       <StatusBadge status={o.status} />
@@ -420,7 +420,7 @@ export function AdminOrdersPage() {
                               </option>
                             ))}
                           </Select>
-                          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-night-400" />
+                          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--tw-text-muted)]" />
                         </div>
                       ) : null}
                     </div>
@@ -564,76 +564,76 @@ export function AdminOrdersPage() {
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-night-800 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-night-500">{t('admin.customer')}</p>
-                <p className="mt-2 font-bold text-night-50">{selected.customerName}</p>
-                <p dir="ltr" className="text-sm text-night-400">{selected.phone}</p>
+              <div className="rounded-xl border border-[var(--tw-border)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.customer')}</p>
+                <p className="mt-2 font-bold text-[var(--tw-text)]">{selected.customerName}</p>
+                <p dir="ltr" className="text-sm text-[var(--tw-text-muted)]">{selected.phone}</p>
                 {selected.payment ? (
-                  <p className="mt-1 text-sm capitalize text-night-400">
+                  <p className="mt-1 text-sm capitalize text-[var(--tw-text-muted)]">
                     {selected.payment.method} · {formatPrice(selected.payment.amount, lang)}
                   </p>
                 ) : null}
               </div>
-              <div className="rounded-xl border border-night-800 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-night-500">{t('admin.category')}</p>
-                <p className="mt-2 text-sm text-night-200">
+              <div className="rounded-xl border border-[var(--tw-border)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.category')}</p>
+                <p className="mt-2 text-sm text-[var(--tw-text-muted)]">
                   {selected.deliveryAddress.city
                     ? [selected.deliveryAddress.city, selected.deliveryAddress.street, selected.deliveryAddress.building]
                         .filter(Boolean)
                         .join(' — ')
                     : '—'}
                 </p>
-                {selected.notes ? <p className="mt-1 text-sm text-night-500">{selected.notes}</p> : null}
+                {selected.notes ? <p className="mt-1 text-sm text-[var(--tw-text-muted)]">{selected.notes}</p> : null}
               </div>
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-night-500">{t('admin.orderItems')}</p>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.orderItems')}</p>
               <div className="space-y-2">
                 {selected.items.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3 text-sm">
-                    <span className="font-semibold text-night-100">
+                  <div key={i} className="flex items-center justify-between rounded-xl border border-[var(--tw-border)] px-4 py-3 text-sm">
+                    <span className="font-semibold text-[var(--tw-text)]">
                       {item.qty} × {itemName(item)}
-                      {item.size ? <span className="text-night-500"> ({item.size})</span> : null}
+                      {item.size ? <span className="text-[var(--tw-text-muted)]"> ({item.size})</span> : null}
                       {item.isCustomPrice ? (
                         <span className="ms-1 inline-block rounded bg-gold-500/20 px-1.5 py-0.5 text-xs font-bold text-gold-400">
                           {lang === 'ar' ? 'سعر مخصص' : 'Custom Price'}
                         </span>
                       ) : null}
                       {item.extras?.length ? (
-                        <span className="block text-xs text-night-500">{item.extras.map((e) => e.name).join(', ')}</span>
+                        <span className="block text-xs text-[var(--tw-text-muted)]">{item.extras.map((e) => e.name).join(', ')}</span>
                       ) : null}
                     </span>
-                    <span className="font-bold text-night-50">{formatPrice(item.lineTotal, lang)}</span>
+                    <span className="font-bold text-[var(--tw-text)]">{formatPrice(item.lineTotal, lang)}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-night-800 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--tw-border)] px-4 py-3">
               <div className="space-y-1 text-sm">
-                <p className="text-night-400">
-                  {t('common.min')}: <span className="font-bold text-night-100">{formatPrice(selected.subtotal, lang)}</span>
+                <p className="text-[var(--tw-text-muted)]">
+                  {t('common.min')}: <span className="font-bold text-[var(--tw-text)]">{formatPrice(selected.subtotal, lang)}</span>
                 </p>
-                <p className="text-night-400">
-                  {t('admin.deliveryFee')}: <span className="font-bold text-night-100">{formatPrice(selected.deliveryFee, lang)}</span>
+                <p className="text-[var(--tw-text-muted)]">
+                  {t('admin.deliveryFee')}: <span className="font-bold text-[var(--tw-text)]">{formatPrice(selected.deliveryFee, lang)}</span>
                 </p>
                 {selected.couponCode ? (
-                  <p className="text-night-400">
+                  <p className="text-[var(--tw-text-muted)]">
                     {selected.couponCode}: <span className="font-bold text-emerald-400">−{formatPrice(selected.discount, lang)}</span>
                   </p>
                 ) : null}
                 {selected.isComplimentary ? (
                   <>
-                    <p className="text-night-400">
+                    <p className="text-[var(--tw-text-muted)]">
                       {t('admin.adjustment')}: <span className="font-bold text-gold-400">−{formatPrice(selected.adjustmentAmount, lang)}</span>
                     </p>
-                    <p className="text-night-500">
+                    <p className="text-[var(--tw-text-muted)]">
                       {t('admin.adjustedBy')}: {adjustedByName || (typeof selected.adjustedBy === 'string' ? selected.adjustedBy : '—')}
                       {selected.adjustedAt ? ` · ${fmtDate(selected.adjustedAt)}` : ''}
                     </p>
                     {selected.adjustmentReason ? (
-                      <p className="text-night-500">
+                      <p className="text-[var(--tw-text-muted)]">
                         {t('admin.reason')}: {selected.adjustmentReason}
                       </p>
                     ) : null}
@@ -641,8 +641,8 @@ export function AdminOrdersPage() {
                 ) : null}
               </div>
               <div className="text-end">
-                <p className="text-xs text-night-500">{fmtDate(selected.createdAt)}</p>
-                <p className="text-lg font-extrabold text-night-50">
+                <p className="text-xs text-[var(--tw-text-muted)]">{fmtDate(selected.createdAt)}</p>
+                <p className="text-lg font-extrabold text-[var(--tw-text)]">
                   {t('admin.total')}: {formatPrice(selected.total, lang)}
                 </p>
               </div>
@@ -650,14 +650,14 @@ export function AdminOrdersPage() {
 
             {/* Print History */}
             {printJobs.length > 0 ? (
-              <div className="rounded-xl border border-night-800 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-night-500">
+              <div className="rounded-xl border border-[var(--tw-border)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                   {lang === 'ar' ? 'سجل الطباعة' : 'Print History'}
                 </p>
                 <div className="mt-2 space-y-1">
                   {printJobs.map((pj) => (
                     <div key={pj.id} className="flex items-center justify-between text-xs">
-                      <span className="text-night-400">{fmtDate(pj.createdAt)}</span>
+                      <span className="text-[var(--tw-text-muted)]">{fmtDate(pj.createdAt)}</span>
                       <span className={
                         pj.status === 'printed' ? 'text-emerald-400' :
                         pj.status === 'failed' ? 'text-red-400' :

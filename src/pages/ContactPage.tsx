@@ -39,7 +39,7 @@ export function ContactPage() {
   return (
     <div className="container-px py-12">
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-extrabold text-night-50 sm:text-3xl">{t('nav.contact')}</h1>
+        <h1 className="text-2xl font-extrabold text-[var(--tw-text)] sm:text-3xl">{t('nav.contact')}</h1>
       </div>
       <div className="mx-auto max-w-lg">
         <Card>

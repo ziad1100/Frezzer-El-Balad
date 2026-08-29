@@ -88,10 +88,10 @@ export function AdminUsersPage() {
             </thead>
             <tbody>
               {users.data.items.map((u) => (
-                <tr key={u._id} className="transition-colors hover:bg-night-800/40">
+                <tr key={u._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
                   <Td>
-                    <p className="font-bold text-night-50">{u.fullName}</p>
-                    <p dir="ltr" className="text-xs text-night-500">{u.phone}</p>
+                    <p className="font-bold text-[var(--tw-text)]">{u.fullName}</p>
+                    <p dir="ltr" className="text-xs text-[var(--tw-text-muted)]">{u.phone}</p>
                   </Td>
                   <Td dir="ltr">{u.email}</Td>
                   <Td>

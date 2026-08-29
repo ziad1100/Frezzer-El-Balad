@@ -80,11 +80,11 @@ function EmailForm({ currentEmail }: { currentEmail: string }) {
   return (
     <Card>
       <CardContent className="p-6">
-        <h3 className="mb-1 flex items-center gap-2 text-sm font-bold text-night-300">
+        <h3 className="mb-1 flex items-center gap-2 text-sm font-bold text-[var(--tw-text-muted)]">
           <Mail className="h-4 w-4" />
           {t('admin.account.emailTitle')}
         </h3>
-        <p className="mb-4 text-sm text-night-500">
+        <p className="mb-4 text-sm text-[var(--tw-text-muted)]">
           {t('admin.account.emailHint')} — {t('admin.account.currentIs', { email: currentEmail })}
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -148,11 +148,11 @@ function PasswordForm() {
   return (
     <Card>
       <CardContent className="p-6">
-        <h3 className="mb-1 flex items-center gap-2 text-sm font-bold text-night-300">
+        <h3 className="mb-1 flex items-center gap-2 text-sm font-bold text-[var(--tw-text-muted)]">
           <KeyRound className="h-4 w-4" />
           {t('admin.account.passwordTitle')}
         </h3>
-        <p className="mb-4 text-sm text-night-500">{t('admin.account.passwordHint')}</p>
+        <p className="mb-4 text-sm text-[var(--tw-text-muted)]">{t('admin.account.passwordHint')}</p>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <Label htmlFor="acc-pass-current">{t('admin.account.currentPassword')}</Label>
@@ -192,7 +192,7 @@ export function AdminAccountPage() {
         <PageHeader title={t('admin.account.title')} />
         <Card>
           <CardContent className="p-6">
-            <p className="flex items-center gap-2 text-sm text-night-300">
+            <p className="flex items-center gap-2 text-sm text-[var(--tw-text-muted)]">
               <ShieldCheck className="h-4 w-4 text-brand-500" />
               {t('admin.account.noAccess')}
             </p>
@@ -205,7 +205,7 @@ export function AdminAccountPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t('admin.account.title')} subtitle={t('admin.account.subtitle')} />
-      {verifying ? <p className="text-sm text-night-400">{t('common.loading')}</p> : null}
+      {verifying ? <p className="text-sm text-[var(--tw-text-muted)]">{t('common.loading')}</p> : null}
       <EmailForm currentEmail={currentEmail} />
       <PasswordForm />
     </div>

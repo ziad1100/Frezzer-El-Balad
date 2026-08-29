@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
@@ -80,11 +80,11 @@ export function RegisterPage() {
 
   return (
     <div className="container-px flex min-h-[70vh] items-center justify-center py-12">
-      <div className="w-full max-w-sm rounded-2xl border border-night-700/80 bg-night-900 p-6">
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] p-6">
         <div className="mb-6 text-center">
           <Logo className="mx-auto h-12 w-12 rounded-xl" />
-          <h1 className="mt-3 text-xl font-extrabold text-night-50">{t('auth.registerTitle')}</h1>
-          <p className="mt-1 text-xs text-night-400">{t('auth.registerSubtitle')}</p>
+          <h1 className="mt-3 text-xl font-extrabold text-[var(--tw-text)]">{t('auth.registerTitle')}</h1>
+          <p className="mt-1 text-xs text-[var(--tw-text-muted)]">{t('auth.registerSubtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-3">
@@ -131,7 +131,7 @@ export function RegisterPage() {
                   'flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
                   role === 'customer'
                     ? 'border-brand-500/60 bg-brand-600/15 text-brand-400'
-                    : 'border-night-700/60 bg-night-900 text-night-300 hover:bg-night-800/60',
+                    : 'border-[var(--tw-border-strong)]/60 bg-[var(--tw-surface)] text-[var(--tw-text-muted)] hover:bg-[var(--tw-surface-alt)]/60',
                 )}
               >
                 <UserRound className="h-4 w-4" />
@@ -146,7 +146,7 @@ export function RegisterPage() {
                   'flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
                   role === 'admin'
                     ? 'border-brand-500/60 bg-brand-600/15 text-brand-400'
-                    : 'border-night-700/60 bg-night-900 text-night-300 hover:bg-night-800/60',
+                    : 'border-[var(--tw-border-strong)]/60 bg-[var(--tw-surface)] text-[var(--tw-text-muted)] hover:bg-[var(--tw-surface-alt)]/60',
                 )}
               >
                 <ShieldCheck className="h-4 w-4" />
@@ -173,7 +173,7 @@ export function RegisterPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-night-400">
+        <p className="mt-6 text-center text-sm text-[var(--tw-text-muted)]">
           {t('auth.haveAccount')}{' '}
           <Link to="/login" className="font-bold text-brand-500 hover:text-brand-400">
             {t('auth.signIn')}

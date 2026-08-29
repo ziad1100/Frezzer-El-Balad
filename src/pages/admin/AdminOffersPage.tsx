@@ -156,9 +156,9 @@ export function AdminOffersPage() {
           </thead>
           <tbody>
             {(offers.data ?? []).map((o) => (
-              <tr key={o._id} className="transition-colors hover:bg-night-800/40">
+              <tr key={o._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
                 <Td>
-                  <p className="flex items-center gap-2 font-bold text-night-50">
+                  <p className="flex items-center gap-2 font-bold text-[var(--tw-text)]">
                     <BadgePercent className="h-4 w-4 text-brand-500" />
                     {o.title}
                   </p>
@@ -251,10 +251,10 @@ export function AdminOffersPage() {
 
           <div>
             <Label>{t('admin.nav.products')}</Label>
-            <div className="max-h-52 space-y-1.5 overflow-y-auto rounded-xl border border-night-800 p-3">
+            <div className="max-h-52 space-y-1.5 overflow-y-auto rounded-xl border border-[var(--tw-border)] p-3">
               {products.data && products.data.items.length > 0 ? (
                 (products.data.items as Array<{ _id: string; name: string; nameEn: string }>).map((p) => (
-                  <label key={p._id} className="flex cursor-pointer items-center gap-2 text-sm text-night-200">
+                  <label key={p._id} className="flex cursor-pointer items-center gap-2 text-sm text-[var(--tw-text-muted)]">
                     <input
                       type="checkbox"
                       checked={form.products.includes(p._id)}
@@ -265,7 +265,7 @@ export function AdminOffersPage() {
                   </label>
                 ))
               ) : (
-                <p className="text-sm text-night-500">{t('admin.emptyList')}</p>
+                <p className="text-sm text-[var(--tw-text-muted)]">{t('admin.emptyList')}</p>
               )}
             </div>
           </div>

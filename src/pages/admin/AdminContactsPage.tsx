@@ -70,11 +70,11 @@ export function AdminContactsPage() {
             {(contacts.data.items ?? []).map((c) => (
               <tr
                 key={c._id}
-                className={`transition-colors hover:bg-night-800/40 ${c.isRead ? 'opacity-60' : ''}`}
+                className={`transition-colors hover:hover:bg-[var(--tw-hover)] ${c.isRead ? 'opacity-60' : ''}`}
               >
                 <Td>
-                  <p className="font-bold text-night-50">{c.name}</p>
-                  <p dir="ltr" className="text-xs text-night-500">{c.email}</p>
+                  <p className="font-bold text-[var(--tw-text)]">{c.name}</p>
+                  <p dir="ltr" className="text-xs text-[var(--tw-text-muted)]">{c.email}</p>
                 </Td>
                 <Td className="max-w-xs truncate">{c.message}</Td>
                 <Td dir="ltr">{c.phone}</Td>
@@ -119,13 +119,13 @@ export function AdminContactsPage() {
                 {t('admin.markedRead')}
               </Button>
             ) : null}
-            <p className="text-sm text-night-400">
+            <p className="text-sm text-[var(--tw-text-muted)]">
               <span dir="ltr">{selected.email}</span> · <span dir="ltr">{selected.phone}</span>
             </p>
-            <p className="rounded-xl border border-night-800 bg-night-950 p-4 text-sm leading-relaxed text-night-200">
+            <p className="rounded-xl border border-[var(--tw-border)] bg-night-950 p-4 text-sm leading-relaxed text-[var(--tw-text-muted)]">
               {selected.message}
             </p>
-            <p className="text-xs text-night-500">{fmt(selected.createdAt)}</p>
+            <p className="text-xs text-[var(--tw-text-muted)]">{fmt(selected.createdAt)}</p>
           </div>
         ) : null}
       </Modal>

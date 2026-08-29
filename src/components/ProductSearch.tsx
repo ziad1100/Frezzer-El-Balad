@@ -238,7 +238,7 @@ export function ProductSearch({
     ? createPortal(
         <div
           ref={listRef}
-          className="fixed z-[9999] max-h-80 overflow-y-auto rounded-xl border border-night-700 bg-night-900 shadow-2xl"
+          className="fixed z-[9999] max-h-80 overflow-y-auto rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] shadow-2xl"
           style={{
             top: dropdownPos.top,
             left: dropdownPos.left,
@@ -248,7 +248,7 @@ export function ProductSearch({
         >
           {/* loading */}
           {loading && (
-            <div className="flex items-center justify-center gap-2 py-4 text-sm text-night-500">
+            <div className="flex items-center justify-center gap-2 py-4 text-sm text-[var(--tw-text-muted)]">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
               {isAr ? 'جاري البحث...' : 'Searching...'}
             </div>
@@ -256,7 +256,7 @@ export function ProductSearch({
 
           {/* empty */}
           {!loading && query.trim() && products.length === 0 && (
-            <div className="py-6 text-center text-sm text-night-500">
+            <div className="py-6 text-center text-sm text-[var(--tw-text-muted)]">
               {isAr ? 'لا توجد نتائج' : 'No products found'}
             </div>
           )}
@@ -273,7 +273,7 @@ export function ProductSearch({
                   'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
                   highlightedIndex === idx
                     ? 'bg-brand-500/15'
-                    : 'hover:bg-night-800/50',
+                    : 'hover:bg-[var(--tw-surface-alt)]/50',
                   !product.isAvailable && 'opacity-50',
                 )}
                 role="option"
@@ -286,13 +286,13 @@ export function ProductSearch({
                     className="h-10 w-10 shrink-0 rounded-lg object-cover"
                   />
                 ) : (
-                  <Package className="h-5 w-5 shrink-0 text-night-600" />
+                  <Package className="h-5 w-5 shrink-0 text-[var(--tw-border-strong)]" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-night-100">
+                  <p className="truncate text-sm font-semibold text-[var(--tw-text)]">
                     {productName(product)}
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-night-500">
+                  <div className="flex items-center gap-2 text-xs text-[var(--tw-text-muted)]">
                     {categoryName(product) && (
                       <span>{categoryName(product)}</span>
                     )}
@@ -313,7 +313,7 @@ export function ProductSearch({
 
           {/* keyboard hints */}
           {!loading && products.length > 0 && (
-            <div className="flex items-center justify-center gap-4 border-t border-night-800 px-4 py-1.5 text-[11px] text-night-600">
+            <div className="flex items-center justify-center gap-4 border-t border-[var(--tw-border)] px-4 py-1.5 text-[11px] text-[var(--tw-border-strong)]">
               <span>↑↓ {isAr ? 'تنقل' : 'Navigate'}</span>
               <span>↵ {isAr ? 'اختيار' : 'Select'}</span>
               <span>Esc {isAr ? 'إغلاق' : 'Close'}</span>
@@ -326,7 +326,7 @@ export function ProductSearch({
 
   return (
     <div className={cn('relative w-full', className)} ref={containerRef}>
-      <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-night-500" />
+      <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--tw-text-muted)]" />
       <input
         ref={inputRef}
         type="text"
@@ -341,10 +341,10 @@ export function ProductSearch({
         placeholder={ph}
         autoFocus={autoFocus}
         className={cn(
-          'w-full rounded-xl border bg-night-900 py-3 ps-10 pe-9 text-sm text-night-100 placeholder-night-500 outline-none transition-colors',
+          'w-full rounded-xl border bg-[var(--tw-surface)] py-3 ps-10 pe-9 text-sm text-[var(--tw-text)] placeholder-night-500 outline-none transition-colors',
           isOpen
             ? 'border-brand-500 ring-1 ring-brand-500'
-            : 'border-night-700 hover:border-night-500',
+            : 'border-[var(--tw-border-strong)] hover:border-[var(--tw-border-strong)]',
         )}
       />
       {query && (
@@ -354,7 +354,7 @@ export function ProductSearch({
             setQuery('');
             inputRef.current?.focus();
           }}
-          className="absolute end-3 top-1/2 -translate-y-1/2 text-night-500 hover:text-night-300"
+          className="absolute end-3 top-1/2 -translate-y-1/2 text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]"
         >
           <X className="h-4 w-4" />
         </button>

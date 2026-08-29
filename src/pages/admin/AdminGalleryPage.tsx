@@ -148,7 +148,7 @@ export function AdminGalleryPage() {
           {(gallery.data ?? []).map((g, i) => (
             <div
               key={g._id}
-              className="group relative overflow-hidden rounded-2xl border border-night-800 bg-night-900 transition-colors hover:border-night-700"
+              className="group relative overflow-hidden rounded-2xl border border-[var(--tw-border)] bg-[var(--tw-surface)] transition-colors hover:border-[var(--tw-border-strong)]"
             >
               <div className="relative aspect-square">
                 <img
@@ -158,7 +158,7 @@ export function AdminGalleryPage() {
                   className={`h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 ${g.isVisible ? '' : 'opacity-40 grayscale'}`}
                 />
                 <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-night-950/90 to-transparent p-2">
-                  <span className="rounded-full bg-night-950/80 px-2 py-0.5 text-xs font-bold text-night-200">
+                  <span className="rounded-full bg-night-950/80 px-2 py-0.5 text-xs font-bold text-[var(--tw-text-muted)]">
                     {t('admin.order')}: {g.order}
                   </span>
                   <ToggleSwitch
@@ -170,8 +170,8 @@ export function AdminGalleryPage() {
               </div>
               <div className="flex items-center justify-between gap-2 p-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-night-50">{g.title}</p>
-                  <p className="truncate text-xs text-night-500">{g.titleEn || '—'}</p>
+                  <p className="truncate text-sm font-bold text-[var(--tw-text)]">{g.title}</p>
+                  <p className="truncate text-xs text-[var(--tw-text-muted)]">{g.titleEn || '—'}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => move(i, -1)} aria-label={t('common.moveUp')}>
@@ -225,7 +225,7 @@ export function AdminGalleryPage() {
             </div>
             <div className="flex items-center gap-2 pb-1">
               <ToggleSwitch checked={form.isVisible} onChange={() => setForm({ ...form, isVisible: !form.isVisible })} />
-              <span className="text-sm font-semibold text-night-300">{t('admin.available')}</span>
+              <span className="text-sm font-semibold text-[var(--tw-text-muted)]">{t('admin.available')}</span>
             </div>
           </div>
 

@@ -20,8 +20,8 @@ export function OffersPage() {
   return (
     <div className="container-px py-12">
       <header className="mb-8 text-center">
-        <h1 className="text-2xl font-extrabold text-night-50 sm:text-3xl">{t('offers.title')}</h1>
-        <p className="mt-1 text-sm text-night-400">{t('offers.subtitle')}</p>
+        <h1 className="text-2xl font-extrabold text-[var(--tw-text)] sm:text-3xl">{t('offers.title')}</h1>
+        <p className="mt-1 text-sm text-[var(--tw-text-muted)]">{t('offers.subtitle')}</p>
       </header>
 
       {isLoading ? (

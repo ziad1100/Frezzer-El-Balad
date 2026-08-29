@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, ScrollRestoration, useLocation } from 'react-router';
 import { RootLayout } from '@/components/layout/RootLayout';
 import { ProtectedRoute, GuestRoute, AdminRoute } from '@/routes/guards';

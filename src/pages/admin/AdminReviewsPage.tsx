@@ -104,12 +104,12 @@ export function AdminReviewsPage() {
       <PageHeader title={t('admin.nav.reviews')} subtitle={t('admin.reviewsSubtitle')} />
 
       {stats.data ? (
-        <div className="mb-6 rounded-2xl border border-night-800 bg-night-900 p-5">
+        <div className="mb-6 rounded-2xl border border-[var(--tw-border)] bg-[var(--tw-surface)] p-5">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             {statCards.map((c) => (
-              <div key={c.label} className="rounded-xl border border-night-800 bg-night-950/60 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-night-500">{c.label}</p>
-                <p className={cn('mt-1 text-2xl font-extrabold text-night-50', c.tone)} dir="ltr">{c.value}</p>
+              <div key={c.label} className="rounded-xl border border-[var(--tw-border)] bg-night-950/60 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{c.label}</p>
+                <p className={cn('mt-1 text-2xl font-extrabold text-[var(--tw-text)]', c.tone)} dir="ltr">{c.value}</p>
               </div>
             ))}
           </div>
@@ -177,31 +177,31 @@ export function AdminReviewsPage() {
             </thead>
             <tbody>
               {reviews.data.items.map((r) => (
-                <tr key={r._id} className="transition-colors hover:bg-night-800/40">
+                <tr key={r._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
                   <Td>
                     <div className="flex items-center gap-3">
                       {productImage(r) ? (
-                        <img src={productImage(r)} alt="" className="h-10 w-10 rounded-lg border border-night-700 object-cover" />
+                        <img src={productImage(r)} alt="" className="h-10 w-10 rounded-lg border border-[var(--tw-border-strong)] object-cover" />
                       ) : (
-                        <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-night-700 bg-night-800 text-xs text-night-500">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] text-xs text-[var(--tw-text-muted)]">
                           {t(r.reviewType === 'restaurant' ? 'review.experienceTitle' : 'admin.mealReviews')}
                         </span>
                       )}
-                      <span className="max-w-[180px] truncate font-semibold text-night-50">{productName(r)}</span>
+                      <span className="max-w-[180px] truncate font-semibold text-[var(--tw-text)]">{productName(r)}</span>
                     </div>
                   </Td>
                   <Td>
-                    <p className="font-semibold text-night-100">{reviewerName(r)}</p>
+                    <p className="font-semibold text-[var(--tw-text)]">{reviewerName(r)}</p>
                     {typeof r.user === 'object' && r.user.email ? (
-                      <p className="text-xs text-night-500">{r.user.email}</p>
+                      <p className="text-xs text-[var(--tw-text-muted)]">{r.user.email}</p>
                     ) : null}
                   </Td>
                   <Td>
                     <StarRating value={r.rating} readOnly size="sm" />
-                    <p className="mt-0.5 text-xs text-night-500" dir="ltr">{r.rating} / 5</p>
+                    <p className="mt-0.5 text-xs text-[var(--tw-text-muted)]" dir="ltr">{r.rating} / 5</p>
                   </Td>
                   <Td>
-                    <p className="max-w-[300px] text-sm text-night-300 line-clamp-2" title={r.comment}>
+                    <p className="max-w-[300px] text-sm text-[var(--tw-text-muted)] line-clamp-2" title={r.comment}>
                       {r.comment || '—'}
                     </p>
                   </Td>
@@ -212,7 +212,7 @@ export function AdminReviewsPage() {
                         {t('review.verifiedPurchase')}
                       </span>
                     ) : (
-                      <span className="text-xs text-night-500">{t('admin.unverified')}</span>
+                      <span className="text-xs text-[var(--tw-text-muted)]">{t('admin.unverified')}</span>
                     )}
                   </Td>
                   <Td>
@@ -305,20 +305,20 @@ function MealList({
   const lang = i18n.language;
   if (!meals.length) {
     return (
-      <div className="rounded-xl border border-night-800 bg-night-950/60 p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-night-500">{title}</p>
-        <p className="text-sm text-night-500">{t('admin.noMealStats')}</p>
+      <div className="rounded-xl border border-[var(--tw-border)] bg-night-950/60 p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{title}</p>
+        <p className="text-sm text-[var(--tw-text-muted)]">{t('admin.noMealStats')}</p>
       </div>
     );
   }
   return (
-    <div className="rounded-xl border border-night-800 bg-night-950/60 p-4">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-night-500">{title}</p>
+    <div className="rounded-xl border border-[var(--tw-border)] bg-night-950/60 p-4">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{title}</p>
       <ul className="space-y-1.5">
         {meals.slice(0, 5).map((m) => (
           <li key={m._id} className="flex items-center justify-between gap-2 text-sm">
-            <span className="truncate text-night-200">{lang === 'ar' ? m.name : m.nameEn || m.name}</span>
-            <span className="flex shrink-0 items-center gap-1 text-xs text-night-500" dir="ltr">
+            <span className="truncate text-[var(--tw-text-muted)]">{lang === 'ar' ? m.name : m.nameEn || m.name}</span>
+            <span className="flex shrink-0 items-center gap-1 text-xs text-[var(--tw-text-muted)]" dir="ltr">
               {m.average !== undefined ? (
                 <>
                   <Star className="h-3 w-3 fill-gold-400 text-gold-400" />

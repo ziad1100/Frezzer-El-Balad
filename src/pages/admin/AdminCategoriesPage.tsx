@@ -157,19 +157,19 @@ export function AdminCategoriesPage() {
           </thead>
           <tbody>
             {(categories.data ?? []).map((c) => (
-              <tr key={c._id} className="transition-colors hover:bg-night-800/40">
+              <tr key={c._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
                 <Td>
-                  <p className="flex items-center gap-2 font-bold text-night-50">
+                  <p className="flex items-center gap-2 font-bold text-[var(--tw-text)]">
                     <FolderOpen className="h-4 w-4 text-brand-500" />
                     {c.name}
                   </p>
-                  {c.nameEn ? <p className="text-xs text-night-500">{c.nameEn}</p> : null}
+                  {c.nameEn ? <p className="text-xs text-[var(--tw-text-muted)]">{c.nameEn}</p> : null}
                 </Td>
                 <Td>{c.type === 'section' ? t('admin.isSection') : t('admin.isSub')}</Td>
                 <Td>{c.type === 'sub' ? nameOf(sections, c.parentId ?? '') : '—'}</Td>
                 <Td>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-night-300">{c.order}</span>
+                    <span className="text-[var(--tw-text-muted)]">{c.order}</span>
                     <span className="inline-flex">
                       <Button
                         variant="ghost"
@@ -273,7 +273,7 @@ export function AdminCategoriesPage() {
               value={form.order}
               onChange={(e) => setForm({ ...form, order: Number(e.target.value) || 0 })}
             />
-            <p className="mt-1 text-xs text-night-500">{t('admin.orderHint')}</p>
+            <p className="mt-1 text-xs text-[var(--tw-text-muted)]">{t('admin.orderHint')}</p>
           </div>
 
           <div className="flex justify-end gap-2">

@@ -134,17 +134,17 @@ export function AdminPostsPage() {
             </thead>
             <tbody>
               {posts.data.items.map((p) => (
-                <tr key={p._id} className="transition-colors hover:bg-night-800/40">
+                <tr key={p._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
                   <Td>
-                    <p className="flex items-center gap-2 font-bold text-night-50">
+                    <p className="flex items-center gap-2 font-bold text-[var(--tw-text)]">
                       <FileText className="h-4 w-4 text-brand-500" />
                       {p.title}
                     </p>
-                    {p.titleEn ? <p className="text-xs text-night-500">{p.titleEn}</p> : null}
+                    {p.titleEn ? <p className="text-xs text-[var(--tw-text-muted)]">{p.titleEn}</p> : null}
                   </Td>
                   <Td>
                     {p.image ? (
-                      <img src={p.image} alt="" className="h-10 w-14 rounded-lg border border-night-700 object-cover" />
+                      <img src={p.image} alt="" className="h-10 w-14 rounded-lg border border-[var(--tw-border-strong)] object-cover" />
                     ) : (
                       '—'
                     )}
@@ -221,7 +221,7 @@ export function AdminPostsPage() {
             <Input id="post-tags" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
           </div>
 
-          <label className="flex items-center gap-2 text-sm font-semibold text-night-200">
+          <label className="flex items-center gap-2 text-sm font-semibold text-[var(--tw-text-muted)]">
             <input
               type="checkbox"
               checked={form.isPublished}

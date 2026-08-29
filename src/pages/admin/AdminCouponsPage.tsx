@@ -134,8 +134,8 @@ export function AdminCouponsPage() {
           </thead>
           <tbody>
             {(coupons.data ?? []).map((c) => (
-              <tr key={c._id} className="transition-colors hover:bg-night-800/40">
-                <Td className="font-bold text-night-50">
+              <tr key={c._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+                <Td className="font-bold text-[var(--tw-text)]">
                   <span className="flex items-center gap-2">
                     <Percent className="h-4 w-4 text-brand-500" />
                     {c.code}
@@ -222,7 +222,7 @@ export function AdminCouponsPage() {
               <Input id="coup-end" type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
             </div>
             <div className="flex items-end">
-              <label className="flex items-center gap-2 px-1 pb-3 text-sm font-semibold text-night-200">
+              <label className="flex items-center gap-2 px-1 pb-3 text-sm font-semibold text-[var(--tw-text-muted)]">
                 <input
                   type="checkbox"
                   checked={form.isActive}

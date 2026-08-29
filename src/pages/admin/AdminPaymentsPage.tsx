@@ -91,7 +91,7 @@ export function AdminPaymentsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-night-800 text-left text-xs font-bold uppercase tracking-wider text-night-500">
+                    <tr className="border-b border-[var(--tw-border)] text-left text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                       <th className="px-4 py-3">{isAr ? 'رقم الطلب' : 'Order'}</th>
                       <th className="px-4 py-3">{isAr ? 'العميل' : 'Customer'}</th>
                       <th className="px-4 py-3">{isAr ? 'المبلغ' : 'Amount'}</th>
@@ -104,13 +104,13 @@ export function AdminPaymentsPage() {
                   </thead>
                   <tbody>
                     {pendingPayments.data.items.map((item) => (
-                      <tr key={item.id} className="border-b border-night-800/50 transition-colors hover:bg-night-800/30">
-                        <td className="px-4 py-3 font-bold text-night-50">#{item.orderNo}</td>
+                      <tr key={item.id} className="border-b border-[var(--tw-border)]/50 transition-colors hover:bg-[var(--tw-surface-alt)]/30">
+                        <td className="px-4 py-3 font-bold text-[var(--tw-text)]">#{item.orderNo}</td>
                         <td className="px-4 py-3">
-                          <p className="text-night-100">{item.customerName}</p>
-                          <p className="text-xs text-night-500" dir="ltr">{item.phone}</p>
+                          <p className="text-[var(--tw-text)]">{item.customerName}</p>
+                          <p className="text-xs text-[var(--tw-text-muted)]" dir="ltr">{item.phone}</p>
                         </td>
-                        <td className="px-4 py-3 font-bold text-night-50">
+                        <td className="px-4 py-3 font-bold text-[var(--tw-text)]">
                           {formatPrice(item.amount, lang)}
                         </td>
                         <td className="px-4 py-3">
@@ -118,13 +118,13 @@ export function AdminPaymentsPage() {
                             {paymentMethodLabel(item.paymentMethod)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs text-night-300">
+                        <td className="px-4 py-3 font-mono text-xs text-[var(--tw-text-muted)]">
                           {item.transactionReference || '—'}
                         </td>
-                        <td className="px-4 py-3 text-xs text-night-400" dir="ltr">
+                        <td className="px-4 py-3 text-xs text-[var(--tw-text-muted)]" dir="ltr">
                           {item.senderPhone || '—'}
                         </td>
-                        <td className="px-4 py-3 text-xs text-night-500">
+                        <td className="px-4 py-3 text-xs text-[var(--tw-text-muted)]">
                           {fmtDate(item.createdAt)}
                         </td>
                         <td className="px-4 py-3 text-end">
@@ -175,7 +175,7 @@ export function AdminPaymentsPage() {
         <Card>
           <CardContent className="py-14 text-center">
             <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-500/50" />
-            <p className="text-sm text-night-500">
+            <p className="text-sm text-[var(--tw-text-muted)]">
               {isAr ? 'لا توجد مدفوعات تنتظر التحقق' : 'No pending payments to verify'}
             </p>
           </CardContent>
@@ -192,14 +192,14 @@ export function AdminPaymentsPage() {
         {selectedTransaction && (
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-night-800 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-night-500">
+              <div className="rounded-xl border border-[var(--tw-border)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                   {isAr ? 'رقم الطلب' : 'Order'}
                 </p>
-                <p className="mt-1 text-lg font-extrabold text-night-50">#{selectedTransaction.orderNo}</p>
+                <p className="mt-1 text-lg font-extrabold text-[var(--tw-text)]">#{selectedTransaction.orderNo}</p>
               </div>
-              <div className="rounded-xl border border-night-800 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-night-500">
+              <div className="rounded-xl border border-[var(--tw-border)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                   {isAr ? 'المبلغ' : 'Amount'}
                 </p>
                 <p className="mt-1 text-lg font-extrabold text-brand-400">
@@ -208,51 +208,51 @@ export function AdminPaymentsPage() {
               </div>
             </div>
 
-            <div className="space-y-2 rounded-xl border border-night-800 p-4 text-sm">
+            <div className="space-y-2 rounded-xl border border-[var(--tw-border)] p-4 text-sm">
               <div className="flex justify-between">
-                <span className="text-night-400">{isAr ? 'العميل' : 'Customer'}</span>
-                <span className="font-bold text-night-100">{selectedTransaction.customerName}</span>
+                <span className="text-[var(--tw-text-muted)]">{isAr ? 'العميل' : 'Customer'}</span>
+                <span className="font-bold text-[var(--tw-text)]">{selectedTransaction.customerName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-night-400">{isAr ? 'رقم الهاتف' : 'Phone'}</span>
-                <span className="text-night-100" dir="ltr">{selectedTransaction.phone}</span>
+                <span className="text-[var(--tw-text-muted)]">{isAr ? 'رقم الهاتف' : 'Phone'}</span>
+                <span className="text-[var(--tw-text)]" dir="ltr">{selectedTransaction.phone}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-night-400">{isAr ? 'طريقة الدفع' : 'Payment Method'}</span>
-                <span className="font-bold text-night-100">{paymentMethodLabel(selectedTransaction.paymentMethod)}</span>
+                <span className="text-[var(--tw-text-muted)]">{isAr ? 'طريقة الدفع' : 'Payment Method'}</span>
+                <span className="font-bold text-[var(--tw-text)]">{paymentMethodLabel(selectedTransaction.paymentMethod)}</span>
               </div>
               {selectedTransaction.transactionReference && (
                 <div className="flex justify-between">
-                  <span className="text-night-400">{isAr ? 'رقم العملية' : 'Transaction Reference'}</span>
-                  <span className="font-mono text-night-100">{selectedTransaction.transactionReference}</span>
+                  <span className="text-[var(--tw-text-muted)]">{isAr ? 'رقم العملية' : 'Transaction Reference'}</span>
+                  <span className="font-mono text-[var(--tw-text)]">{selectedTransaction.transactionReference}</span>
                 </div>
               )}
               {selectedTransaction.senderPhone && (
                 <div className="flex justify-between">
-                  <span className="text-night-400">{isAr ? 'هاتف المحول' : 'Sender Phone'}</span>
-                  <span className="text-night-100" dir="ltr">{selectedTransaction.senderPhone}</span>
+                  <span className="text-[var(--tw-text-muted)]">{isAr ? 'هاتف المحول' : 'Sender Phone'}</span>
+                  <span className="text-[var(--tw-text)]" dir="ltr">{selectedTransaction.senderPhone}</span>
                 </div>
               )}
               {selectedTransaction.senderName && (
                 <div className="flex justify-between">
-                  <span className="text-night-400">{isAr ? 'اسم المحول' : 'Sender Name'}</span>
-                  <span className="text-night-100">{selectedTransaction.senderName}</span>
+                  <span className="text-[var(--tw-text-muted)]">{isAr ? 'اسم المحول' : 'Sender Name'}</span>
+                  <span className="text-[var(--tw-text)]">{selectedTransaction.senderName}</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-night-400">{isAr ? 'التاريخ' : 'Date'}</span>
-                <span className="text-night-100">{fmtDate(selectedTransaction.createdAt)}</span>
+                <span className="text-[var(--tw-text-muted)]">{isAr ? 'التاريخ' : 'Date'}</span>
+                <span className="text-[var(--tw-text)]">{fmtDate(selectedTransaction.createdAt)}</span>
               </div>
             </div>
 
             {/* Proof */}
             {selectedTransaction.proofUrl && (
-              <div className="rounded-xl border border-night-800 p-4">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-night-500">
+              <div className="rounded-xl border border-[var(--tw-border)] p-4">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                   <FileText className="mr-1 inline h-3 w-3" />
                   {isAr ? 'إثبات التحويل' : 'Transfer Proof'}
                 </p>
-                <p className="text-sm text-night-300">{selectedTransaction.proofUrl}</p>
+                <p className="text-sm text-[var(--tw-text-muted)]">{selectedTransaction.proofUrl}</p>
               </div>
             )}
 

@@ -143,11 +143,11 @@ export function PrintInvoiceDialog({
     <Modal open={open} onClose={onClose} title={lang === 'ar' ? 'طباعة الفاتورة' : 'Print Invoice'} size="lg">
       <div className="space-y-5">
         {/* Order number */}
-        <div className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3">
-          <span className="text-sm font-bold text-night-300">
+        <div className="flex items-center justify-between rounded-xl border border-[var(--tw-border)] px-4 py-3">
+          <span className="text-sm font-bold text-[var(--tw-text-muted)]">
             {lang === 'ar' ? 'رقم الطلب' : 'Order'}
           </span>
-          <span className="font-extrabold text-night-50">#{orderNo}</span>
+          <span className="font-extrabold text-[var(--tw-text)]">#{orderNo}</span>
         </div>
 
         {/* Printer Selection */}
@@ -171,7 +171,7 @@ export function PrintInvoiceDialog({
             </Select>
           ) : (
             <div className="mt-2 space-y-2">
-              <p className="text-sm text-night-500">
+              <p className="text-sm text-[var(--tw-text-muted)]">
                 {lang === 'ar'
                   ? 'لا توجد طابعات متاحة. الطبع سيتم من المتصفح.'
                   : 'No printers configured. Will print via browser.'}
@@ -210,7 +210,7 @@ export function PrintInvoiceDialog({
                    (fmt.id === 'thermal_80' && paperWidth === '80') ||
                    (fmt.id === 'pdf'))
                     ? 'border-brand-500 bg-brand-500/10 text-brand-400'
-                    : 'border-night-700 text-night-400 hover:border-night-600 hover:text-night-300',
+                    : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-night-600 hover:text-[var(--tw-text-muted)]',
                 )}
               >
                 {lang === 'ar' ? fmt.ar : fmt.en}
@@ -254,13 +254,13 @@ export function PrintInvoiceDialog({
               : (lang === 'ar' ? 'معاينة الفاتورة' : 'Preview Invoice')}
           </button>
           {showPreview && (
-            <div className="flex items-center gap-1 rounded-lg border border-night-800 p-0.5">
+            <div className="flex items-center gap-1 rounded-lg border border-[var(--tw-border)] p-0.5">
               <button
                 type="button"
                 onClick={() => setPreviewMode('text')}
                 className={cn(
                   'rounded-md px-2 py-1 text-xs font-semibold transition-colors',
-                  previewMode === 'text' ? 'bg-night-700 text-night-100' : 'text-night-500 hover:text-night-300',
+                  previewMode === 'text' ? 'bg-night-700 text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]',
                 )}
               >
                 Text
@@ -270,7 +270,7 @@ export function PrintInvoiceDialog({
                 onClick={() => setPreviewMode('image')}
                 className={cn(
                   'rounded-md px-2 py-1 text-xs font-semibold transition-colors',
-                  previewMode === 'image' ? 'bg-night-700 text-night-100' : 'text-night-500 hover:text-night-300',
+                  previewMode === 'image' ? 'bg-night-700 text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]',
                 )}
               >
                 <Image className="inline h-3 w-3" />
@@ -282,7 +282,7 @@ export function PrintInvoiceDialog({
 
         {/* Receipt Preview */}
         {showPreview && (
-          <div className="rounded-xl border border-night-800 bg-night-950 p-4">
+          <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-bg)] p-4">
             {previewMode === 'image' || containsArabic ? (
               /* Image-based preview — renders Arabic correctly */
               <div className="flex flex-col items-center gap-2">
@@ -298,12 +298,12 @@ export function PrintInvoiceDialog({
                     src={imageDataUrl}
                     alt={lang === 'ar' ? 'معاينة الفاتورة' : 'Invoice Preview'}
                     className={cn(
-                      'rounded-lg border border-night-700',
+                      'rounded-lg border border-[var(--tw-border-strong)]',
                       paperWidth === '80' ? 'max-w-[300px]' : 'max-w-[220px]',
                     )}
                   />
                 ) : (
-                  <p className="text-sm text-night-500">
+                  <p className="text-sm text-[var(--tw-text-muted)]">
                     {lang === 'ar' ? 'جاري التحميل...' : 'Loading...'}
                   </p>
                 )}
@@ -312,7 +312,7 @@ export function PrintInvoiceDialog({
               /* Text-based preview */
               <div
                 className={cn(
-                  'mx-auto font-mono text-xs leading-relaxed text-night-200 whitespace-pre-wrap',
+                  'mx-auto font-mono text-xs leading-relaxed text-[var(--tw-text-muted)] whitespace-pre-wrap',
                   paperWidth === '80' ? 'max-w-[300px]' : 'max-w-[220px]',
                 )}
               >
@@ -324,7 +324,7 @@ export function PrintInvoiceDialog({
 
         {/* Agent Status */}
         {agentStatus === 'checking' && (
-          <div className="flex items-center gap-2 rounded-lg border border-night-700 bg-night-900 px-3 py-2 text-sm text-night-400">
+          <div className="flex items-center gap-2 rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] px-3 py-2 text-sm text-[var(--tw-text-muted)]">
             <RefreshCw className="h-3.5 w-3.5 animate-spin" />
             {lang === 'ar' ? 'جاري البحث عن خدمة الطباعة...' : 'Detecting local print service...'}
           </div>

@@ -137,7 +137,7 @@ export function AdminPurchasesPage() {
 
       {/* Date Filter */}
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Calendar className="h-4 w-4 text-night-500" />
+        <Calendar className="h-4 w-4 text-[var(--tw-text-muted)]" />
         {(['today', 'week', 'month', 'custom'] as DateFilter[]).map((f) => (
           <button
             key={f}
@@ -145,7 +145,7 @@ export function AdminPurchasesPage() {
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
               dateFilter === f
                 ? 'bg-brand-500/20 text-brand-400'
-                : 'text-night-400 hover:text-night-200'
+                : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]'
             }`}
           >
             {f === 'today' ? (lang === 'ar' ? 'اليوم' : 'Today')
@@ -157,7 +157,7 @@ export function AdminPurchasesPage() {
         {dateFilter === 'custom' && (
           <div className="flex items-center gap-2">
             <Input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="w-36" />
-            <span className="text-night-500">—</span>
+            <span className="text-[var(--tw-text-muted)]">—</span>
             <Input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="w-36" />
           </div>
         )}
@@ -167,24 +167,24 @@ export function AdminPurchasesPage() {
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-5">
-            <p className="text-sm text-night-400">{lang === 'ar' ? 'إجمالي التكلفة' : 'Total Cost'}</p>
-            <p className="mt-1 text-2xl font-extrabold text-night-50">
+            <p className="text-sm text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي التكلفة' : 'Total Cost'}</p>
+            <p className="mt-1 text-2xl font-extrabold text-[var(--tw-text)]">
               {stats.data ? formatPrice(stats.data.totalCost, lang) : '—'}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-sm text-night-400">{lang === 'ar' ? 'إجمالي الكمية' : 'Total Quantity'}</p>
-            <p className="mt-1 text-2xl font-extrabold text-night-50">
+            <p className="text-sm text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي الكمية' : 'Total Quantity'}</p>
+            <p className="mt-1 text-2xl font-extrabold text-[var(--tw-text)]">
               {stats.data?.totalQuantity ?? '—'}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-sm text-night-400">{lang === 'ar' ? 'عدد المشتريات' : 'Purchases'}</p>
-            <p className="mt-1 text-2xl font-extrabold text-night-50">
+            <p className="text-sm text-[var(--tw-text-muted)]">{lang === 'ar' ? 'عدد المشتريات' : 'Purchases'}</p>
+            <p className="mt-1 text-2xl font-extrabold text-[var(--tw-text)]">
               {stats.data?.purchaseCount ?? '—'}
             </p>
           </CardContent>
@@ -195,7 +195,7 @@ export function AdminPurchasesPage() {
       <Card>
         <CardContent>
           {purchases.isLoading ? (
-            <div className="py-8 text-center text-night-500">{lang === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+            <div className="py-8 text-center text-[var(--tw-text-muted)]">{lang === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
           ) : purchases.isError ? (
             <div className="py-8 text-center">
               <p className="text-sm text-red-400">
@@ -209,14 +209,14 @@ export function AdminPurchasesPage() {
               </button>
             </div>
           ) : !purchases.data?.items.length ? (
-            <div className="py-8 text-center text-night-500">
+            <div className="py-8 text-center text-[var(--tw-text-muted)]">
               {lang === 'ar' ? 'لا توجد مشتريات' : 'No purchases found'}
             </div>
           ) : (
             <TableWrap>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-night-800 text-left text-xs uppercase tracking-wider text-night-500">
+                  <tr className="border-b border-[var(--tw-border)] text-left text-xs uppercase tracking-wider text-[var(--tw-text-muted)]">
                     <Th>{lang === 'ar' ? 'التاريخ' : 'Date'}</Th>
                     <Th>{lang === 'ar' ? 'المنتج' : 'Product'}</Th>
                     <Th>{lang === 'ar' ? 'الوزن' : 'Weight'}</Th>
@@ -230,19 +230,19 @@ export function AdminPurchasesPage() {
                 </thead>
                 <tbody>
                   {purchases.data.items.map((p) => (
-                    <tr key={p._id} className="border-b border-night-800/50">
+                    <tr key={p._id} className="border-b border-[var(--tw-border)]/50">
                       <Td>{new Date(p.purchaseDate).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</Td>
                       <Td>
-                        <span className="font-semibold text-night-100">{p.productName}</span>
+                        <span className="font-semibold text-[var(--tw-text)]">{p.productName}</span>
                       </Td>
-                      <Td className="text-xs text-night-400">
+                      <Td className="text-xs text-[var(--tw-text-muted)]">
                         {p.weightDisplay || p.productSize || '—'}
                       </Td>
                       <Td>{p.quantity}</Td>
                       <Td>{formatPrice(p.unitCost, lang)}</Td>
-                      <Td className="font-bold text-night-50">{formatPrice(p.totalCost, lang)}</Td>
-                      <Td className="text-night-400">{p.supplier || '—'}</Td>
-                      <Td className="text-xs text-night-400 max-w-[120px] truncate" title={p.notes || ''}>{p.notes || '—'}</Td>
+                      <Td className="font-bold text-[var(--tw-text)]">{formatPrice(p.totalCost, lang)}</Td>
+                      <Td className="text-[var(--tw-text-muted)]">{p.supplier || '—'}</Td>
+                      <Td className="text-xs text-[var(--tw-text-muted)] max-w-[120px] truncate" title={p.notes || ''}>{p.notes || '—'}</Td>
                       <Td>
                         <button
                           onClick={() => {
@@ -250,7 +250,7 @@ export function AdminPurchasesPage() {
                               deleteMutation.mutate(p._id);
                             }
                           }}
-                          className="text-night-500 hover:text-red-400"
+                          className="text-[var(--tw-text-muted)] hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -400,7 +400,7 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
   return (
     <Modal open onClose={onClose}>
       <div className="w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-bold text-night-50">
+        <h2 className="text-lg font-bold text-[var(--tw-text)]">
           {isAr ? 'إضافة مشتريات' : 'Add Purchase'}
         </h2>
 
@@ -418,15 +418,15 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
 
         {/* Selected Product Info */}
         {selectedProduct && (
-          <div className="rounded-lg border border-night-700 bg-night-900/50 p-3">
+          <div className="rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]/50 p-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-night-100">{productName(selectedProduct)}</span>
+              <span className="text-sm font-semibold text-[var(--tw-text)]">{productName(selectedProduct)}</span>
               {selectedProduct.basePrice > 0 && (
-                <span className="text-xs text-night-500">• {formatPrice(selectedProduct.basePrice, lang)}</span>
+                <span className="text-xs text-[var(--tw-text-muted)]">• {formatPrice(selectedProduct.basePrice, lang)}</span>
               )}
             </div>
             {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
-              <p className="mt-1 text-xs text-night-500">
+              <p className="mt-1 text-xs text-[var(--tw-text-muted)]">
                 {isAr ? 'الأوزان المتاحة:' : 'Available variants:'}{' '}
                 {selectedProduct.sizes.map((s) => isAr ? s.name : (s.nameEn || s.name)).join(' • ')}
               </p>
@@ -450,7 +450,7 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
                         'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
                         weightMode === 'fixed' && selectedSizeId === size._id
                           ? 'border-brand-500 bg-brand-500/20 text-brand-400'
-                          : 'border-night-700 text-night-300 hover:border-night-500',
+                          : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]',
                       )}
                     >
                       {isAr ? size.name : (size.nameEn || size.name)}
@@ -467,7 +467,7 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
                     'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
                     weightMode === 'custom'
                       ? 'border-brand-500 bg-brand-500/20 text-brand-400'
-                      : 'border-night-700 text-night-300 hover:border-night-500',
+                      : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]',
                   )}
                 >
                   {isAr ? 'وزن مخصص' : 'Custom Weight'}
@@ -490,7 +490,7 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
                   <select
                     value={customWeightUnit}
                     onChange={(e) => setCustomWeightUnit(e.target.value as 'g' | 'kg')}
-                    className="rounded-lg border border-night-700 bg-night-900 px-3 py-2.5 text-sm text-night-100 outline-none"
+                    className="rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] px-3 py-2.5 text-sm text-[var(--tw-text)] outline-none"
                   >
                     <option value="g">{isAr ? 'جم' : 'g'}</option>
                     <option value="kg">{isAr ? 'كيلو' : 'kg'}</option>
@@ -500,7 +500,7 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
 
               {/* Weight display */}
               {weightGrams > 0 && (
-                <div className="flex items-center gap-2 text-xs text-night-500">
+                <div className="flex items-center gap-2 text-xs text-[var(--tw-text-muted)]">
                   <Weight className="h-3 w-3" />
                   <span>{isAr ? 'الوزن:' : 'Weight:'} {formatWeightDisplay(weightGrams, lang)}</span>
                 </div>
@@ -542,8 +542,8 @@ function PurchaseFormModal({ onClose, lang, queryClient }: { onClose: () => void
 
         {/* Total */}
         {selectedProduct && quantity && unitCost && (
-          <div className="rounded-lg border border-night-700 bg-night-900 p-3 text-center">
-            <span className="text-sm text-night-400">{isAr ? 'الإجمالي' : 'Total'}: </span>
+          <div className="rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] p-3 text-center">
+            <span className="text-sm text-[var(--tw-text-muted)]">{isAr ? 'الإجمالي' : 'Total'}: </span>
             <span className="text-lg font-bold text-brand-400">{formatPrice(totalCost, lang)}</span>
           </div>
         )}

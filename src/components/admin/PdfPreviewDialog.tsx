@@ -141,17 +141,17 @@ export function PdfPreviewDialog({ open, onClose, order }: PdfPreviewDialogProps
     >
       <div className="space-y-4">
         {/* Order info bar */}
-        <div className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3">
+        <div className="flex items-center justify-between rounded-xl border border-[var(--tw-border)] px-4 py-3">
           <div>
-            <p className="text-sm font-bold text-night-300">
+            <p className="text-sm font-bold text-[var(--tw-text-muted)]">
               {isAr ? 'رقم الطلب' : 'Order'}
             </p>
-            <p className="font-extrabold text-night-50">#{order.orderNo}</p>
+            <p className="font-extrabold text-[var(--tw-text)]">#{order.orderNo}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-night-500">{fileName}</p>
+            <p className="text-xs text-[var(--tw-text-muted)]">{fileName}</p>
             {itemCount > 0 && (
-              <p className="text-xs text-night-600">
+              <p className="text-xs text-[var(--tw-border-strong)]">
                 {itemCount} {isAr ? 'منتج' : 'items'}
               </p>
             )}
@@ -172,18 +172,18 @@ export function PdfPreviewDialog({ open, onClose, order }: PdfPreviewDialogProps
         </div>
 
         {/* PDF Preview with progress indicator */}
-        <div className="rounded-xl border border-night-800 bg-night-950 overflow-hidden">
+        <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-bg)] overflow-hidden">
           {generating ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               {/* Progress bar */}
               <div className="w-64">
                 <div className="mb-2 flex items-center justify-between text-xs">
-                  <span className="text-night-400">
+                  <span className="text-[var(--tw-text-muted)]">
                     <Loader2 className="inline h-3 w-3 animate-spin" /> {stageLabel}
                   </span>
                   <span className="font-bold text-brand-400">{progress}%</span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-night-800">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--tw-surface-alt)]">
                   <div
                     className={cn(
                       'h-full rounded-full transition-all duration-300 ease-out',
@@ -195,7 +195,7 @@ export function PdfPreviewDialog({ open, onClose, order }: PdfPreviewDialogProps
               </div>
 
               {/* Stage indicators */}
-              <div className="flex items-center gap-1 text-xs text-night-500">
+              <div className="flex items-center gap-1 text-xs text-[var(--tw-text-muted)]">
                 {STAGE_ORDER.slice(0, -1).map((s, i) => {
                   const currentIdx = STAGE_ORDER.indexOf(stage);
                   const isComplete = i < currentIdx;
@@ -209,7 +209,7 @@ export function PdfPreviewDialog({ open, onClose, order }: PdfPreviewDialogProps
                 })}
               </div>
 
-              <p className="text-xs text-night-500">
+              <p className="text-xs text-[var(--tw-text-muted)]">
                 {isLargeOrder
                   ? (isAr ? `جاري إنشاء الفاتورة لـ ${itemCount} منتج...` : `Generating PDF for ${itemCount} items...`)
                   : (isAr ? 'جاري إنشاء المعاينة...' : 'Generating preview...')}
@@ -226,7 +226,7 @@ export function PdfPreviewDialog({ open, onClose, order }: PdfPreviewDialogProps
           ) : pdfDataUrl ? (
             <div>
               {/* Success indicator */}
-              <div className="flex items-center gap-2 border-b border-night-800 px-4 py-2">
+              <div className="flex items-center gap-2 border-b border-[var(--tw-border)] px-4 py-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                 <span className="text-xs font-semibold text-emerald-400">
                   {isAr ? 'تم إنشاء المعاينة بنجاح' : 'Preview generated successfully'}

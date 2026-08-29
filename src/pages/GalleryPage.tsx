@@ -46,8 +46,8 @@ export function GalleryPage() {
   return (
     <div className="container-px py-16">
       <div className="mb-10 text-center">
-        <h1 className="text-4xl font-extrabold text-night-50">{t('gallery.title')}</h1>
-        <p className="mt-2 text-night-400">{t('gallery.subtitle')}</p>
+        <h1 className="text-4xl font-extrabold text-[var(--tw-text)]">{t('gallery.title')}</h1>
+        <p className="mt-2 text-[var(--tw-text-muted)]">{t('gallery.subtitle')}</p>
       </div>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {gallery.isLoading
@@ -55,7 +55,7 @@ export function GalleryPage() {
           : items.map((item) => (
               <div
                 key={item.key}
-                className="group relative aspect-square overflow-hidden rounded-2xl border border-night-800 bg-night-900"
+                className="group relative aspect-square overflow-hidden rounded-2xl border border-[var(--tw-border)] bg-[var(--tw-surface)]"
               >
                 <img
                   src={item.src}
@@ -64,7 +64,7 @@ export function GalleryPage() {
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-night-950/90 to-transparent px-3 pb-2 pt-8">
-                  <span className="text-sm font-bold text-night-50">{item.caption}</span>
+                  <span className="text-sm font-bold text-[var(--tw-text)]">{item.caption}</span>
                 </div>
               </div>
             ))}

@@ -104,7 +104,7 @@ export function ReviewsSection({ productId, productName }: { productId: string; 
   return (
     <section className="mt-14">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-extrabold text-night-50">{t('review.title')}</h2>
+        <h2 className="text-2xl font-extrabold text-[var(--tw-text)]">{t('review.title')}</h2>
         {user ? (
           canReview ? (
             <Button variant="gold" onClick={openCreate}>
@@ -112,7 +112,7 @@ export function ReviewsSection({ productId, productName }: { productId: string; 
               {t('review.addReview')}
             </Button>
           ) : (
-            <p className="text-sm text-night-500">{t('review.noEligibleOrders')}</p>
+            <p className="text-sm text-[var(--tw-text-muted)]">{t('review.noEligibleOrders')}</p>
           )
         ) : (
           <Button variant="outline" onClick={() => setDialog({ mode: 'create' })}>
@@ -140,7 +140,7 @@ export function ReviewsSection({ productId, productName }: { productId: string; 
         </div>
       ) : items.length > 0 ? (
         <>
-          <h3 className="mb-3 text-lg font-extrabold text-night-100">{t('review.previousReviews')}</h3>
+          <h3 className="mb-3 text-lg font-extrabold text-[var(--tw-text)]">{t('review.previousReviews')}</h3>
           <div className="space-y-3">
             {items.map((r) => (
               <ReviewCard
@@ -157,7 +157,7 @@ export function ReviewsSection({ productId, productName }: { productId: string; 
               <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                 <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
               </Button>
-              <span className="text-sm font-bold text-night-300">
+              <span className="text-sm font-bold text-[var(--tw-text-muted)]">
                 {page} / {pages}
               </span>
               <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>
@@ -175,7 +175,7 @@ export function ReviewsSection({ productId, productName }: { productId: string; 
       )}
 
       <Modal open={dialog?.mode === 'create'} onClose={() => setDialog(null)} title={t('review.writeTitle')}>
-        <p className="mb-4 text-sm text-night-400">{productName}</p>
+        <p className="mb-4 text-sm text-[var(--tw-text-muted)]">{productName}</p>
         {user ? (
           eligibleOrders.length > 0 ? (
             <>
@@ -195,7 +195,7 @@ export function ReviewsSection({ productId, productName }: { productId: string; 
               />
             </>
           ) : (
-            <p className="text-sm text-night-400">{t('review.noEligibleOrders')}</p>
+            <p className="text-sm text-[var(--tw-text-muted)]">{t('review.noEligibleOrders')}</p>
           )
         ) : (
           <div className="flex justify-end">

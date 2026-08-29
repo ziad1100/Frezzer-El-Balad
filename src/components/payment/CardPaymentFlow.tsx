@@ -29,13 +29,13 @@ export function CardPaymentFlow({ amount, onCancel }: CardPaymentFlowProps) {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-3 rounded-xl border border-night-700 bg-night-900 p-4">
+      <div className="flex items-center gap-3 rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] p-4">
         <CreditCard className="h-8 w-8 text-brand-400" />
         <div>
-          <h3 className="font-bold text-night-50">
+          <h3 className="font-bold text-[var(--tw-text)]">
             {isAr ? 'الدفع ببطاقة ائتمان' : 'Credit Card Payment'}
           </h3>
-          <p className="text-sm text-night-400">
+          <p className="text-sm text-[var(--tw-text-muted)]">
             {isAr ? 'المبلغ:' : 'Amount:'} {amount.toLocaleString()} EGP
           </p>
         </div>
@@ -47,12 +47,12 @@ export function CardPaymentFlow({ amount, onCancel }: CardPaymentFlowProps) {
         <h4 className="mb-2 font-bold text-amber-400">
           {isAr ? 'الدفع الإلكتروني غير متاح حالياً' : 'Online payment is not available yet'}
         </h4>
-        <p className="mb-4 text-sm text-night-300">
+        <p className="mb-4 text-sm text-[var(--tw-text-muted)]">
           {isAr
             ? 'نعمل على تفعيل الدفع الإلكتروني قريباً. يمكنك استخدام طريقة الدفع عند الاستلام أو فودافون كاش.'
             : 'We are working on enabling online payments. You can use Cash on Delivery or Vodafone Cash.'}
         </p>
-        <p className="mb-4 text-xs text-night-500">
+        <p className="mb-4 text-xs text-[var(--tw-text-muted)]">
           {isAr
             ? 'لا يتم تخزين أي بيانات بطاقة في نظامنا.'
             : 'No card data is stored in our system.'}

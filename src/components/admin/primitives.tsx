@@ -11,8 +11,8 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 className="text-lg font-bold text-night-50">{title}</h2>
-        {subtitle ? <p className="mt-0.5 text-xs text-night-500">{subtitle}</p> : null}
+        <h2 className="text-lg font-bold text-[var(--tw-text)]">{title}</h2>
+        {subtitle ? <p className="mt-0.5 text-xs text-[var(--tw-text-muted)]">{subtitle}</p> : null}
       </div>
       {action}
     </div>
@@ -21,7 +21,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 
 export function TableWrap({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-night-800/60 bg-night-900/80">
+    <div className="overflow-x-auto rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface)]">
       <table className="w-full min-w-[640px] text-start text-sm">{children}</table>
     </div>
   );
@@ -29,7 +29,7 @@ export function TableWrap({ children }: { children: ReactNode }) {
 
 export function Th({ children, className }: { children?: ReactNode; className?: string }) {
   return (
-    <th className={cn('px-3.5 py-2.5 text-start text-[11px] font-bold uppercase tracking-wider text-night-500', className)}>
+    <th className={cn('px-3.5 py-2.5 text-start text-[11px] font-bold uppercase tracking-wider text-[var(--tw-text-muted)]', className)}>
       {children}
     </th>
   );
@@ -37,7 +37,7 @@ export function Th({ children, className }: { children?: ReactNode; className?: 
 
 export function Td({ children, className, ...props }: ComponentProps<'td'>) {
   return (
-    <td className={cn('border-t border-night-800/60 px-3.5 py-2.5 align-middle text-night-200', className)} {...props}>
+    <td className={cn('border-t border-[var(--tw-border)] px-3.5 py-2.5 align-middle text-[var(--tw-text-muted)]', className)} {...props}>
       {children}
     </td>
   );
@@ -46,7 +46,7 @@ export function Td({ children, className, ...props }: ComponentProps<'td'>) {
 export function SearchBox({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div className="relative">
-      <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-night-500" />
+      <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--tw-text-muted)]" />
       <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-9 w-56 ps-9 text-xs" />
     </div>
   );
@@ -59,7 +59,7 @@ export function Pagination({ page, pages, onPage }: { page: number; pages: numbe
       <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
         <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
       </Button>
-      <span className="text-sm font-bold text-night-300">
+      <span className="text-sm font-bold text-[var(--tw-text-muted)]">
         {page} / {pages}
       </span>
       <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>
@@ -88,7 +88,7 @@ export function StatusBadge({ status }: { status: string }) {
     <span
       className={cn(
         'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold capitalize',
-        statusStyles[status] ?? 'border-night-700 text-night-400',
+        statusStyles[status] ?? 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)]',
       )}
     >
       {t(`admin.status.${status}`)}
@@ -129,10 +129,10 @@ export function ConfirmDialog({
   const canConfirm = !reasonRequired || (reason?.trim().length ?? 0) > 0;
   return (
     <Modal open={open} onClose={onClose} title={title} size="sm">
-      <p className="text-sm text-night-300">{message}</p>
+      <p className="text-sm text-[var(--tw-text-muted)]">{message}</p>
       {reasonLabel !== undefined ? (
         <div className="mt-4">
-          <Label className="mb-1.5 text-xs font-bold uppercase tracking-wider text-night-500">{reasonLabel}</Label>
+          <Label className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{reasonLabel}</Label>
           <Textarea
             value={reason}
             onChange={(e) => onReasonChange?.(e.target.value)}
@@ -200,22 +200,22 @@ export function ImageUpload({ value, onChange, label }: { value: string; onChang
 
   return (
     <div>
-      {label ? <p className="mb-1.5 text-sm font-medium text-night-200">{label}</p> : null}
+      {label ? <p className="mb-1.5 text-sm font-medium text-[var(--tw-text-muted)]">{label}</p> : null}
       <div className="flex items-center gap-3">
         {value ? (
-          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-night-700">
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[var(--tw-border-strong)]">
             <img src={value} alt="" className="h-full w-full object-cover" />
             <button
               type="button"
               onClick={() => onChange('')}
               aria-label={t('common.close')}
-              className="absolute end-0 top-0 rounded-bl-lg bg-night-900/90 p-0.5 text-night-50 hover:bg-red-600"
+              className="absolute end-0 top-0 rounded-bl-lg bg-[var(--tw-surface)]/90 p-0.5 text-[var(--tw-text)] hover:bg-red-600"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
         ) : null}
-        <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-dashed border-night-600 px-4 text-sm font-semibold text-night-300 transition-colors hover:border-brand-500 hover:text-brand-400">
+        <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-dashed border-night-600 px-4 text-sm font-semibold text-[var(--tw-text-muted)] transition-colors hover:border-brand-500 hover:text-brand-400">
           <UploadCloud className="h-4 w-4" />
           {uploading ? t('common.loading') : t('admin.upload')}
           <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => void handleFile(e.target.files?.[0])} />

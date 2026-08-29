@@ -121,7 +121,7 @@ export function VodafoneCashFlow({ orderId, amount, settings, onSuccess, onCance
         <h3 className="mb-2 text-lg font-bold text-emerald-400">
           {isAr ? 'تم الإرسال بنجاح' : 'Submitted Successfully'}
         </h3>
-        <p className="text-sm text-night-300">
+        <p className="text-sm text-[var(--tw-text-muted)]">
           {isAr
             ? 'تم إرسال بيانات الدفع للمراجعة. سيتم تأكيد الدفع من الإدارة.'
             : 'Payment details submitted for review. The admin will verify your payment.'}
@@ -137,16 +137,16 @@ export function VodafoneCashFlow({ orderId, amount, settings, onSuccess, onCance
         <h4 className="mb-2 text-sm font-bold text-brand-400">
           {isAr ? '步骤 1: قم بالتحويل' : 'Step 1: Make the transfer'}
         </h4>
-        <p className="mb-3 text-sm text-night-300">
+        <p className="mb-3 text-sm text-[var(--tw-text-muted)]">
           {settings.instructions[isAr ? 'ar' : 'en'] ||
             (isAr ? 'قم بالتحويل إلى رقم المحفظة التالي' : 'Transfer to the following wallet number')}
         </p>
         {settings.walletNumber && (
-          <div className="flex items-center justify-between rounded-lg border border-night-700 bg-night-900 p-3">
-            <span className="text-sm text-night-400">
+          <div className="flex items-center justify-between rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] p-3">
+            <span className="text-sm text-[var(--tw-text-muted)]">
               {isAr ? 'رقم المحفظة' : 'Wallet Number'}:
             </span>
-            <span className="font-mono text-lg font-bold text-night-50" dir="ltr">
+            <span className="font-mono text-lg font-bold text-[var(--tw-text)]" dir="ltr">
               {settings.walletNumber}
             </span>
           </div>
@@ -160,7 +160,7 @@ export function VodafoneCashFlow({ orderId, amount, settings, onSuccess, onCance
 
       {/* Transfer Details Form */}
       <div className="space-y-4">
-        <h4 className="text-sm font-bold text-night-300">
+        <h4 className="text-sm font-bold text-[var(--tw-text-muted)]">
           {isAr ? '步骤 2: أدخل بيانات التحويل' : 'Step 2: Enter transfer details'}
         </h4>
 
@@ -211,13 +211,13 @@ export function VodafoneCashFlow({ orderId, amount, settings, onSuccess, onCance
 
       {/* Proof Upload */}
       <div className="space-y-3">
-        <h4 className="text-sm font-bold text-night-300">
+        <h4 className="text-sm font-bold text-[var(--tw-text-muted)]">
           {isAr ? '步骤 3: إرفاق إثبات التحويل (اختياري)' : 'Step 3: Attach transfer proof (optional)'}
         </h4>
 
         <div className="flex items-center gap-3">
           <label className={cn(
-            'flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-night-600 px-4 py-3 text-sm text-night-400 transition-colors hover:border-brand-500 hover:text-brand-400',
+            'flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-night-600 px-4 py-3 text-sm text-[var(--tw-text-muted)] transition-colors hover:border-brand-500 hover:text-brand-400',
             proofFile && 'border-emerald-500/50 bg-emerald-500/5 text-emerald-400',
           )}>
             <Upload className="h-4 w-4" />
@@ -238,7 +238,7 @@ export function VodafoneCashFlow({ orderId, amount, settings, onSuccess, onCance
             <img
               src={proofPreview}
               alt={isAr ? 'إثبات التحويل' : 'Transfer proof'}
-              className="max-h-40 rounded-lg border border-night-700 object-contain"
+              className="max-h-40 rounded-lg border border-[var(--tw-border-strong)] object-contain"
             />
           </div>
         )}

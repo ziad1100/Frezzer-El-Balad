@@ -57,7 +57,7 @@ export function OfferCard({ offer }: { offer: OfferWithProducts }) {
           tone="gold"
           className={cn(
             'text-sm',
-            offer.theme === 'gold' && 'border-night-900/50 bg-night-950/60 text-gold-200',
+            offer.theme === 'gold' && 'border-night-900/50 bg-[var(--tw-bg)]/60 text-gold-200',
           )}
         >
           <Percent className="h-3.5 w-3.5" />
@@ -97,7 +97,7 @@ export function OfferCard({ offer }: { offer: OfferWithProducts }) {
               />
             ) : null}
             {remaining > 0 ? (
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-white/20 bg-night-800/70 text-sm font-bold text-white">
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-white/20 bg-[var(--tw-surface-alt)]/70 text-sm font-bold text-white">
                 +{remaining}
               </span>
             ) : null}

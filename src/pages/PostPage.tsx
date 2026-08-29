@@ -1,4 +1,4 @@
-﻿import { Link, useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
@@ -27,7 +27,7 @@ export function PostPage() {
   if (!post) {
     return (
       <div className="container-px py-24 text-center">
-        <h1 className="text-2xl font-bold text-night-50">{t('misc.pageNotFound')}</h1>
+        <h1 className="text-2xl font-bold text-[var(--tw-text)]">{t('misc.pageNotFound')}</h1>
         <Link to="/blog" className="mt-4 inline-block text-brand-500 hover:underline">
           {t('common.back')}
         </Link>
@@ -41,13 +41,13 @@ export function PostPage() {
         <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
         {t('nav.blog')}
       </Link>
-      <h1 className="mt-4 max-w-3xl text-3xl font-extrabold leading-tight text-night-50 md:text-4xl">
+      <h1 className="mt-4 max-w-3xl text-3xl font-extrabold leading-tight text-[var(--tw-text)] md:text-4xl">
         {lang === 'ar' ? post.title : post.titleEn || post.title}
       </h1>
-      <p className="mt-3 text-sm text-night-500">
+      <p className="mt-3 text-sm text-[var(--tw-text-muted)]">
         {new Date(post.publishedAt).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}
       </p>
-      <div className="mt-8 max-w-3xl space-y-4 leading-relaxed text-night-200">
+      <div className="mt-8 max-w-3xl space-y-4 leading-relaxed text-[var(--tw-text-muted)]">
         {(lang === 'ar' ? post.content : post.contentEn || post.content).split('\n').map((paragraph, i) => (
           <p key={i}>{paragraph}</p>
         ))}

@@ -1,4 +1,4 @@
-﻿import { Link } from 'react-router';
+import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Package, XCircle } from 'lucide-react';
@@ -70,26 +70,26 @@ export function OrdersPage() {
 
   return (
     <div className="container-px py-12">
-      <h1 className="mb-8 text-3xl font-extrabold text-night-50">{t('order.title')}</h1>
+      <h1 className="mb-8 text-3xl font-extrabold text-[var(--tw-text)]">{t('order.title')}</h1>
       <div className="space-y-4">
         {orders.map((order) => (
           <Card key={order._id}>
             <CardContent className="p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-night-800 pb-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tw-border)] pb-4">
                 <div className="flex items-center gap-3">
-                  <span className="rounded-lg bg-night-800 px-3 py-1.5 font-mono text-sm font-bold text-gold-400" dir="ltr">
+                  <span className="rounded-lg bg-[var(--tw-surface-alt)] px-3 py-1.5 font-mono text-sm font-bold text-gold-400" dir="ltr">
                     {order.orderNo}
                   </span>
                   <Badge tone={statusTone[order.status as keyof typeof statusTone] ?? 'neutral'}>
                     {t(`order.status.${order.status}`)}
                   </Badge>
                 </div>
-                <div className="text-sm text-night-400">
+                <div className="text-sm text-[var(--tw-text-muted)]">
                   {new Date(order.createdAt).toLocaleString(i18n.language === 'ar' ? 'ar-EG' : 'en-GB')}
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
-                <div className="text-sm text-night-300">
+                <div className="text-sm text-[var(--tw-text-muted)]">
                   {order.items.map((item) => `${item.name} × ${item.qty}`).join(', ')}
                 </div>
                 <div className="flex items-center gap-4">

@@ -129,7 +129,7 @@ export function AdminLabelsPage() {
           </thead>
           <tbody>
             {labels.data.map((l) => (
-              <tr key={l._id} className="transition-colors hover:bg-night-800/40">
+              <tr key={l._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
                 <Td>
                   <span
                     className="inline-block h-6 w-6 rounded-full border border-night-600"
@@ -137,13 +137,13 @@ export function AdminLabelsPage() {
                   />
                 </Td>
                 <Td>
-                  <p className="font-bold text-night-50">{l.name}</p>
+                  <p className="font-bold text-[var(--tw-text)]">{l.name}</p>
                 </Td>
                 <Td>
-                  <p className="text-sm text-night-300">{l.nameEn || '—'}</p>
+                  <p className="text-sm text-[var(--tw-text-muted)]">{l.nameEn || '—'}</p>
                 </Td>
                 <Td>
-                  <span className="text-sm text-night-400">
+                  <span className="text-sm text-[var(--tw-text-muted)]">
                     {l.productCount ?? 0} {lang === 'ar' ? 'منتج' : 'products'}
                   </span>
                 </Td>
@@ -203,7 +203,7 @@ export function AdminLabelsPage() {
                   type="color"
                   value={form.color}
                   onChange={(e) => setForm({ ...form, color: e.target.value })}
-                  className="h-10 w-14 rounded border border-night-700 bg-night-800 cursor-pointer"
+                  className="h-10 w-14 rounded border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] cursor-pointer"
                 />
                 <Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="flex-1" dir="ltr" />
               </div>

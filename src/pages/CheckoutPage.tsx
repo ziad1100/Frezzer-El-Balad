@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -258,7 +258,7 @@ export function CheckoutPage() {
 
   return (
     <div className="container-px py-10">
-      <h1 className="mb-6 text-2xl font-extrabold text-night-50">{t('checkout.title')}</h1>
+      <h1 className="mb-6 text-2xl font-extrabold text-[var(--tw-text)]">{t('checkout.title')}</h1>
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardContent>
@@ -274,7 +274,7 @@ export function CheckoutPage() {
 
                   {/* Inline size / qty selector after picking a product */}
                   {selectedSearchProduct && (
-                    <div className="mt-3 rounded-xl border border-night-700 bg-night-900/60 p-4">
+                    <div className="mt-3 rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]/60 p-4">
                       <div className="mb-3 flex items-start gap-3">
                         {selectedSearchProduct.images?.[0] && (
                           <img
@@ -284,7 +284,7 @@ export function CheckoutPage() {
                           />
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-bold text-night-100">
+                          <p className="truncate text-sm font-bold text-[var(--tw-text)]">
                             {i18n.language === 'ar' ? selectedSearchProduct.name : selectedSearchProduct.nameEn || selectedSearchProduct.name}
                           </p>
                           <p className="text-xs text-brand-400">
@@ -294,7 +294,7 @@ export function CheckoutPage() {
                         <button
                           type="button"
                           onClick={() => { setSelectedSearchProduct(null); setSearchSizeId(null); }}
-                          className="text-night-500 hover:text-night-300"
+                          className="text-[var(--tw-text-muted)] hover:text-[var(--tw-text-muted)]"
                         >
                           ✕
                         </button>
@@ -303,7 +303,7 @@ export function CheckoutPage() {
                       {/* Size selection */}
                       {selectedSearchProduct.sizes && selectedSearchProduct.sizes.length > 0 && (
                         <div className="mb-3">
-                          <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-night-400">
+                          <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                             {i18n.language === 'ar' ? 'النوع / الوزن' : 'Variant / Weight'}
                           </label>
                           <div className="flex flex-wrap gap-2">
@@ -318,8 +318,8 @@ export function CheckoutPage() {
                                   searchSizeId === size._id
                                     ? 'border-brand-500 bg-brand-500/20 text-brand-400'
                                     : size.isAvailable
-                                      ? 'border-night-700 text-night-300 hover:border-night-500'
-                                      : 'border-night-800 text-night-600 opacity-50',
+                                      ? 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]'
+                                      : 'border-[var(--tw-border)] text-[var(--tw-border-strong)] opacity-50',
                                 )}
                               >
                                 {i18n.language === 'ar' ? size.name : (size.nameEn || size.name)}
@@ -332,14 +332,14 @@ export function CheckoutPage() {
 
                       {/* Quantity */}
                       <div className="mb-3 flex items-center gap-3">
-                        <label className="text-xs font-bold uppercase tracking-wider text-night-400">
+                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                           {i18n.language === 'ar' ? 'الكمية' : 'Qty'}
                         </label>
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => setSearchQty((q) => Math.max(1, q - 1))}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-night-700 text-night-300 hover:border-night-500"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]"
                           >
                             −
                           </button>
@@ -349,12 +349,12 @@ export function CheckoutPage() {
                             max="99"
                             value={searchQty}
                             onChange={(e) => setSearchQty(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))}
-                            className="w-14 rounded-lg border border-night-700 bg-night-800 px-1 py-1 text-center text-sm text-night-100 focus:border-brand-500 focus:outline-none"
+                            className="w-14 rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] px-1 py-1 text-center text-sm text-[var(--tw-text)] focus:border-brand-500 focus:outline-none"
                           />
                           <button
                             type="button"
                             onClick={() => setSearchQty((q) => Math.min(99, q + 1))}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-night-700 text-night-300 hover:border-night-500"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-[var(--tw-border-strong)]"
                           >
                             +
                           </button>
@@ -410,24 +410,24 @@ export function CheckoutPage() {
                       const isEnabled = customPriceEnabled[idx] ?? line.isCustomPrice ?? false;
                       const currentCustom = customPrices[idx] ?? line.customPrice;
                       return (
-                        <div key={`${line.productId}-${line.size ?? ''}`} className="rounded-lg border border-night-700 p-3">
+                        <div key={`${line.productId}-${line.size ?? ''}`} className="rounded-lg border border-[var(--tw-border-strong)] p-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-night-200">
+                            <span className="text-sm text-[var(--tw-text-muted)]">
                               {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
-                              {line.sizeName ? <span className="text-night-500"> ({line.sizeName})</span> : null}
-                              <span className="text-night-500"> × {line.qty}</span>
+                              {line.sizeName ? <span className="text-[var(--tw-text-muted)]"> ({line.sizeName})</span> : null}
+                              <span className="text-[var(--tw-text-muted)]"> × {line.qty}</span>
                             </span>
-                            <span className="text-sm font-bold text-night-100">
+                            <span className="text-sm font-bold text-[var(--tw-text)]">
                               {formatPrice(normalPrice, i18n.language)}
                             </span>
                           </div>
                           <div className="mt-2 flex items-center gap-3">
-                            <label className="flex items-center gap-2 text-xs text-night-400">
+                            <label className="flex items-center gap-2 text-xs text-[var(--tw-text-muted)]">
                               <input
                                 type="checkbox"
                                 checked={isEnabled}
                                 onChange={() => toggleCustomPrice(idx)}
-                                className="h-4 w-4 rounded border-night-600 bg-night-800 text-brand-500 focus:ring-brand-500"
+                                className="h-4 w-4 rounded border-night-600 bg-[var(--tw-surface-alt)] text-brand-500 focus:ring-brand-500"
                               />
                               {i18n.language === 'ar' ? 'سعر مخصص' : 'Custom Price'}
                             </label>
@@ -443,7 +443,7 @@ export function CheckoutPage() {
                                   dir="ltr"
                                   placeholder={i18n.language === 'ar' ? 'السعر' : 'Price'}
                                 />
-                                <span className="text-xs text-night-500">EGP</span>
+                                <span className="text-xs text-[var(--tw-text-muted)]">EGP</span>
                               </div>
                             )}
                           </div>
@@ -528,20 +528,20 @@ export function CheckoutPage() {
 
         <Card className="h-fit lg:col-span-2">
           <CardContent>
-            <h2 className="mb-4 text-lg font-bold text-night-50">{t('cart.title')}</h2>
-            <div className="space-y-3 border-b border-night-800 pb-4">
+            <h2 className="mb-4 text-lg font-bold text-[var(--tw-text)]">{t('cart.title')}</h2>
+            <div className="space-y-3 border-b border-[var(--tw-border)] pb-4">
               {lines.map((line) => {
                 const effectivePrice = line.isCustomPrice && typeof line.customPrice === 'number' ? line.customPrice : line.unitPrice;
                 return (
                   <div key={`${line.productId}-${line.size ?? ''}`} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="line-clamp-1 text-night-200">
+                    <span className="line-clamp-1 text-[var(--tw-text-muted)]">
                       {i18n.language === 'ar' ? line.name : line.nameEn || line.name}
-                      <span className="text-night-500"> × {line.qty}</span>
+                      <span className="text-[var(--tw-text-muted)]"> × {line.qty}</span>
                       {line.isCustomPrice && (
                         <span className="ms-1 text-xs text-gold-400">★</span>
                       )}
                     </span>
-                    <span className="shrink-0 font-bold text-night-100">
+                    <span className="shrink-0 font-bold text-[var(--tw-text)]">
                       {formatPrice(effectivePrice * line.qty, i18n.language)}
                     </span>
                   </div>
@@ -576,8 +576,8 @@ export function CheckoutPage() {
                 <Row label={`${t('cart.discount')} (${couponCode})`} value={formatPrice(-couponDiscount, i18n.language)} accent />
               ) : null}
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-night-800 pt-4">
-              <span className="font-bold text-night-50">{t('cart.total')}</span>
+            <div className="mt-4 flex items-center justify-between border-t border-[var(--tw-border)] pt-4">
+              <span className="font-bold text-[var(--tw-text)]">{t('cart.total')}</span>
               <span className="text-2xl font-extrabold text-brand-500">
                 {formatPrice(Math.max(0, total), i18n.language)}
               </span>
@@ -596,7 +596,7 @@ export function CheckoutPage() {
         <div className="mt-8">
           <Card>
             <CardContent className="p-6">
-              <h2 className="mb-4 text-xl font-bold text-night-50">
+              <h2 className="mb-4 text-xl font-bold text-[var(--tw-text)]">
                 {i18n.language === 'ar' ? 'إتمام الدفع' : 'Complete Payment'}
               </h2>
               {selectedPaymentMethod === 'vodafone_cash' && paymentSettings.data?.vodafoneCash && (
@@ -651,10 +651,10 @@ export function CheckoutPage() {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-night-300">
-        <span className="h-px flex-1 bg-night-800" />
+      <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+        <span className="h-px flex-1 bg-[var(--tw-surface-alt)]" />
         {title}
-        <span className="h-px flex-1 bg-night-800" />
+        <span className="h-px flex-1 bg-[var(--tw-surface-alt)]" />
       </h3>
       {children}
     </section>
@@ -664,8 +664,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-night-400">{label}</span>
-      <span className={cn('font-bold', accent ? 'text-gold-400' : 'text-night-100')}>{value}</span>
+      <span className="text-[var(--tw-text-muted)]">{label}</span>
+      <span className={cn('font-bold', accent ? 'text-gold-400' : 'text-[var(--tw-text)]')}>{value}</span>
     </div>
   );
 }
@@ -703,8 +703,8 @@ function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
           className={cn(
             'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors',
             value === method.value
-              ? 'border-brand-500 bg-brand-500/10 text-night-50'
-              : 'border-night-700 text-night-400 hover:border-night-600',
+              ? 'border-brand-500 bg-brand-500/10 text-[var(--tw-text)]'
+              : 'border-[var(--tw-border-strong)] text-[var(--tw-text-muted)] hover:border-night-600',
           )}
         >
           <input

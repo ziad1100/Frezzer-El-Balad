@@ -107,8 +107,8 @@ export function ReviewPrompt() {
             <Snowflake className="h-6 w-6" />
           </span>
           <div>
-            <p className="font-bold text-night-50">{t('review.promptTitle')}</p>
-            <p className="text-sm text-night-400">{t('review.promptSubtitle')}</p>
+            <p className="font-bold text-[var(--tw-text)]">{t('review.promptTitle')}</p>
+            <p className="text-sm text-[var(--tw-text-muted)]">{t('review.promptSubtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -124,7 +124,7 @@ export function ReviewPrompt() {
             type="button"
             onClick={dismiss}
             aria-label={t('common.close')}
-            className="ms-1 flex h-8 w-8 items-center justify-center rounded-lg text-night-400 transition-colors hover:bg-night-800 hover:text-night-100"
+            className="ms-1 flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-surface-alt)] hover:text-[var(--tw-text)]"
           >
             <X className="h-4 w-4" />
           </button>

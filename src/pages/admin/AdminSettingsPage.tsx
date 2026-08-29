@@ -98,7 +98,7 @@ function SettingsFormView({
       <CardContent className="p-6">
           <div className="space-y-6">
             <div>
-              <h3 className="mb-3 text-sm font-bold text-night-300">{t('admin.nav.commerce')}</h3>
+              <h3 className="mb-3 text-sm font-bold text-[var(--tw-text-muted)]">{t('admin.nav.commerce')}</h3>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <Label htmlFor="s-fee">{t('admin.deliveryFeeSetting')}</Label>
@@ -116,7 +116,7 @@ function SettingsFormView({
             </div>
 
             <div>
-              <h3 className="mb-3 text-sm font-bold text-night-300">{t('admin.nav.contacts')}</h3>
+              <h3 className="mb-3 text-sm font-bold text-[var(--tw-text-muted)]">{t('admin.nav.contacts')}</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="s-phone">{t('admin.phoneSetting')}</Label>
@@ -138,7 +138,7 @@ function SettingsFormView({
             </div>
 
             <div>
-              <h3 className="mb-3 text-sm font-bold text-night-300">{t('admin.nav.content')}</h3>
+              <h3 className="mb-3 text-sm font-bold text-[var(--tw-text-muted)]">{t('admin.nav.content')}</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="s-hours">{t('admin.workingHoursSetting')}</Label>

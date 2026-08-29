@@ -96,7 +96,7 @@ export function BankTransferFlow({ orderId, amount, settings, onSuccess, onCance
         <h3 className="mb-2 text-lg font-bold text-emerald-400">
           {isAr ? 'تم الإرسال بنجاح' : 'Submitted Successfully'}
         </h3>
-        <p className="text-sm text-night-300">
+        <p className="text-sm text-[var(--tw-text-muted)]">
           {isAr ? 'تم إرسال بيانات الدفع للمراجعة.' : 'Payment details submitted for review.'}
         </p>
       </div>
@@ -116,20 +116,20 @@ export function BankTransferFlow({ orderId, amount, settings, onSuccess, onCance
         <div className="space-y-2 text-sm">
           {settings.bankName && (
             <div className="flex justify-between">
-              <span className="text-night-400">{isAr ? 'البنك' : 'Bank'}:</span>
-              <span className="font-bold text-night-100">{settings.bankName}</span>
+              <span className="text-[var(--tw-text-muted)]">{isAr ? 'البنك' : 'Bank'}:</span>
+              <span className="font-bold text-[var(--tw-text)]">{settings.bankName}</span>
             </div>
           )}
           {settings.accountNumber && (
             <div className="flex justify-between">
-              <span className="text-night-400">{isAr ? 'رقم الحساب' : 'Account Number'}:</span>
-              <span className="font-mono font-bold text-night-100" dir="ltr">{settings.accountNumber}</span>
+              <span className="text-[var(--tw-text-muted)]">{isAr ? 'رقم الحساب' : 'Account Number'}:</span>
+              <span className="font-mono font-bold text-[var(--tw-text)]" dir="ltr">{settings.accountNumber}</span>
             </div>
           )}
           {settings.accountName && (
             <div className="flex justify-between">
-              <span className="text-night-400">{isAr ? 'اسم الحساب' : 'Account Name'}:</span>
-              <span className="font-bold text-night-100">{settings.accountName}</span>
+              <span className="text-[var(--tw-text-muted)]">{isAr ? 'اسم الحساب' : 'Account Name'}:</span>
+              <span className="font-bold text-[var(--tw-text)]">{settings.accountName}</span>
             </div>
           )}
         </div>
@@ -166,7 +166,7 @@ export function BankTransferFlow({ orderId, amount, settings, onSuccess, onCance
       <div>
         <Label>{isAr ? 'إرفاق إثبات التحويل (اختياري)' : 'Attach transfer proof (optional)'}</Label>
         <label className={cn(
-          'mt-1 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-night-600 px-4 py-3 text-sm text-night-400 transition-colors hover:border-brand-500',
+          'mt-1 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-night-600 px-4 py-3 text-sm text-[var(--tw-text-muted)] transition-colors hover:border-brand-500',
           proofFile && 'border-emerald-500/50 bg-emerald-500/5 text-emerald-400',
         )}>
           <Upload className="h-4 w-4" />
@@ -174,7 +174,7 @@ export function BankTransferFlow({ orderId, amount, settings, onSuccess, onCance
           <input type="file" accept="image/jpeg,image/png,application/pdf" onChange={handleProofChange} className="sr-only" />
         </label>
         {proofPreview && (
-          <img src={proofPreview} alt="Proof" className="mt-2 max-h-32 rounded-lg border border-night-700" />
+          <img src={proofPreview} alt="Proof" className="mt-2 max-h-32 rounded-lg border border-[var(--tw-border-strong)]" />
         )}
       </div>
 

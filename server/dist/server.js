@@ -6347,6 +6347,19 @@ var exportStats = asyncHandler(async (req, res) => {
     { key: "week", label: "\u0647\u0630\u0627 \u0627\u0644\u0623\u0633\u0628\u0648\u0639", stats: weekStats },
     { key: "month", label: "\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631", stats: monthStats }
   ];
+  const formatWeightForExport = (grams) => {
+    if (grams <= 0) return { display: "\u2014", unit: "\u2014", weightValue: 0 };
+    if (grams >= 1e3) {
+      const kg = grams / 1e3;
+      const display = kg === Math.floor(kg) ? `${kg} \u0643\u064A\u0644\u0648` : `${kg.toFixed(2).replace(/\.?0+$/, "")} \u0643\u064A\u0644\u0648`;
+      return { display, unit: "\u0643\u064A\u0644\u0648", weightValue: kg };
+    }
+    return { display: `${grams} \u062C\u0645`, unit: "\u062C\u0645", weightValue: grams };
+  };
+  const totalWeightGramsAll = purchasesPage.items.reduce(
+    (sum, p) => sum + (Number(p.weightGrams) || 0) * (Number(p.quantity) || 0),
+    0
+  );
   const wb = XLSX.utils.book_new();
   wb.Workbook = { Views: [{ RTL: true }] };
   const summaryRows = [
@@ -6380,7 +6393,9 @@ var exportStats = asyncHandler(async (req, res) => {
     ["\u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", ""],
     ["\u0625\u062C\u0645\u0627\u0644\u064A \u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", purchaseStats.totalCost],
     ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629", purchaseStats.totalQuantity],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0648\u0632\u0646 \u0627\u0644\u0645\u0634\u062A\u0631\u0649", formatWeightForExport(totalWeightGramsAll).display],
     ["\u0639\u062F\u062F \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", purchaseStats.purchaseCount],
+    ["\u0639\u062F\u062F \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0645\u062E\u062A\u0644\u0641\u0629", purchasesPage.items.length > 0 ? new Set(purchasesPage.items.map((p) => String(p.productId))).size : 0],
     ["", ""],
     ["\u0627\u0644\u0645\u062E\u0632\u0648\u0646", ""],
     ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u062E\u0632\u0648\u0646", inventoryStats.totalStockQuantity],
@@ -6390,7 +6405,7 @@ var exportStats = asyncHandler(async (req, res) => {
   const summary = sheetOf(summaryRows);
   const moneyRows = [1, 2, 3, 4, 5, 14, 22, 24, 28];
   for (let r = 1; r < summaryRows.length; r++) setFormat(summary, r, 1, moneyRows.includes(r) ? MONEY : RATING);
-  for (const r of [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 20, 21, 23, 25, 29, 30, 31, 33, 34, 35]) setFormat(summary, r, 1, COUNT);
+  for (const r of [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 20, 21, 23, 25, 29, 31, 32, 35, 36, 37]) setFormat(summary, r, 1, COUNT);
   summary["!cols"] = [{ wch: 30 }, { wch: 20 }];
   XLSX.utils.book_append_sheet(wb, summary, "\u0645\u0644\u062E\u0635 \u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645");
   const orderRows = [
@@ -6545,15 +6560,32 @@ var exportStats = asyncHandler(async (req, res) => {
   analyticsWs["!cols"] = [{ wch: 24 }, { wch: 14 }, { wch: 18 }];
   XLSX.utils.book_append_sheet(wb, analyticsWs, "\u0627\u0644\u062A\u062D\u0644\u064A\u0644\u0627\u062A");
   const purchaseRows = [
-    ["\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", "\u0627\u0644\u062A\u0627\u0631\u064A\u062E", "\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0646\u0648\u0639/\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0643\u0645\u064A\u0629", "\u0633\u0639\u0631 \u0627\u0644\u0648\u062D\u062F\u0629", "\u0627\u0644\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A\u0629", "\u0627\u0644\u0645\u0648\u0631\u062F", "\u0645\u0644\u0627\u062D\u0638\u0627\u062A"]
+    ["\u0627\u0644\u062A\u0627\u0631\u064A\u062E", "\u0627\u0633\u0645 \u0627\u0644\u0645\u0646\u062A\u062C", "\u0646\u0648\u0639 \u0627\u0644\u0648\u062D\u062F\u0629", "\u0648\u0632\u0646 \u0627\u0644\u0648\u062D\u062F\u0629", "\u0648\u062D\u062F\u0629 \u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0643\u0645\u064A\u0629", "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0648\u0632\u0646", "\u0633\u0639\u0631 \u0627\u0644\u0648\u062D\u062F\u0629", "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u062A\u0643\u0644\u0641\u0629", "\u0627\u0644\u0645\u0648\u0631\u062F", "\u0645\u0644\u0627\u062D\u0638\u0627\u062A"]
   ];
   for (const p of purchasesPage.items) {
+    const wGrams = Number(p.weightGrams) || 0;
+    const qty = Number(p.quantity) || 0;
+    const totalWeightGrams = wGrams * qty;
+    const { display: unitWeightDisplay, unit: weightUnitLabel } = formatWeightForExport(wGrams);
+    const { display: totalWeightDisplay } = formatWeightForExport(totalWeightGrams);
+    let unitTypeLabel = "";
+    if (p.weightMode === "custom") {
+      unitTypeLabel = "\u0648\u0632\u0646 \u0645\u062E\u0635\u0635";
+    } else if (p.weightDisplay) {
+      unitTypeLabel = String(p.weightDisplay);
+    } else if (p.productSize) {
+      unitTypeLabel = String(p.productSize);
+    } else if (wGrams > 0) {
+      unitTypeLabel = unitWeightDisplay;
+    }
     purchaseRows.push([
-      String(p._id ?? ""),
       p.purchaseDate ? fmtDate(new Date(String(p.purchaseDate))) : "",
       String(p.productName ?? ""),
-      String(p.productSize ?? ""),
-      Number(p.quantity) || 0,
+      unitTypeLabel,
+      unitWeightDisplay,
+      weightUnitLabel,
+      qty,
+      totalWeightDisplay,
       Number(p.unitCost) || 0,
       Number(p.totalCost) || 0,
       String(p.supplier ?? ""),
@@ -6562,12 +6594,93 @@ var exportStats = asyncHandler(async (req, res) => {
   }
   const purchaseWs = sheetOf(purchaseRows);
   for (let r = 1; r < purchaseRows.length; r++) {
-    setFormat(purchaseWs, r, 5, MONEY);
-    setFormat(purchaseWs, r, 6, MONEY);
-    setFormat(purchaseWs, r, 4, COUNT);
+    setFormat(purchaseWs, r, 5, COUNT);
+    setFormat(purchaseWs, r, 7, MONEY);
+    setFormat(purchaseWs, r, 8, MONEY);
   }
-  purchaseWs["!cols"] = [{ wch: 40 }, { wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 24 }];
+  purchaseWs["!cols"] = [
+    { wch: 14 },
+    // التاريخ
+    { wch: 24 },
+    // اسم المنتج
+    { wch: 16 },
+    // نوع الوحدة
+    { wch: 14 },
+    // وزن الوحدة
+    { wch: 10 },
+    // وحدة الوزن
+    { wch: 10 },
+    // الكمية
+    { wch: 16 },
+    // إجمالي الوزن
+    { wch: 14 },
+    // سعر الوحدة
+    { wch: 16 },
+    // إجمالي التكلفة
+    { wch: 20 },
+    // المورد
+    { wch: 24 }
+    // ملاحظات
+  ];
   XLSX.utils.book_append_sheet(wb, purchaseWs, "\u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A");
+  {
+    const productSummaryMap = /* @__PURE__ */ new Map();
+    for (const p of purchasesPage.items) {
+      const wGrams = Number(p.weightGrams) || 0;
+      const qty = Number(p.quantity) || 0;
+      const totalWeightGrams = wGrams * qty;
+      const weightKey = wGrams > 0 ? `${wGrams}` : p.productSize || "unknown";
+      const key = `${p.productId}:${weightKey}`;
+      const existing = productSummaryMap.get(key);
+      const { display: unitWeightDisplay } = formatWeightForExport(wGrams);
+      if (existing) {
+        existing.totalQty += qty;
+        existing.totalWeightGrams += totalWeightGrams;
+        existing.totalCost += Number(p.totalCost) || 0;
+      } else {
+        productSummaryMap.set(key, {
+          productName: String(p.productName ?? ""),
+          unitWeightDisplay,
+          weightGrams: wGrams,
+          totalQty: qty,
+          totalWeightGrams,
+          totalCost: Number(p.totalCost) || 0
+        });
+      }
+    }
+    const summaryProductRows = [
+      ["\u0627\u0644\u0645\u0646\u062A\u062C", "\u0648\u0632\u0646 \u0627\u0644\u0648\u062D\u062F\u0629", "\u0625\u062C\u0645\u0627\u0644\u064A \u0639\u062F\u062F \u0627\u0644\u0648\u062D\u062F\u0627\u062A", "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0648\u0632\u0646", "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u062A\u0643\u0644\u0641\u0629"]
+    ];
+    const sortedEntries = [...productSummaryMap.values()].sort((a, b) => b.totalCost - a.totalCost);
+    for (const entry of sortedEntries) {
+      const { display: totalWeightDisplay } = formatWeightForExport(entry.totalWeightGrams);
+      summaryProductRows.push([
+        entry.productName,
+        entry.unitWeightDisplay,
+        entry.totalQty,
+        totalWeightDisplay,
+        entry.totalCost
+      ]);
+    }
+    const summaryProductWs = sheetOf(summaryProductRows);
+    for (let r = 1; r < summaryProductRows.length; r++) {
+      setFormat(summaryProductWs, r, 2, COUNT);
+      setFormat(summaryProductWs, r, 4, MONEY);
+    }
+    summaryProductWs["!cols"] = [
+      { wch: 24 },
+      // المنتج
+      { wch: 16 },
+      // وزن الوحدة
+      { wch: 20 },
+      // إجمالي عدد الوحدات
+      { wch: 16 },
+      // إجمالي الوزن
+      { wch: 18 }
+      // إجمالي التكلفة
+    ];
+    XLSX.utils.book_append_sheet(wb, summaryProductWs, "\u0645\u0644\u062E\u0635 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A \u0628\u0627\u0644\u0645\u0646\u062A\u062C\u0627\u062A");
+  }
   const productSummaryRows = [
     ["\u0627\u0644\u0645\u0646\u062A\u062C", "\u0627\u0644\u0646\u0648\u0639/\u0627\u0644\u0648\u0632\u0646", "\u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0628\u0627\u0639\u0629", "\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A", "\u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629", "\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", "\u0627\u0644\u0645\u062E\u0632\u0648\u0646 \u0627\u0644\u062D\u0627\u0644\u064A"]
   ];
@@ -6666,6 +6779,7 @@ var exportStats = asyncHandler(async (req, res) => {
     ["\u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A", ""],
     ["\u0625\u062C\u0645\u0627\u0644\u064A \u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", purchaseStats.totalCost],
     ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0643\u0645\u064A\u0629 \u0627\u0644\u0645\u0634\u062A\u0631\u0627\u0629 (\u0627\u0644\u0641\u062A\u0631\u0629)", purchaseStats.totalQuantity],
+    ["\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0648\u0632\u0646 \u0627\u0644\u0645\u0634\u062A\u0631\u0649 (\u0627\u0644\u0641\u062A\u0631\u0629)", formatWeightForExport(totalWeightGramsAll).display],
     ["\u0639\u062F\u062F \u0627\u0644\u0645\u0634\u062A\u0631\u064A\u0627\u062A (\u0627\u0644\u0641\u062A\u0631\u0629)", purchaseStats.purchaseCount],
     ["", ""],
     ["\u0627\u0644\u0645\u062E\u0632\u0648\u0646", ""],
@@ -6675,8 +6789,8 @@ var exportStats = asyncHandler(async (req, res) => {
   ];
   const financialWs = sheetOf(financialRows);
   for (let r = 4; r <= 7; r++) setFormat(financialWs, r, 1, MONEY);
-  for (let r = 9; r <= 11; r++) setFormat(financialWs, r, 1, MONEY);
-  for (let r = 13; r <= 15; r++) setFormat(financialWs, r, 1, COUNT);
+  for (let r = 9; r <= 12; r++) setFormat(financialWs, r, 1, MONEY);
+  for (let r = 14; r <= 17; r++) setFormat(financialWs, r, 1, COUNT);
   financialWs["!cols"] = [{ wch: 36 }, { wch: 28 }];
   XLSX.utils.book_append_sheet(wb, financialWs, "\u0645\u0644\u062E\u0635 \u0645\u0627\u0644\u064A");
   const filename = period === "today" ? `freezer-elbalad-sales-purchases-${selectedDate}.xlsx` : period === "custom" && startDate && endDate ? `freezer-elbalad-sales-purchases-${startDate}-to-${endDate}.xlsx` : `freezer-elbalad-sales-purchases-${iso(period === "week" ? weekStart : monthStart)}-to-${selectedDate}.xlsx`;
@@ -6991,6 +7105,13 @@ var systemReset = async () => {
     };
   });
 };
+var resetPurchases = async () => {
+  return await withTransaction(async (tx) => {
+    const result = await tx.query("DELETE FROM purchases");
+    const purchasesDeleted = result.rowCount ?? 0;
+    return { purchasesDeleted };
+  });
+};
 
 // src/controllers/systemReset.controller.ts
 var systemResetHandler = asyncHandler(async (_req, res) => {
@@ -7006,6 +7127,17 @@ var systemResetHandler = asyncHandler(async (_req, res) => {
     }, "System reset completed successfully")
   );
 });
+var resetPurchasesHandler = asyncHandler(async (_req, res) => {
+  const result = await resetPurchases();
+  res.json(
+    new ApiResponse(200, {
+      ok: true,
+      summary: {
+        purchasesDeleted: result.purchasesDeleted
+      }
+    }, "Purchases reset completed successfully")
+  );
+});
 
 // src/routes/systemReset.routes.ts
 var router22 = Router22();
@@ -7015,6 +7147,13 @@ router22.post(
   requireRole(ROLES.ADMIN),
   invalidateCache("dashboard"),
   systemResetHandler
+);
+router22.post(
+  "/reset-purchases",
+  requireAuth,
+  requireRole(ROLES.ADMIN),
+  invalidateCache("dashboard"),
+  resetPurchasesHandler
 );
 var systemReset_routes_default = router22;
 
@@ -8231,6 +8370,101 @@ async function getMovementReport(startDate, endDate) {
     );
   } catch {
     movementRows = [];
+  }
+  if (movementRows.length === 0) {
+    try {
+      const purchaseRows = await query(
+        `SELECT
+          pu."productId"::text AS "productId",
+          pu."productName",
+          pu."productSize",
+          pr."categoryId"::text AS "categoryId",
+          COALESCE(c.name, '') AS "categoryName",
+          pu.quantity,
+          pu."unitCost"::float8 AS "unitCost",
+          pu."totalCost"::float8 AS "totalCost",
+          pu.supplier,
+          pu.notes,
+          pu."purchaseDate"::text AS "purchaseDate"
+        FROM purchases pu
+        LEFT JOIN products pr ON pr.id = pu."productId"
+        LEFT JOIN categories c ON c.id = pr."categoryId"
+        WHERE pu."purchaseDate" >= $1::timestamptz
+          AND pu."purchaseDate" <= $2::timestamptz
+        ORDER BY pu."purchaseDate", pu."productName"`,
+        [startDate, endDate]
+      );
+      for (const p of purchaseRows) {
+        movementRows.push({
+          productId: p.productId,
+          productName: p.productName,
+          productSize: p.productSize,
+          categoryId: p.categoryId,
+          categoryName: p.categoryName,
+          movementType: "purchase",
+          quantity: p.quantity,
+          unitSellingPrice: null,
+          totalSellingPrice: null,
+          unitPurchasePrice: p.unitCost,
+          totalPurchasePrice: p.totalCost,
+          paymentMethod: "",
+          orderNo: "",
+          customerName: "",
+          supplier: p.supplier,
+          reason: "",
+          notes: p.notes,
+          movementDate: p.purchaseDate
+        });
+      }
+      const saleRows = await query(
+        `SELECT
+          oi."productId"::text AS "productId",
+          oi."name" AS "productName",
+          COALESCE(oi."size", '') AS "productSize",
+          pr."categoryId"::text AS "categoryId",
+          COALESCE(c.name, '') AS "categoryName",
+          oi.qty AS "quantity",
+          oi."unitPrice"::float8 AS "unitPrice",
+          oi."lineTotal"::float8 AS "lineTotal",
+          o."orderNo",
+          o."customerName",
+          o."paymentMethod",
+          o."createdAt"::text AS "orderDate"
+        FROM order_items oi
+        JOIN orders o ON o.id = oi."orderId"
+        LEFT JOIN products pr ON pr.id = oi."productId"
+        LEFT JOIN categories c ON c.id = pr."categoryId"
+        WHERE o."createdAt" >= $1::timestamptz
+          AND o."createdAt" <= $2::timestamptz
+          AND o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')
+        ORDER BY o."createdAt", oi."name"`,
+        [startDate, endDate]
+      );
+      for (const s of saleRows) {
+        movementRows.push({
+          productId: s.productId,
+          productName: s.productName,
+          productSize: s.productSize,
+          categoryId: s.categoryId,
+          categoryName: s.categoryName,
+          movementType: "sale",
+          quantity: s.quantity,
+          unitSellingPrice: s.unitPrice,
+          totalSellingPrice: s.lineTotal,
+          unitPurchasePrice: null,
+          totalPurchasePrice: null,
+          paymentMethod: s.paymentMethod,
+          orderNo: s.orderNo,
+          customerName: s.customerName,
+          supplier: "",
+          reason: "",
+          notes: "",
+          movementDate: s.orderDate
+        });
+      }
+    } catch (err) {
+      console.error("[stock-movements] fallback query failed:", err);
+    }
   }
   const summaryMap = /* @__PURE__ */ new Map();
   for (const m of movementRows) {

@@ -377,10 +377,10 @@ export function AdminPrinterPage() {
         <Card>
           <CardContent className="p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-sm font-bold text-night-300">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--tw-text-muted)]">
                 <Printer className="h-4 w-4" />
                 {lang === 'ar' ? 'الطابعات المتاحة' : 'Available Printers'}
-                <span className="text-night-500">({printers.length})</span>
+                <span className="text-[var(--tw-text-muted)]">({printers.length})</span>
               </h3>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => { setShowScanner(!showScanner); setShowAddForm(false); setEditingId(null); }}>
@@ -415,7 +415,7 @@ export function AdminPrinterPage() {
 
                 {/* Profile Selector */}
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-night-400">
+                  <label className="mb-1 flex items-center gap-1 text-xs text-[var(--tw-text-muted)]">
                     <Wrench className="h-3 w-3" />
                     {lang === 'ar' ? 'ملف الطابعة (اختياري — يملأ البيانات تلقائياً)' : 'Printer Profile (optional — auto-fills settings)'}
                   </label>
@@ -452,13 +452,13 @@ export function AdminPrinterPage() {
 
                 {/* Profile Info */}
                 {selectedProfile && (
-                  <div className="rounded-lg border border-night-700 bg-night-900/50 p-3">
+                  <div className="rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]/50 p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Printer className="h-4 w-4 text-brand-400" />
-                      <span className="text-xs font-bold text-night-200">{selectedProfile.name}</span>
-                      <span className="text-xs text-night-500">— {selectedProfile.manufacturer}</span>
+                      <span className="text-xs font-bold text-[var(--tw-text-muted)]">{selectedProfile.name}</span>
+                      <span className="text-xs text-[var(--tw-text-muted)]">— {selectedProfile.manufacturer}</span>
                     </div>
-                    <p className="text-xs text-night-500 mb-2">
+                    <p className="text-xs text-[var(--tw-text-muted)] mb-2">
                       {lang === 'ar' ? selectedProfile.notesAr : selectedProfile.notesEn}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -467,7 +467,7 @@ export function AdminPrinterPage() {
                           key={cap.labelEn}
                           className={cn(
                             'rounded-md px-1.5 py-0.5 text-[10px] font-bold',
-                            cap.supported ? 'bg-emerald-500/15 text-emerald-400' : 'bg-night-800 text-night-500',
+                            cap.supported ? 'bg-emerald-500/15 text-emerald-400' : 'bg-[var(--tw-surface-alt)] text-[var(--tw-text-muted)]',
                           )}
                         >
                           {lang === 'ar' ? cap.labelAr : cap.labelEn} {cap.supported ? '✓' : '✗'}
@@ -484,7 +484,7 @@ export function AdminPrinterPage() {
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'نوع الطابعة' : 'Printer Type'}</label>
+                    <label className="mb-1 block text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'نوع الطابعة' : 'Printer Type'}</label>
                     <Select value={newPrinter.type ?? 'thermal'} onChange={(e) => setNewPrinter({ ...newPrinter, type: e.target.value })}>
                       <option value="thermal">{lang === 'ar' ? 'طابعة حرارية' : 'Thermal'}</option>
                       <option value="thermal_58mm">{lang === 'ar' ? 'حرارية 58mm' : 'Thermal 58mm'}</option>
@@ -495,7 +495,7 @@ export function AdminPrinterPage() {
                     </Select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'عرض الورق' : 'Paper Width'}</label>
+                    <label className="mb-1 block text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'عرض الورق' : 'Paper Width'}</label>
                     <Select value={newPrinter.paperWidth ?? '80'} onChange={(e) => setNewPrinter({ ...newPrinter, paperWidth: e.target.value as '58' | '80' })}>
                       <option value="80">80mm — {lang === 'ar' ? 'قياسي' : 'Standard'}</option>
                       <option value="58">58mm — {lang === 'ar' ? 'مصغّر' : 'Compact'}</option>
@@ -504,7 +504,7 @@ export function AdminPrinterPage() {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'نوع الاتصال' : 'Connection'}</label>
+                    <label className="mb-1 block text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'نوع الاتصال' : 'Connection'}</label>
                     <Select value={newPrinter.connection ?? 'lan'} onChange={(e) => setNewPrinter({ ...newPrinter, connection: e.target.value as PrinterConfig['connection'] })}>
                       <option value="lan">{connLabel('lan')}</option>
                       <option value="usb">USB</option>
@@ -514,7 +514,7 @@ export function AdminPrinterPage() {
                     </Select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'طراز الجهاز' : 'Device Model'}</label>
+                    <label className="mb-1 block text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'طراز الجهاز' : 'Device Model'}</label>
                     <Input
                       value={newPrinter.deviceModel ?? ''}
                       onChange={(e) => setNewPrinter({ ...newPrinter, deviceModel: e.target.value })}
@@ -525,11 +525,11 @@ export function AdminPrinterPage() {
                 {(newPrinter.connection === 'lan' || newPrinter.connection === 'wifi') && (
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="mb-1 block text-xs text-night-400">IP Address</label>
+                      <label className="mb-1 block text-xs text-[var(--tw-text-muted)]">IP Address</label>
                       <Input dir="ltr" value={newPrinter.ipAddress ?? ''} onChange={(e) => setNewPrinter({ ...newPrinter, ipAddress: e.target.value })} placeholder="192.168.1.100" />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-night-400">{lang === 'ar' ? 'منفذ' : 'Port'}</label>
+                      <label className="mb-1 block text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'منفذ' : 'Port'}</label>
                       <Input dir="ltr" value={newPrinter.port ?? '9100'} onChange={(e) => setNewPrinter({ ...newPrinter, port: e.target.value })} placeholder="9100" />
                     </div>
                   </div>
@@ -543,13 +543,13 @@ export function AdminPrinterPage() {
 
             {/* Printer List Items */}
             {printers.length === 0 ? (
-              <p className="py-8 text-center text-sm text-night-500">
+              <p className="py-8 text-center text-sm text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'لا توجد طابعات. أضف طابعة للبدء.' : 'No printers configured. Add one to get started.'}
               </p>
             ) : (
               <div className="space-y-3">
                 {printers.map((p) => (
-                  <div key={p.id} className={cn('rounded-xl border px-4 py-3', p.isDefault ? 'border-brand-500/40 bg-brand-500/5' : 'border-night-800')}>
+                  <div key={p.id} className={cn('rounded-xl border px-4 py-3', p.isDefault ? 'border-brand-500/40 bg-brand-500/5' : 'border-[var(--tw-border)]')}>
                     {editingId === p.id ? (
                       /* Edit mode */
                       <div className="space-y-3">
@@ -583,14 +583,14 @@ export function AdminPrinterPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-bold text-night-50">{p.name}</p>
+                            <p className="font-bold text-[var(--tw-text)]">{p.name}</p>
                             {p.isDefault && (
                               <span className="rounded-md bg-brand-500/20 px-2 py-0.5 text-xs font-bold text-brand-400">
                                 {lang === 'ar' ? 'الافتراضية' : 'Default'}
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-night-500">
+                          <p className="text-xs text-[var(--tw-text-muted)]">
                             {connLabel(p.connection)} · {p.paperWidth}mm
                             {(p.connection === 'lan' || p.connection === 'wifi') && p.ipAddress ? ` · ${p.ipAddress}:${p.port}` : ''}
                           </p>
@@ -664,7 +664,7 @@ export function AdminPrinterPage() {
                             onClick={() => handleSetDefault(p.id)}
                             disabled={p.isDefault}
                           >
-                            {p.isDefault ? <Star className="h-3.5 w-3.5 text-brand-400 fill-brand-400" /> : <StarOff className="h-3.5 w-3.5 text-night-500" />}
+                            {p.isDefault ? <Star className="h-3.5 w-3.5 text-brand-400 fill-brand-400" /> : <StarOff className="h-3.5 w-3.5 text-[var(--tw-text-muted)]" />}
                           </Button>
                           <button
                             type="button"
@@ -676,7 +676,7 @@ export function AdminPrinterPage() {
                             <span className={cn('inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform', p.isActive ? 'translate-x-[18px]' : 'translate-x-[3px]')} />
                           </button>
                           <Button variant="ghost" size="icon" onClick={() => setEditingId(p.id)}>
-                            <span className="text-xs text-night-400">✏️</span>
+                            <span className="text-xs text-[var(--tw-text-muted)]">✏️</span>
                           </Button>
                           <Button variant="ghost" size="icon" className="text-red-400 hover:bg-red-500/10" onClick={() => handleRemovePrinter(p.id)}>
                             <Trash2 className="h-3.5 w-3.5" />
@@ -701,7 +701,7 @@ export function AdminPrinterPage() {
         <Card>
           <CardContent className="p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-sm font-bold text-night-300">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'قائمة الطباعة' : 'Print Queue'}
               </h3>
               <Button
@@ -722,13 +722,13 @@ export function AdminPrinterPage() {
                   return (
                     <div
                       key={job.id}
-                      className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3"
+                      className="flex items-center justify-between rounded-xl border border-[var(--tw-border)] px-4 py-3"
                     >
                       <div className="flex items-center gap-3">
                         <StatusIcon className={cn('h-4 w-4', statusColors[job.status])} />
                         <div>
-                          <p className="text-sm font-bold text-night-100">#{job.orderNo}</p>
-                          <p className="text-xs text-night-500">
+                          <p className="text-sm font-bold text-[var(--tw-text)]">#{job.orderNo}</p>
+                          <p className="text-xs text-[var(--tw-text-muted)]">
                             {new Date(job.createdAt).toLocaleString()}
                           </p>
                         </div>
@@ -753,7 +753,7 @@ export function AdminPrinterPage() {
                 })}
               </div>
             ) : (
-              <p className="py-8 text-center text-sm text-night-500">
+              <p className="py-8 text-center text-sm text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'لا توجد jobs طباعة' : 'No print jobs yet'}
               </p>
             )}
@@ -764,7 +764,7 @@ export function AdminPrinterPage() {
         <Card>
           <CardContent className="p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-sm font-bold text-night-300">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--tw-text-muted)]">
                 <Monitor className="h-4 w-4" />
                 {lang === 'ar' ? 'حالة خدمة الطباعة المحلية' : 'Local Print Agent Status'}
               </h3>
@@ -806,12 +806,12 @@ export function AdminPrinterPage() {
                       : <XCircle className="h-5 w-5 text-red-400" />}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-night-100">
+                    <p className="text-sm font-bold text-[var(--tw-text)]">
                       {agentSSE.connectionType
                         ? agentSSE.connectionType.toUpperCase()
                         : (lang === 'ar' ? 'طابعة' : 'Printer')}
                     </p>
-                    <p className="text-xs text-night-500">
+                    <p className="text-xs text-[var(--tw-text-muted)]">
                       {agentSSE.printerStatus === 'online'
                         ? (lang === 'ar' ? 'جاهزة للطباعة' : 'Ready to print')
                         : agentSSE.printerStatus === 'printing'
@@ -839,12 +839,12 @@ export function AdminPrinterPage() {
               {/* Recent print activity from SSE */}
               {agentSSE.recentEvents.length > 0 && (
                 <div>
-                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-night-500">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                     {lang === 'ar' ? 'نشاط الطباعة المباشر' : 'Live Print Activity'}
                   </p>
                   <div className="space-y-1 max-h-40 overflow-y-auto">
                     {agentSSE.recentEvents.map((evt, i) => (
-                      <div key={`${evt.data.jobId}-${i}`} className="flex items-center justify-between rounded-lg border border-night-800 px-3 py-2">
+                      <div key={`${evt.data.jobId}-${i}`} className="flex items-center justify-between rounded-lg border border-[var(--tw-border)] px-3 py-2">
                         <div className="flex items-center gap-2">
                           <span className={cn(
                             'h-2 w-2 rounded-full',
@@ -852,8 +852,8 @@ export function AdminPrinterPage() {
                             : evt.type === 'print-success' ? 'bg-emerald-400'
                             : 'bg-red-400',
                           )} />
-                          <span className="text-xs font-bold text-night-200">#{evt.data.orderNo}</span>
-                          <span className="text-[10px] text-night-500">
+                          <span className="text-xs font-bold text-[var(--tw-text-muted)]">#{evt.data.orderNo}</span>
+                          <span className="text-[10px] text-[var(--tw-text-muted)]">
                             {evt.type === 'print-start'
                               ? (lang === 'ar' ? 'جاري الطباعة...' : 'Printing...')
                               : evt.type === 'print-success'
@@ -878,13 +878,13 @@ export function AdminPrinterPage() {
               {/* Fallback: show agent status from API if SSE is not connected */}
               {!agentSSE.connected && agentStatusQuery.data && agentStatusQuery.data.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-night-500">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                     {lang === 'ar' ? 'الحالة (تحديث يدوي)' : 'Status (manual refresh)'}
                   </p>
                   {agentStatusQuery.data.map((agent: AgentStatus) => (
                     <div
                       key={agent.agentId}
-                      className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3"
+                      className="flex items-center justify-between rounded-xl border border-[var(--tw-border)] px-4 py-3"
                     >
                       <div className="flex items-center gap-3">
                         <div className={cn(
@@ -894,19 +894,19 @@ export function AdminPrinterPage() {
                           {connectionIcon(agent.connectionType)}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-night-100">
+                          <p className="text-sm font-bold text-[var(--tw-text)]">
                             {agent.connectionType.toUpperCase()}
-                            <span className="ml-2 text-xs text-night-500">({agent.paperWidth}mm)</span>
+                            <span className="ml-2 text-xs text-[var(--tw-text-muted)]">({agent.paperWidth}mm)</span>
                           </p>
                           <div className="flex items-center gap-1 text-xs">
                             <Clock className="h-3 w-3" />
-                            <span className="text-night-500">
+                            <span className="text-[var(--tw-text-muted)]">
                               {agent.isRecent
                                 ? (lang === 'ar' ? 'متصل الآن' : 'Connected now')
                                 : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
                             </span>
                             <span className="text-night-600">·</span>
-                            <span className="text-night-500">{new Date(agent.lastSeen).toLocaleTimeString()}</span>
+                            <span className="text-[var(--tw-text-muted)]">{new Date(agent.lastSeen).toLocaleTimeString()}</span>
                           </div>
                         </div>
                       </div>
@@ -929,7 +929,7 @@ export function AdminPrinterPage() {
               {!agentSSE.connected && (!agentStatusQuery.data || agentStatusQuery.data.length === 0) && (
                 <div className="py-6 text-center">
                   <Monitor className="mx-auto mb-2 h-8 w-8 text-night-600" />
-                  <p className="text-sm text-night-500">
+                  <p className="text-sm text-[var(--tw-text-muted)]">
                     {lang === 'ar'
                       ? 'لا توجد خدمة طباعة محلية متصلة'
                       : 'No local print agent connected'}
@@ -949,8 +949,8 @@ export function AdminPrinterPage() {
         <Card>
           <CardContent className="p-6">
             <div className="mb-4 flex items-center gap-2">
-              <Key className="h-4 w-4 text-night-300" />
-              <h3 className="text-sm font-bold text-night-300">
+              <Key className="h-4 w-4 text-[var(--tw-text-muted)]" />
+              <h3 className="text-sm font-bold text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'رموز الخدمة (للوحة الطباعة المحلية)' : 'Service Tokens (Local Print Service)'}
               </h3>
             </div>
@@ -971,7 +971,7 @@ export function AdminPrinterPage() {
                     <Copy className="h-3 w-3" />
                   </Button>
                 </div>
-                <p className="mt-2 text-xs text-night-400">
+                <p className="mt-2 text-xs text-[var(--tw-text-muted)]">
                   {lang === 'ar'
                     ? 'الصقه في ملف .env على جهاز الطباعة: API_TOKEN=fps_...'
                     : 'Paste into .env on the print computer: API_TOKEN=fps_...'}
@@ -1003,10 +1003,10 @@ export function AdminPrinterPage() {
             ) : serviceTokens.data && serviceTokens.data.length > 0 ? (
               <div className="space-y-2">
                 {serviceTokens.data.map((tk) => (
-                  <div key={tk.id} className="flex items-center justify-between rounded-xl border border-night-800 px-4 py-3">
+                  <div key={tk.id} className="flex items-center justify-between rounded-xl border border-[var(--tw-border)] px-4 py-3">
                     <div>
-                      <p className="text-sm font-bold text-night-100">{tk.name}</p>
-                      <p className="text-xs text-night-500">
+                      <p className="text-sm font-bold text-[var(--tw-text)]">{tk.name}</p>
+                      <p className="text-xs text-[var(--tw-text-muted)]">
                         {tk.scope.join(', ')} · {lang === 'ar' ? 'أنشأ' : 'Created'} {new Date(tk.createdAt).toLocaleDateString()}
                         {tk.lastUsedAt ? ` · ${lang === 'ar' ? 'آخر استخدام' : 'Last used'} ${new Date(tk.lastUsedAt).toLocaleDateString()}` : ''}
                       </p>
@@ -1031,7 +1031,7 @@ export function AdminPrinterPage() {
                 ))}
               </div>
             ) : (
-              <p className="py-4 text-center text-sm text-night-500">
+              <p className="py-4 text-center text-sm text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'لا توجد رمز خدمة' : 'No service tokens yet'}
               </p>
             )}

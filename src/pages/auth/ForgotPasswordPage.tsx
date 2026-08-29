@@ -38,23 +38,23 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="container-px flex min-h-[70vh] items-center justify-center py-16">
-      <div className="w-full max-w-md rounded-3xl border border-night-800 bg-night-900 p-8">
+      <div className="w-full max-w-md rounded-3xl border border-[var(--tw-border)] bg-[var(--tw-surface)] p-8">
         <div className="mb-8 text-center">
           <Logo className="mx-auto h-14 w-14 rounded-2xl" />
-          <h1 className="mt-4 text-2xl font-extrabold text-night-50">{t('auth.forgotTitle')}</h1>
-          <p className="mt-1 text-sm text-night-400">{t('auth.forgotSubtitle')}</p>
+          <h1 className="mt-4 text-2xl font-extrabold text-[var(--tw-text)]">{t('auth.forgotTitle')}</h1>
+          <p className="mt-1 text-sm text-[var(--tw-text-muted)]">{t('auth.forgotSubtitle')}</p>
         </div>
 
         {sent ? (
           devPayload ? (
-            <div className="space-y-4 rounded-xl border border-night-700 bg-night-800 p-4 text-sm">
+            <div className="space-y-4 rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface-alt)] p-4 text-sm">
               <p className="font-bold text-brand-400">{t('auth.devResetHint')}</p>
-              <div className="rounded-lg bg-night-900 p-3 text-center" dir="ltr">
+              <div className="rounded-lg bg-[var(--tw-surface)] p-3 text-center" dir="ltr">
                 <span className="font-mono text-4xl font-extrabold tracking-[0.5em] text-brand-400">
                   {devPayload.code}
                 </span>
               </div>
-              <p className="text-night-400">{t('auth.devResetCodeHint')}</p>
+              <p className="text-[var(--tw-text-muted)]">{t('auth.devResetCodeHint')}</p>
               <a
                 href={devPayload.link}
                 className="block rounded-lg bg-brand-500 py-2.5 text-center font-bold text-night-950 hover:bg-brand-400"
@@ -87,7 +87,7 @@ export function ForgotPasswordPage() {
           </form>
         )}
 
-        <p className="mt-6 text-center text-sm text-night-400">
+        <p className="mt-6 text-center text-sm text-[var(--tw-text-muted)]">
           <Link to="/login" className="font-bold text-brand-500 hover:text-brand-400">
             {t('auth.backToLogin')}
           </Link>

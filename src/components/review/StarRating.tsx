@@ -76,7 +76,7 @@ export function StarRating({ value, onChange, size = 'md', readOnly = false, ari
             className={cn(
               'transition-colors',
               interactive && 'cursor-pointer',
-              active ? 'fill-gold-400 text-gold-400' : 'fill-transparent text-night-600',
+              active ? 'fill-gold-400 text-gold-400' : 'fill-transparent text-[var(--tw-border-strong)]',
             )}
           >
             <Star className={sizes[size]} strokeWidth={1.5} />
