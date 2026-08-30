@@ -11,6 +11,7 @@ router.use(requirePermission('analytics', 'read'));
 
 router.get('/dashboard', cached({ resource: 'dashboard', ttl: 60, suffix: 'dashboard' }), analytics.dashboard);
 router.get('/day', analytics.day);
+router.get('/category-sales', analytics.categorySales);
 // Destructive / data-extraction endpoints are strictly admin-only.
 router.post('/clear', requireRole(ROLES.ADMIN), invalidateCache('dashboard'), analytics.clear);
 router.post('/refresh', requireRole(ROLES.ADMIN), invalidateCache('dashboard'), analytics.refresh);

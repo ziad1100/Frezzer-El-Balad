@@ -253,6 +253,23 @@ export interface PurchasesResetResult {
 export const resetPurchases = (): Promise<PurchasesResetResult> =>
   unwrap(api.post<ApiEnvelope<PurchasesResetResult>>('/system/reset-purchases'));
 
+export interface SalesResetResult {
+  ok: boolean;
+}
+
+export const resetSales = (): Promise<SalesResetResult> =>
+  unwrap(api.post<ApiEnvelope<SalesResetResult>>('/system/reset-sales'));
+
+export interface CategorySalesItem {
+  name: string;
+  nameEn: string;
+  units: number;
+  revenue: number;
+}
+
+export const getCategorySales = (): Promise<CategorySalesItem[]> =>
+  unwrap(api.get<ApiEnvelope<CategorySalesItem[]>>('/analytics/category-sales'));
+
 export const exportDashboard = async (date?: string, period = 'today', startDate?: string, endDate?: string): Promise<{ blob: Blob; filename: string }> => {
   const res = await api.get<Blob>('/analytics/export', {
     params: { date: date || undefined, period, startDate: startDate || undefined, endDate: endDate || undefined },

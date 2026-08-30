@@ -216,7 +216,7 @@ export function AdminLayout() {
       )}
 
       {/* ── Main Content ────────────────────────────────────────── */}
-      <div className="flex-1 lg:ms-64">
+      <div className="flex-1 min-w-0 overflow-hidden lg:ms-64">
         {/* Topbar */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[var(--tw-border)] bg-[var(--tw-header-bg)] px-4 backdrop-blur-xl md:px-8">
           {/* Left */}

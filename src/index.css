@@ -257,6 +257,11 @@
 
 /* ── Responsive Mobile Optimizations ─────────────────────────────── */
 @media (max-width: 640px) {
+  /* Prevent horizontal overflow globally */
+  html, body {
+    overflow-x: hidden;
+  }
+
   /* Larger touch targets on mobile */
   button, a, [role="button"] {
     min-height: 44px;

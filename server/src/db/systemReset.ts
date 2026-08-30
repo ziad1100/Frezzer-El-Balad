@@ -58,10 +58,13 @@ export const systemReset = async (): Promise<{
     // 8. Reset coupon usedCount to 0 (counter tied to cleared redemptions)
     await tx.query('UPDATE coupons SET "usedCount" = 0');
 
-    // 9. Truncate analytics table (statistics only)
+    // 9. Delete all purchase records (financial data)
+    await tx.query('DELETE FROM purchases');
+
+    // 10. Truncate analytics table (statistics only)
     await tx.query('TRUNCATE TABLE analytics');
 
-    // 10. Reset the stats cutoff so dashboard shows clean state
+    // 11. Reset the stats cutoff so dashboard shows clean state
     await tx.query(
       `INSERT INTO settings (key, value) VALUES ('statsClearedAt', $1::jsonb)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -100,5 +103,31 @@ export const resetPurchases = async (): Promise<{ purchasesDeleted: number }> =>
     const result = await tx.query('DELETE FROM purchases');
     const purchasesDeleted = result.rowCount ?? 0;
     return { purchasesDeleted };
+  });
+};
+
+/**
+ * Reset sales data by setting a salesClearedAt marker.
+ * After this, the sales stats query only counts orders placed AFTER this time,
+ * effectively making the displayed sales total 0 (until new orders come in).
+ *
+ * What gets RESET:
+ *   - The displayed "إجمالي المبيعات" total (shown as 0)
+ *
+ * What is PRESERVED:
+ *   - All order records (history stays intact)
+ *   - Revenue / revenue calculations (use a separate cutoff path)
+ *   - Purchases / outgoing
+ *   - Products, categories, customers, admin accounts
+ *   - Inventory stock levels
+ */
+export const resetSales = async (): Promise<{ ok: boolean }> => {
+  return await withTransaction(async (tx) => {
+    await tx.query(
+      `INSERT INTO settings (key, value) VALUES ('salesClearedAt', $1::jsonb)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [JSON.stringify(new Date().toISOString())],
+    );
+    return { ok: true };
   });
 };

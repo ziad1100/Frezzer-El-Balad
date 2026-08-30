@@ -6,13 +6,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { Lock, AlertTriangle, Tag, ShoppingBag, Check, CreditCard, Banknote, Building, Minus, Plus } from 'lucide-react';
+import { Lock, AlertTriangle, Tag, ShoppingBag, Check, CreditCard, Banknote, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { createOrder, getSettings } from '@/api/orders';
 import { getPaymentSettings, type PaymentSettings } from '@/api/payment';
 import { VodafoneCashFlow } from '@/components/payment/VodafoneCashFlow';
 import { CardPaymentFlow } from '@/components/payment/CardPaymentFlow';
-import { BankTransferFlow } from '@/components/payment/BankTransferFlow';
 import { InstaPayFlow } from '@/components/payment/InstaPayFlow';
 import { validateCoupon } from '@/api/coupons';
 import { clearCoupon, clearCart, selectSubtotal, setCoupon } from '@/store/slices/cartSlice';
@@ -24,6 +23,8 @@ import { FieldError, Input, Label, Textarea } from '@/components/ui/Input';
 import { EGYPTIAN_MOBILE_REGEX } from '@/lib/validation';
 import { cn, formatPrice } from '@/lib/utils';
 import type { Role } from '@/types';
+import vodafoneLogo from '@/assets/vodafone.jpeg';
+import instapayLogo from '@/assets/instapay.jpeg';
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
@@ -36,7 +37,7 @@ export function CheckoutPage() {
   const couponCode = useAppSelector((state) => state.cart.couponCode);
   const couponDiscount = useAppSelector((state) => state.cart.couponDiscount);
   const note = useAppSelector((state) => state.cart.note);
-  type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'bank_transfer' | 'instapay';
+  type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'instapay';
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('cash');
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
 
@@ -191,7 +192,7 @@ export function CheckoutPage() {
     };
   };
 
-  const isManualPayment = selectedPaymentMethod === 'vodafone_cash' || selectedPaymentMethod === 'bank_transfer' || selectedPaymentMethod === 'instapay';
+  const isManualPayment = selectedPaymentMethod === 'vodafone_cash' || selectedPaymentMethod === 'instapay';
   const isCardPayment = selectedPaymentMethod === 'card';
 
   const orderMutation = useMutation({
@@ -247,7 +248,7 @@ export function CheckoutPage() {
   return (
     <div className="overflow-hidden">
       {/* ═══ Header ═══ */}
-      <section className="relative bg-gradient-to-b from-brand-900/30 via-[var(--tw-bg)] to-[var(--tw-bg)]">
+      <section className="relative overflow-hidden bg-gradient-to-b from-brand-900/30 via-[var(--tw-bg)] to-[var(--tw-bg)]">
         <div className="container-px py-10 sm:py-14">
           <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.08 } } }}>
             <motion.h1 variants={fadeUp} className="text-2xl font-extrabold tracking-tight text-[var(--tw-text)] sm:text-3xl">
@@ -585,19 +586,7 @@ export function CheckoutPage() {
                 onCancel={() => setCreatedOrderId(null)}
               />
             )}
-            {selectedPaymentMethod === 'bank_transfer' && paymentSettings.data?.bankTransfer && (
-              <BankTransferFlow
-                orderId={createdOrderId}
-                amount={Math.max(0, total)}
-                settings={paymentSettings.data.bankTransfer}
-                onSuccess={() => {
-                  dispatch(clearCoupon());
-                  dispatch(clearCart());
-                  navigate(isAdmin ? '/admin/orders' : '/orders', { replace: true });
-                }}
-                onCancel={() => setCreatedOrderId(null)}
-              />
-            )}
+
             {selectedPaymentMethod === 'card' && (
               <CardPaymentFlow
                 orderId={createdOrderId}
@@ -638,33 +627,13 @@ function Row({ label, value, accent, free }: { label: string; value: string; acc
   );
 }
 
-type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'bank_transfer' | 'instapay';
+type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'instapay';
 
-/* ── Brand Icons ─────────────────────────────────────────────── */
-function VodafoneCashIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="24" height="24" rx="6" fill="#E60000" />
-      <path d="M6 16.5V8.5L12 12.5L6 16.5Z" fill="white" />
-      <path d="M12 16.5V8.5L18 12.5L12 16.5Z" fill="white" fillOpacity="0.6" />
-    </svg>
-  );
-}
-
-function InstaPayIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="24" height="24" rx="6" fill="#004B87" />
-      <path d="M7 7H17V10H14V17H10V10H7V7Z" fill="white" />
-      <circle cx="17" cy="17" r="4" fill="#FFD700" />
-      <path d="M16 16L18 18M18 16L16 18" stroke="#004B87" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
+/* ── Payment Method Config ───────────────────────────────────── */
 const PAYMENT_METHODS: Array<{
   value: PaymentMethod;
   icon: ReactNode;
+  image?: string;
   labelAr: string;
   labelEn: string;
   descAr: string;
@@ -672,10 +641,9 @@ const PAYMENT_METHODS: Array<{
   requiresSettings?: keyof PaymentSettings;
 }> = [
   { value: 'cash', icon: <Banknote className="h-5 w-5" />, labelAr: 'الدفع عند الاستلام', labelEn: 'Cash on Delivery', descAr: 'ادفع عند استلام الطلب', descEn: 'Pay when you receive your order', requiresSettings: 'cashOnDelivery' },
-  { value: 'vodafone_cash', icon: <VodafoneCashIcon className="h-6 w-6 rounded-md" />, labelAr: 'فودافون كاش', labelEn: 'Vodafone Cash', descAr: 'محفظة إلكترونية', descEn: 'Digital wallet transfer', requiresSettings: 'vodafoneCash' },
-  { value: 'bank_transfer', icon: <Building className="h-5 w-5" />, labelAr: 'تحويل بنكي', labelEn: 'Bank Transfer', descAr: 'تحويل إلى حساب بنكي', descEn: 'Transfer to bank account', requiresSettings: 'bankTransfer' },
-  { value: 'instapay', icon: <InstaPayIcon className="h-6 w-6 rounded-md" />, labelAr: 'انستاباي', labelEn: 'InstaPay', descAr: 'تحويل فوري عبر InstaPay', descEn: 'Instant transfer via InstaPay', requiresSettings: 'instapay' },
-  { value: 'card', icon: <CreditCard className="h-5 w-5" />, labelAr: 'بطاقة ائتمان', labelEn: 'Credit Card', descAr: 'دفع إلكتروني آمن', descEn: 'Secure online payment', requiresSettings: 'card' },
+  { value: 'vodafone_cash', icon: <Banknote className="h-5 w-5" />, image: vodafoneLogo, labelAr: 'Vodafone Cash', labelEn: 'Vodafone Cash', descAr: 'محفظة إلكترونية', descEn: 'Digital wallet transfer', requiresSettings: 'vodafoneCash' },
+  { value: 'instapay', icon: <Banknote className="h-5 w-5" />, image: instapayLogo, labelAr: 'InstaPay', labelEn: 'InstaPay', descAr: 'تحويل فوري عبر InstaPay', descEn: 'Instant transfer via InstaPay', requiresSettings: 'instapay' },
+  { value: 'card', icon: <CreditCard className="h-5 w-5" />, labelAr: 'بطاقة ائتمان', labelEn: 'Card', descAr: 'دفع إلكتروني آمن', descEn: 'Secure online payment', requiresSettings: 'card' },
 ];
 
 function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
@@ -694,12 +662,12 @@ function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
   });
 
   return (
-    <div className="space-y-2.5">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {enabledMethods.map((method) => (
         <label
           key={method.value}
           className={cn(
-            'group flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3.5 transition-all duration-200',
+            'group relative flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-4 transition-all duration-200',
             value === method.value
               ? 'border-brand-500 bg-brand-500/10 shadow-sm shadow-brand-500/5'
               : 'border-[var(--tw-border-strong)] hover:border-brand-500/30 hover:bg-[var(--tw-surface-alt)]',
@@ -713,13 +681,24 @@ function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
             onChange={() => onChange(method.value)}
             className="sr-only"
           />
-          <span className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-xl transition-colors',
-            value === method.value ? 'bg-brand-500/20 text-brand-500' : 'bg-[var(--tw-surface)] text-[var(--tw-text-subtle)] group-hover:text-brand-400',
-          )}>
-            {method.icon}
-          </span>
-          <div className="min-w-0">
+          {/* Logo / Icon */}
+          {method.image ? (
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--tw-surface)]">
+              <img
+                src={method.image}
+                alt={lang === 'ar' ? method.labelAr : method.labelEn}
+                className="h-full w-full object-contain p-1"
+              />
+            </span>
+          ) : (
+            <span className={cn(
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors',
+              value === method.value ? 'bg-brand-500/20 text-brand-500' : 'bg-[var(--tw-surface)] text-[var(--tw-text-subtle)] group-hover:text-brand-400',
+            )}>
+              {method.icon}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
             <span className={cn('text-sm font-bold', value === method.value ? 'text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)]')}>
               {lang === 'ar' ? method.labelAr : method.labelEn}
             </span>
@@ -728,7 +707,7 @@ function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
             </p>
           </div>
           {value === method.value && (
-            <span className="ms-auto flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white">
+            <span className="absolute end-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm">
               <Check className="h-3.5 w-3.5" />
             </span>
           )}

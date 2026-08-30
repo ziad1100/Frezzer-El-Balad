@@ -24,4 +24,13 @@ router.post(
   systemReset.resetPurchasesHandler,
 );
 
+// POST /api/system/reset-sales — admin only (sales reset)
+router.post(
+  '/reset-sales',
+  requireAuth,
+  requireRole(ROLES.ADMIN),
+  invalidateCache('dashboard'),
+  systemReset.resetSalesHandler,
+);
+
 export default router;

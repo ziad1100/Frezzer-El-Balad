@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Banknote, CalendarDays, Download, Eraser, Package, RefreshCw, ShoppingBag, Star, TrendingUp, Users } from 'lucide-react';
+import { Banknote, Download, Eraser, Package, RefreshCw, Search, ShoppingBag, TrendingDown, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
-import { adminListOrders, adminReviewStats, exportDashboard, getDashboard, getDashboardDay, getInventoryStats, getPurchaseStats, getSalesStats, listPurchases, refreshDashboard, resetPurchases, systemReset } from '@/api/admin';
+import { adminListOrders, exportDashboard, getCategorySales, getDashboard, getInventoryStats, getPurchaseStats, getSalesStats, listPurchases, refreshDashboard, resetSales, systemReset } from '@/api/admin';
 import { exportMovementReport, getMovementReport, type MovementReport } from '@/api/stock-movements';
 import { getErrorMessage } from '@/lib/api';
 import { Card, CardContent, EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
@@ -13,25 +13,22 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { PageHeader, StatusBadge, TableWrap, Td, Th } from '@/components/admin/primitives';
 import { cn, formatPrice } from '@/lib/utils';
-import { PurchasesChart } from '@/components/admin/charts/PurchasesChart';
-import { SalesChart } from '@/components/admin/charts/SalesChart';
-import { SalesVsPurchasesChart } from '@/components/admin/charts/SalesVsPurchasesChart';
+import { FinancialChart } from '@/components/admin/charts/FinancialChart';
+import { CategorySalesChart } from '@/components/admin/charts/CategorySalesChart';
 import { TopProductsChart } from '@/components/admin/charts/TopProductsChart';
-import { OrdersDonutChart } from '@/components/admin/charts/OrdersDonutChart';
-import { InventoryChart } from '@/components/admin/charts/InventoryChart';
-import { RevenuesChart } from '@/components/admin/charts/RevenuesChart';
+import { SalesVsPurchasesChart } from '@/components/admin/charts/SalesVsPurchasesChart';
 
-type PeriodKey = 'today' | 'week' | 'month' | 'year' | '3years' | '5years' | 'custom';
+type PeriodKey = 'today' | 'week' | 'month' | 'year' | 'custom';
 
 const PERIOD_KEYS: Record<PeriodKey, string> = {
   today: 'admin.overview.today',
   week: 'admin.overview.thisWeek',
   month: 'admin.overview.thisMonth',
-  year: 'admin.overview.thisYear',
-  '3years': 'admin.overview.last3Years',
-  '5years': 'admin.overview.last5Years',
+  year: 'admin.overview.yearly',
   custom: 'admin.overview.custom',
 };
+
+const MAIN_CHART_PERIODS: PeriodKey[] = ['today', 'week', 'month', 'custom', 'year'];
 
 export function AdminIndexPage() {
   const { t, i18n } = useTranslation();
@@ -44,15 +41,16 @@ export function AdminIndexPage() {
     queryFn: () => adminListOrders({ page: 1, limit: 8 }),
   });
 
-  const reviewStats = useQuery({ queryKey: ['admin', 'reviews', 'stats'], queryFn: adminReviewStats });
-  const inventoryStats = useQuery({ queryKey: ['admin', 'inventory'], queryFn: getInventoryStats });
+
   const salesStats = useQuery({ queryKey: ['admin', 'sales'], queryFn: () => getSalesStats() });
   const purchaseStats = useQuery({ queryKey: ['admin', 'purchases', 'stats'], queryFn: () => getPurchaseStats() });
+  const categorySales = useQuery({ queryKey: ['admin', 'category-sales'], queryFn: getCategorySales });
+  const inventoryStats = useQuery({ queryKey: ['admin', 'inventory'], queryFn: getInventoryStats });
 
   const [period, setPeriod] = useState<PeriodKey>('today');
+  const [inventorySearch, setInventorySearch] = useState('');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
 
   const refreshMutation = useMutation({
     mutationFn: refreshDashboard,
@@ -62,6 +60,10 @@ export function AdminIndexPage() {
         queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'reviews'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'day'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'sales'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'purchases'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'inventory'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'category-sales'] }),
       ]);
       toast.success(t('admin.refreshSuccess'));
     },
@@ -84,6 +86,7 @@ export function AdminIndexPage() {
         queryClient.invalidateQueries({ queryKey: ['admin', 'purchases'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'inventory'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'purchases', 'chart'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'category-sales'] }),
       ]);
       toast.success(t('admin.systemResetSuccess'));
       setConfirmClear(false);
@@ -97,33 +100,31 @@ export function AdminIndexPage() {
     setResetTyped('');
   };
 
-  // Purchase Reset
-  const [confirmPurchaseReset, setConfirmPurchaseReset] = useState(false);
-  const [purchaseResetTyped, setPurchaseResetTyped] = useState('');
+  // ─── Reset Sales ──────────────────────────────────────────
+  const [confirmSalesReset, setConfirmSalesReset] = useState(false);
+  const [salesResetTyped, setSalesResetTyped] = useState('');
 
-  const purchaseResetMutation = useMutation({
-    mutationFn: resetPurchases,
+  const salesResetMutation = useMutation({
+    mutationFn: resetSales,
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['admin', 'purchases'] }),
-        queryClient.invalidateQueries({ queryKey: ['admin', 'inventory'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'sales'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'category-sales'] }),
       ]);
-      toast.success(lang === 'ar' ? 'تم تصفير المشتريات بنجاح' : 'Purchases reset successfully');
-      setConfirmPurchaseReset(false);
-      setPurchaseResetTyped('');
+      toast.success(t('admin.salesResetSuccess'));
+      setConfirmSalesReset(false);
+      setSalesResetTyped('');
     },
-    onError: (error: Error) => {
-      console.error('[purchases] reset error:', error);
-      toast.error(lang === 'ar' ? 'فشل تصفير المشتريات' : 'Failed to reset purchases');
-    },
+    onError: () => toast.error(t('admin.salesResetError')),
   });
 
-  const closePurchaseResetModal = () => {
-    setConfirmPurchaseReset(false);
-    setPurchaseResetTyped('');
+  const closeSalesResetModal = () => {
+    setConfirmSalesReset(false);
+    setSalesResetTyped('');
   };
 
+  // Export state
   const [exportPeriod, setExportPeriod] = useState<PeriodKey | 'custom'>('today');
   const [exportCustomStart, setExportCustomStart] = useState('');
   const [exportCustomEnd, setExportCustomEnd] = useState('');
@@ -173,7 +174,7 @@ export function AdminIndexPage() {
       if (exportPeriod === 'custom') {
         return exportDashboard(undefined, 'custom', start, end);
       }
-      return exportDashboard(day, exportPeriod);
+      return exportDashboard(undefined, exportPeriod);
     },
     onSuccess: ({ blob, filename }) => {
       const url = URL.createObjectURL(blob);
@@ -189,15 +190,11 @@ export function AdminIndexPage() {
     onError: (error) => toast.error(getErrorMessage(error) || t('admin.exportError')),
   });
 
-  const dayStats = useQuery({
-    queryKey: ['admin', 'day', day],
-    queryFn: () => getDashboardDay(day),
-    enabled: Boolean(day),
-  });
+  // ─── Compute date ranges ─────────────────────────────────────
+  const now = new Date();
 
-  // Purchases over time — fetch all purchases in the selected period and aggregate by date
+  // ─── Purchases for charts ────────────────────────────────────
   const purchaseDateRange = (() => {
-    const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     if (period === 'today') {
       const ds = today.toISOString().slice(0, 10);
@@ -213,14 +210,6 @@ export function AdminIndexPage() {
       const ye = today.toISOString().slice(0, 10);
       return { startDate: ys, endDate: ye + 'T23:59:59' };
     }
-    if (period === '3years') {
-      const start = new Date(now.getFullYear() - 3, 0, 1).toISOString().slice(0, 10);
-      return { startDate: start, endDate: today.toISOString().slice(0, 10) + 'T23:59:59' };
-    }
-    if (period === '5years') {
-      const start = new Date(now.getFullYear() - 5, 0, 1).toISOString().slice(0, 10);
-      return { startDate: start, endDate: today.toISOString().slice(0, 10) + 'T23:59:59' };
-    }
     if (period === 'custom' && customStart && customEnd) {
       return { startDate: customStart, endDate: customEnd + 'T23:59:59' };
     }
@@ -235,146 +224,88 @@ export function AdminIndexPage() {
     queryFn: () => listPurchases({ page: 1, limit: 500, startDate: purchaseDateRange.startDate, endDate: purchaseDateRange.endDate }),
   });
 
-  const purchasesTrendData = (() => {
-    const items = purchasesForChart.data?.items ?? [];
-    const byDate = new Map<string, { cost: number; quantity: number }>();
-    for (const p of items) {
-      const d = p.purchaseDate?.slice(0, 10) ?? 'unknown';
-      const entry = byDate.get(d) ?? { cost: 0, quantity: 0 };
-      entry.cost += p.totalCost;
-      entry.quantity += p.quantity;
-      byDate.set(d, entry);
-    }
-    // Sort by date
-    return Array.from(byDate.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, { cost, quantity }]) => ({ date: date.slice(5), cost: Math.round(cost * 100) / 100, quantity }));
-  })();
-
-  const stats = [
-    { key: t('admin.revenue'), value: dashboard.data ? formatPrice(dashboard.data.revenue, lang) : '—', icon: Banknote },
-    { key: t('admin.nav.orders'), value: dashboard.data?.orders ?? '—', icon: ShoppingBag },
-    { key: t('admin.overview.customers'), value: dashboard.data?.customers ?? '—', icon: Users },
-    { key: t('admin.status.pending'), value: dashboard.data?.pendingOrders ?? '—', icon: Package },
-    { key: t('admin.overview.recentRevenue'), value: dashboard.data ? formatPrice(dashboard.data.recentRevenue, lang) : '—', icon: TrendingUp },
-    { key: t('admin.overview.products'), value: dashboard.data?.products ?? '—', icon: Package },
-  ];
-
-  const reviewTiles = reviewStats.data
-    ? [
-        { label: t('admin.totalReviews'), value: String(reviewStats.data.total) },
-        { label: t('admin.avgRating'), value: reviewStats.data.average.toFixed(1) },
-        { label: t('admin.reviewsToday'), value: String(reviewStats.data.today) },
-        { label: t('admin.pendingReviews'), value: String(reviewStats.data.pending) },
-        { label: t('admin.fiveStarReviews'), value: String(reviewStats.data.fiveStar), tone: 'text-gold-400' },
-        { label: t('admin.oneStarReviews'), value: String(reviewStats.data.oneStar), tone: 'text-red-400' },
-        {
-          label: t('admin.restaurantRatingLabel'),
-          value: `${reviewStats.data.restaurantAverage.toFixed(1)} (${reviewStats.data.restaurantTotal})`,
-        },
-      ]
-    : [];
-
-  const financial = dashboard.data
-    ? [
-        { key: t('admin.totalOrders'), value: String(dashboard.data.orders), tone: 'text-[var(--tw-text)]' },
-        { key: t('admin.completedOrders'), value: String(dashboard.data.completedOrders), tone: 'text-emerald-400' },
-        { key: t('admin.cancelledOrders'), value: String(dashboard.data.cancelledOrders), tone: 'text-red-400' },
-        { key: t('admin.refundedOrders'), value: String(dashboard.data.refundedOrders), tone: 'text-[var(--tw-text-muted)]' },
-        { key: t('admin.complimentaryOrders'), value: String(dashboard.data.complimentaryOrders), tone: 'text-gold-400' },
-        { key: t('admin.grossRevenue'), value: formatPrice(dashboard.data.grossRevenue, lang), tone: 'text-[var(--tw-text)]' },
-        { key: t('admin.discounts'), value: formatPrice(dashboard.data.discounts, lang), tone: 'text-amber-400' },
-        { key: t('admin.deliveryFees'), value: formatPrice(dashboard.data.deliveryFees, lang), tone: 'text-[var(--tw-text)]' },
-        { key: t('admin.netRevenue'), value: formatPrice(dashboard.data.netRevenue, lang), tone: 'text-emerald-400' },
-      ]
-    : [];
-
-  const dayRows = dayStats.data
-    ? [
-        { key: t('admin.nav.orders'), value: String(dayStats.data.orders) },
-        { key: t('admin.completedOrders'), value: String(dayStats.data.completed) },
-        { key: t('admin.cancelledOrders'), value: String(dayStats.data.cancelled) },
-        { key: t('admin.refundedOrders'), value: String(dayStats.data.refunded) },
-        { key: t('admin.complimentaryOrders'), value: String(dayStats.data.complimentary) },
-        { key: t('admin.revenue'), value: formatPrice(dayStats.data.revenue, lang) },
-      ]
-    : [];
-
-  const trend = dashboard.data?.revenueTrend ?? [];
-  const trendData = trend.slice(-7);
-  const statuses = dashboard.data?.statusBreakdown ?? [];
-  const top = dashboard.data?.topProducts ?? [];
-
-  const metrics = period === 'custom' ? undefined : (dashboard.data?.periodOverview as Record<string, any>)?.[period];
-  const prevMetrics = period === 'custom' ? undefined : (dashboard.data?.periodOverview as Record<string, any>)?.[`prev_${period}`];
-
-  const calcTrend = (current: number | undefined, previous: number | undefined): { value: number; positive: boolean } | null => {
-    if (current === undefined || previous === undefined || previous === 0) return null;
-    const change = ((current - previous) / previous) * 100;
-    return { value: Math.abs(change), positive: change >= 0 };
-  };
-
-  const periodCards = [
-    {
-      key: t('admin.revenue'),
-      value: metrics ? formatPrice(metrics.revenue, lang) : '—',
-      icon: Banknote,
-      trend: calcTrend(metrics?.revenue, (prevMetrics as any)?.revenue),
-    },
-    {
-      key: t('admin.nav.orders'),
-      value: metrics?.orders ?? '—',
-      icon: ShoppingBag,
-      trend: calcTrend(metrics?.orders, (prevMetrics as any)?.orders),
-    },
-    {
-      key: t('admin.overview.productsSold'),
-      value: metrics?.unitsSold ?? '—',
-      icon: Package,
-      trend: calcTrend(metrics?.unitsSold, (prevMetrics as any)?.unitsSold),
-    },
-    {
-      key: t('admin.overview.customers'),
-      value: metrics?.customers ?? '—',
-      icon: Users,
-      trend: calcTrend(metrics?.customers, (prevMetrics as any)?.customers),
-    },
-  ];
-
+  // ─── Financial chart data ────────────────────────────────────
   const dailyStats = dashboard.data?.dailyStats ?? [];
-  const [showComparison, setShowComparison] = useState(false);
+  const financialData = useMemo(() => {
+    const purchasesByDate = new Map<string, number>();
+    for (const p of purchasesForChart.data?.items ?? []) {
+      const d = p.purchaseDate?.slice(0, 10) ?? '';
+      if (d) purchasesByDate.set(d, (purchasesByDate.get(d) ?? 0) + p.totalCost);
+    }
 
-  // Compute period date ranges
-  const now = new Date();
-  const periodStart = period === 'today'
-    ? new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 10)
-    : period === 'month'
-      ? new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      : period === 'year'
-        ? new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10)
-        : period === '3years'
-          ? new Date(now.getFullYear() - 3, 0, 1).toISOString().slice(0, 10)
-          : period === '5years'
-            ? new Date(now.getFullYear() - 5, 0, 1).toISOString().slice(0, 10)
-            : period === 'custom' && customStart
-              ? customStart
-              : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString().slice(0, 10);
-  const periodEnd = period === 'custom' && customEnd ? customEnd : undefined;
+    const salesByDate = new Map<string, number>();
+    for (const d of dailyStats) {
+      salesByDate.set(d.date, d.revenue);
+    }
 
-  // Compute previous period for comparison
-  const prevPeriodData = useMemo(() => {
-    if (period === 'custom' || period === '5years' || period === '3years') return [];
-    const startDate = new Date(periodStart);
-    const endDate = periodEnd ? new Date(periodEnd) : new Date();
-    const diffMs = endDate.getTime() - startDate.getTime();
-    const prevEnd = new Date(startDate.getTime() - 1);
-    const prevStart = new Date(prevEnd.getTime() - diffMs);
-    return dailyStats
-      .filter((d) => d.date >= prevStart.toISOString().slice(0, 10) && d.date <= prevEnd.toISOString().slice(0, 10))
-      .map((d) => ({ date: d.date, revenue: d.revenue, orders: d.orders }));
-  }, [dailyStats, periodStart, periodEnd, period]);
-  const unitsWindow = dailyStats.filter((d) => d.date >= periodStart && (!periodEnd || d.date <= periodEnd));
-  const periodTop: Array<{ _id?: string; name: string; count: number; revenue: number }> = (metrics?.topProducts as any) ?? [];
+    // Merge all dates
+    const allDates = new Set([...salesByDate.keys(), ...purchasesByDate.keys()]);
+    return Array.from(allDates)
+      .sort()
+      .map((date) => {
+        const sales = Math.round((salesByDate.get(date) ?? 0) * 100) / 100;
+        const purchases = Math.round((purchasesByDate.get(date) ?? 0) * 100) / 100;
+        const outgoing = purchases; // Outgoing = purchases cost
+        const revenue = sales - outgoing; // Revenue = sales - cost
+        return { date, sales, outgoing, purchases, revenue };
+      });
+  }, [dailyStats, purchasesForChart.data]);
+
+  // ─── Yearly aggregation for yearly view ──────────────────────
+  const yearlyData = useMemo(() => {
+    if (period !== 'year') return [];
+    const byYear = new Map<string, { sales: number; outgoing: number; purchases: number; revenue: number }>();
+    for (const d of financialData) {
+      const year = d.date.slice(0, 4);
+      const entry = byYear.get(year) ?? { sales: 0, outgoing: 0, purchases: 0, revenue: 0 };
+      entry.sales += d.sales;
+      entry.outgoing += d.outgoing;
+      entry.purchases += d.purchases;
+      entry.revenue += d.revenue;
+      byYear.set(year, entry);
+    }
+    return Array.from(byYear.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([year, data]) => ({ date: year, ...data }));
+  }, [financialData, period]);
+
+  // ─── KPI Cards ──────────────────────────────────────────────
+  const totalSales = salesStats.data?.salesValue ?? 0;
+  const totalPurchases = purchaseStats.data?.totalCost ?? 0;
+  const totalOutgoing = totalPurchases; // outgoing = cost of purchases
+  const totalRevenue = dashboard.data?.revenue ?? 0;
+  const netProfit = totalRevenue - totalOutgoing;
+  const orderCount = dashboard.data?.orders ?? 0;
+  const productCount = dashboard.data?.products ?? 0;
+
+  // ─── Purchases vs Sales chart data ───────────────────────────
+  const salesVsPurchasesData = useMemo(() => {
+    const salesByDate = new Map<string, number>();
+    for (const d of dailyStats) {
+      salesByDate.set(d.date, d.revenue);
+    }
+    const purchasesByDate = new Map<string, number>();
+    for (const p of purchasesForChart.data?.items ?? []) {
+      const d = p.purchaseDate?.slice(0, 10) ?? '';
+      if (d) purchasesByDate.set(d, (purchasesByDate.get(d) ?? 0) + p.totalCost);
+    }
+    const allDates = new Set([...salesByDate.keys(), ...purchasesByDate.keys()]);
+    return Array.from(allDates)
+      .sort()
+      .map((date) => ({
+        date: date.slice(5),
+        sales: Math.round((salesByDate.get(date) ?? 0) * 100) / 100,
+        purchases: Math.round((purchasesByDate.get(date) ?? 0) * 100) / 100,
+      }));
+  }, [dailyStats, purchasesForChart.data]);
+
+  // ─── Top products for chart ──────────────────────────────────
+  const periodTop = useMemo(() => {
+    const metrics = dashboard.data?.periodOverview as Record<string, any> | undefined;
+    if (!metrics) return [];
+    const periodMetrics = metrics[period] as { topProducts?: Array<{ _id?: string; name: string; count: number; revenue: number }> } | undefined;
+    return periodMetrics?.topProducts ?? [];
+  }, [dashboard.data, period]);
 
   return (
     <div>
@@ -396,13 +327,13 @@ export function AdminIndexPage() {
             <Button
               variant="outline"
               size="sm"
-              loading={purchaseResetMutation.isPending}
-              disabled={purchaseResetMutation.isPending}
-              onClick={() => setConfirmPurchaseReset(true)}
-              title={lang === 'ar' ? 'تصفير المشتريات' : 'Reset Purchases'}
+              loading={salesResetMutation.isPending}
+              disabled={salesResetMutation.isPending}
+              onClick={() => setConfirmSalesReset(true)}
+              title={t('admin.salesResetTitle')}
             >
-              <Eraser className="h-4 w-4" />
-              {lang === 'ar' ? 'تصفير المشتريات' : 'Reset Purchases'}
+              <TrendingDown className="h-4 w-4" />
+              {t('admin.salesReset')}
             </Button>
             <Button
               variant="outline"
@@ -428,6 +359,7 @@ export function AdminIndexPage() {
         }
       />
 
+      {/* ═══ KPI CARDS ═══ */}
       {dashboard.isError ? (
         <Card>
           <CardContent>
@@ -445,625 +377,413 @@ export function AdminIndexPage() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {stats.map(({ key, value, icon: Icon }) => (
-            <Card key={key} variant="interactive">
-              <CardContent className="flex items-center gap-4 p-5">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-xs font-medium text-[var(--tw-text-muted)]">{key}</p>
-                  <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">{value}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {/* 1. Total Sales */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
+                <TrendingUp className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'إجمالي المبيعات' : 'Total Sales'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
+                  {formatPrice(totalSales, lang)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 2. Total Outgoing */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
+                <TrendingUp className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'إجمالي المنصرف' : 'Total Outgoing'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-red-500">
+                  {formatPrice(totalOutgoing, lang)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 3. Total Purchases */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500">
+                <Package className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'إجمالي المشتريات' : 'Total Purchases'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-violet-500">
+                  {formatPrice(totalPurchases, lang)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 4. Revenue */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                <Banknote className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'الإيرادات' : 'Revenue'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-emerald-500">
+                  {formatPrice(totalRevenue, lang)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 5. Net Profit */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gold-500/10 text-gold-500">
+                <Banknote className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'صافي الربح' : 'Net Profit'}
+                </p>
+                <p className={cn('mt-0.5 text-xl font-extrabold tracking-tight', netProfit >= 0 ? 'text-fresh-400' : 'text-red-400')}>
+                  {formatPrice(netProfit, lang)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 6. Order Count */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ice-500/10 text-ice-500">
+                <ShoppingBag className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'عدد الطلبات' : 'Order Count'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
+                  {orderCount}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 7. Product Count */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                <Package className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'عدد المنتجات' : 'Product Count'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
+                  {productCount}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
-      {/* Sales / Outgoing & Inventory Stats */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {/* Sales / Outgoing Value */}
-        <Card variant="interactive">
-          <CardContent className="flex items-center gap-4 p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
-              <TrendingUp className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-xs font-medium text-[var(--tw-text-muted)]">
-                {lang === 'ar' ? 'المبيعات / المنصرف' : 'Sales / Outgoing'}
-              </p>
-              <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
-                {salesStats.data ? formatPrice(salesStats.data.salesValue, lang) : '—'}
-              </p>
-              {salesStats.data && (
-                <p className="text-xs text-[var(--tw-text-muted)]">
-                  {salesStats.data.salesQuantity} {lang === 'ar' ? 'وحدة' : 'units'}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Purchases */}
-        <Card variant="interactive">
-          <CardContent className="flex items-center gap-4 p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500">
-              <Package className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-xs font-medium text-[var(--tw-text-muted)]">
-                {lang === 'ar' ? 'المشتريات' : 'Purchases'}
-              </p>
-              <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
-                {purchaseStats.data ? formatPrice(purchaseStats.data.totalCost, lang) : '—'}
-              </p>
-              {purchaseStats.data && (
-                <p className="text-xs text-[var(--tw-text-muted)]">
-                  {purchaseStats.data.totalQuantity} {lang === 'ar' ? 'وحدة' : 'units'}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Available Stock */}
-        <Card variant="interactive">
-          <CardContent className="flex items-center gap-4 p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ice-500/10 text-ice-500">
-              <Package className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-xs font-medium text-[var(--tw-text-muted)]">
-                {lang === 'ar' ? 'المخزون المتاح' : 'Available Stock'}
-              </p>
-              <p className="mt-0.5 text-xl font-extrabold tracking-tight text-[var(--tw-text)]">
-                {inventoryStats.data ? inventoryStats.data.totalStockQuantity : '—'}
-              </p>
-              {inventoryStats.data && (
-                <p className="text-xs text-[var(--tw-text-muted)]">
-                  {inventoryStats.data.trackableProducts} {lang === 'ar' ? 'منتج يتتبع' : 'tracked products'}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Low Stock */}
-        <Card variant="interactive">
-          <CardContent className="flex items-center gap-4 p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
-              <Package className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-xs font-medium text-[var(--tw-text-muted)]">
-                {lang === 'ar' ? 'مخزون منخفض' : 'Low Stock'}
-              </p>
-              <p className="mt-0.5 text-xl font-extrabold tracking-tight text-amber-500">
-                {inventoryStats.data ? inventoryStats.data.lowStockCount : '—'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Out of Stock */}
-        <Card variant="interactive">
-          <CardContent className="flex items-center gap-4 p-5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
-              <Package className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-xs font-medium text-[var(--tw-text-muted)]">
-                {lang === 'ar' ? 'غير متوفر' : 'Out of Stock'}
-              </p>
-              <p className="mt-0.5 text-xl font-extrabold tracking-tight text-red-500">
-                {inventoryStats.data ? inventoryStats.data.outOfStockCount : '—'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ═══ CHARTS SECTION ═══ */}
+      {/* ═══ MAIN FINANCIAL CHART ═══ */}
       <div className="mt-6">
-        <h2 className="mb-4 text-lg font-bold tracking-tight text-[var(--tw-text)]">{lang === 'ar' ? 'الرسوم البيانية' : 'Charts & Analytics'}</h2>
-
-        {/* Period filter for all charts */}
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="inline-flex flex-wrap rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-0.5">
-            {(['today', 'week', 'month', 'year', '3years', '5years', 'custom'] as PeriodKey[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200',
-                  period === p ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
-                )}
-              >
-                {t(PERIOD_KEYS[p])}
-              </button>
-            ))}
-          </div>
-          {period === 'custom' ? (
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="h-8 w-36 text-xs"
-                max={customEnd || undefined}
-              />
-              <span className="text-xs text-[var(--tw-text-muted)]">—</span>
-              <Input
-                type="date"
-                value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="h-8 w-36 text-xs"
-                min={customStart || undefined}
-                max={new Date().toISOString().slice(0, 10)}
-              />
-            </div>
-          ) : null}
-          {/* Comparison toggle */}
-          {period !== 'custom' && prevPeriodData.length > 0 && (
-            <button
-              onClick={() => setShowComparison((v) => !v)}
-              className={cn(
-                'ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200',
-                showComparison
-                  ? 'bg-gold-500/15 text-gold-400 ring-1 ring-gold-500/30'
-                  : 'text-[var(--tw-text-muted)] hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]',
-              )}
-            >
-              <span className={cn('h-2 w-2 rounded-full', showComparison ? 'bg-gold-400' : 'bg-[var(--tw-text-subtle)]')} />
-              {lang === 'ar' ? 'مقارنة بالفترة السابقة' : 'Compare with previous period'}
-            </button>
-          )}
-        </div>
-
-        {/* Revenue Summary */}
-        {(() => {
-          const totalRevenue = dailyStats.filter((d) => {
-            if (period === 'custom' && customStart && customEnd) {
-              return d.date >= customStart && d.date <= customEnd;
-            }
-            return d.date >= periodStart;
-          }).reduce((sum, d) => sum + d.revenue, 0);
-          const totalCost = (purchasesForChart.data?.items ?? []).reduce((sum, p) => sum + p.totalCost, 0);
-          const netProfit = totalRevenue - totalCost;
-          const margin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
-          return (
-            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي المبيعات' : 'Total Sales'}</p>
-                <p className="mt-1.5 text-xl font-extrabold tracking-tight text-brand-500">{formatPrice(totalRevenue, lang)}</p>
-              </div>
-              <div className="rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي التكلفة' : 'Total Cost'}</p>
-                <p className="mt-1.5 text-xl font-extrabold tracking-tight text-violet-400">{formatPrice(totalCost, lang)}</p>
-              </div>
-              <div className="rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">{lang === 'ar' ? 'صافي الربح' : 'Net Profit'}</p>
-                <p className={cn('mt-1.5 text-xl font-extrabold tracking-tight', netProfit >= 0 ? 'text-fresh-400' : 'text-red-400')}>{formatPrice(netProfit, lang)}</p>
-              </div>
-              <div className="rounded-2xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-[var(--tw-text-muted)]">{lang === 'ar' ? 'هامش الربح' : 'Margin'}</p>
-                <p className={cn('mt-1.5 text-xl font-extrabold tracking-tight', margin >= 0 ? 'text-fresh-400' : 'text-red-400')}>{margin.toFixed(1)}%</p>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Row 1: Sales + Purchases */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-                <TrendingUp className="h-4 w-4 text-brand-400" />
-                {lang === 'ar' ? 'المبيعات على مدار الوقت' : 'Sales Over Time'}
-              </h3>
-              {trendData.length > 0 ? (
-                <SalesChart
-                  data={trendData}
-                  lang={lang}
-                  comparisonData={showComparison ? prevPeriodData : undefined}
-                  comparisonLabel={lang === 'ar' ? 'الفترة السابقة' : 'Previous Period'}
-                />
-              ) : (
-                <EmptyState title={t('admin.emptyList')} icon={<TrendingUp className="h-10 w-10" />} />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-                <Package className="h-4 w-4 text-violet-400" />
-                {lang === 'ar' ? 'المشتريات على مدار الوقت' : 'Purchases Over Time'}
-              </h3>
-              {purchasesForChart.isLoading ? (
-                <Skeleton className="h-64" />
-              ) : purchasesTrendData.length > 0 ? (
-                <PurchasesChart data={purchasesTrendData} lang={lang} />
-              ) : (
-                <EmptyState
-                  title={lang === 'ar' ? 'لا توجد مشتريات لهذه الفترة' : 'No purchases for this period'}
-                  icon={<Package className="h-10 w-10" />}
-                />
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Row 2: Sales vs Purchases + Revenue/Cost */}
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-                <TrendingUp className="h-4 w-4 text-emerald-400" />
-                {lang === 'ar' ? 'المبيعات مقابل المشتريات' : 'Sales vs Purchases'}
-              </h3>
-              {(() => {
-                // Build comparison data from dailyStats + purchasesForChart
-                const salesByDate = new Map<string, number>();
-                for (const d of dailyStats) {
-                  salesByDate.set(d.date, d.revenue);
-                }
-                const purchasesByDate = new Map<string, number>();
-                for (const p of purchasesForChart.data?.items ?? []) {
-                  const d = p.purchaseDate?.slice(0, 10) ?? '';
-                  if (d) purchasesByDate.set(d, (purchasesByDate.get(d) ?? 0) + p.totalCost);
-                }
-                // Merge all dates
-                const allDates = new Set([...salesByDate.keys(), ...purchasesByDate.keys()]);
-                const comparisonData = Array.from(allDates)
-                  .sort()
-                  .map((date) => ({
-                    date: date.slice(5),
-                    sales: Math.round((salesByDate.get(date) ?? 0) * 100) / 100,
-                    purchases: Math.round((purchasesByDate.get(date) ?? 0) * 100) / 100,
-                  }));
-                return comparisonData.length > 0 ? (
-                  <SalesVsPurchasesChart data={comparisonData} lang={lang} />
-                ) : (
-                  <EmptyState title={t('admin.emptyList')} icon={<TrendingUp className="h-10 w-10" />} />
-                );
-              })()}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-                <Banknote className="h-4 w-4 text-amber-400" />
-                {lang === 'ar' ? 'الإيرادات مقابل التكلفة' : 'Revenue vs Cost'}
-              </h3>
-              {(() => {
-                // Build revenue/cost from dailyStats + purchases
-                const salesByDate = new Map<string, number>();
-                for (const d of dailyStats) {
-                  salesByDate.set(d.date, d.revenue);
-                }
-                const purchasesByDate = new Map<string, number>();
-                for (const p of purchasesForChart.data?.items ?? []) {
-                  const d = p.purchaseDate?.slice(0, 10) ?? '';
-                  if (d) purchasesByDate.set(d, (purchasesByDate.get(d) ?? 0) + p.totalCost);
-                }
-                const allDates = new Set([...salesByDate.keys(), ...purchasesByDate.keys()]);
-                const revenueData = Array.from(allDates)
-                  .sort()
-                  .map((date) => ({
-                    label: date.slice(5),
-                    revenue: Math.round((salesByDate.get(date) ?? 0) * 100) / 100,
-                    cost: Math.round((purchasesByDate.get(date) ?? 0) * 100) / 100,
-                  }));
-                return revenueData.length > 0 ? (
-                  <RevenuesChart data={revenueData} lang={lang} />
-                ) : (
-                  <EmptyState title={t('admin.emptyList')} icon={<Banknote className="h-10 w-10" />} />
-                );
-              })()}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Row 3: Top Products + Order Status + Inventory */}
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-                <ShoppingBag className="h-4 w-4 text-brand-400" />
-                {lang === 'ar' ? 'أكثر المنتجات مبيعًا' : 'Top Selling Products'}
-              </h3>
-              {periodTop.length > 0 ? (
-                <TopProductsChart data={periodTop.map((p) => ({ name: p.name, count: p.count, revenue: p.revenue }))} lang={lang} />
-              ) : (
-                <EmptyState title={t('admin.emptyList')} icon={<ShoppingBag className="h-10 w-10" />} />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-                <Package className="h-4 w-4 text-emerald-400" />
-                {lang === 'ar' ? 'الطلبات حسب الحالة' : 'Orders by Status'}
-              </h3>
-              {statuses.length > 0 ? (
-                <OrdersDonutChart data={statuses} lang={lang} />
-              ) : (
-                <EmptyState title={t('admin.emptyList')} icon={<Package className="h-10 w-10" />} />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-                <Package className="h-4 w-4 text-amber-400" />
-                {lang === 'ar' ? 'حالة المخزون' : 'Inventory Status'}
-              </h3>
-              {inventoryStats.data ? (
-                <InventoryChart
-                  data={{
-                    available: inventoryStats.data.totalStockQuantity - inventoryStats.data.lowStockCount - inventoryStats.data.outOfStockCount,
-                    lowStock: inventoryStats.data.lowStockCount,
-                    outOfStock: inventoryStats.data.outOfStockCount,
-                  }}
-                  lang={lang}
-                />
-              ) : (
-                <EmptyState title={t('admin.emptyList')} icon={<Package className="h-10 w-10" />} />
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardContent className="p-4">
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.financialTitle')}</h3>
-            {financial.length > 0 ? (
-              <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
-                {financial.map(({ key, value, tone }) => (
-                  <div key={key}>
-                    <dt className="text-[11px] text-[var(--tw-text-muted)]">{key}</dt>
-                    <dd className={`mt-0.5 text-sm font-bold ${tone}`}>{value}</dd>
+          <CardContent className="p-5 sm:p-6">
+            {/* Header */}
+            <div className="mb-1 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold tracking-tight text-[var(--tw-text)]">
+                  {lang === 'ar' ? 'اتجاه المبيعات' : 'Sales Trend'}
+                </h3>
+                <p className="mt-0.5 text-xs text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'تحليل المبيعات خلال الفترة المحددة' : 'Sales analysis for the selected period'}
+                </p>
+              </div>
+              {/* Segmented time control */}
+              <div className="inline-flex flex-wrap rounded-lg border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-0.5">
+                {MAIN_CHART_PERIODS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    className={cn(
+                      'rounded-md px-2.5 py-1 text-[11px] font-semibold leading-5 transition-all duration-150',
+                      period === p
+                        ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20'
+                        : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
+                    )}
+                  >
+                    {t(PERIOD_KEYS[p])}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom date inputs */}
+            {period === 'custom' && (
+              <div className="mb-3 mt-3 flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="h-8 w-36 text-xs"
+                  max={customEnd || undefined}
+                />
+                <span className="text-xs text-[var(--tw-text-muted)]">—</span>
+                <Input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="h-8 w-36 text-xs"
+                  min={customStart || undefined}
+                  max={new Date().toISOString().slice(0, 10)}
+                />
+              </div>
+            )}
+
+            {/* Chart legend */}
+            {financialData.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-4">
+                {[
+                  { key: 'sales', label: lang === 'ar' ? 'المبيعات' : 'Sales', color: '#6366F1' },
+                  { key: 'outgoing', label: lang === 'ar' ? 'المنصرف' : 'Outgoing', color: '#EF4444' },
+                  { key: 'purchases', label: lang === 'ar' ? 'المشتريات' : 'Purchases', color: '#8B5CF6' },
+                  { key: 'revenue', label: lang === 'ar' ? 'الإيرادات' : 'Revenue', color: '#22C55E' },
+                ].map((item) => (
+                  <div key={item.key} className="flex items-center gap-1.5">
+                    <span className="inline-block h-1.5 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-[11px] text-[var(--tw-text-muted)]">{item.label}</span>
                   </div>
                 ))}
-              </dl>
-            ) : (
-              <EmptyState title={t('admin.emptyList')} icon={<Banknote className="h-10 w-10" />} />
+              </div>
             )}
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.dailyTitle')}</h3>
-              <Input
-                type="date"
-                value={day}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => setDay(e.target.value)}
-                className="h-9 w-44 text-sm"
-                aria-label={t('admin.selectDate')}
-              />
-            </div>
-            {dayStats.isLoading ? (
-              <Skeleton className="h-32" />
-            ) : dayStats.isError ? (
-              <ErrorState
-                title={t('common.loadError')}
-                onRetry={() => void dayStats.refetch()}
-                retryLabel={t('common.retry')}
-              />
-            ) : dayRows.length > 0 ? (
-              <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
-                {dayRows.map(({ key, value }) => (
-                  <div key={key}>
-                    <dt className="flex items-center gap-1.5 text-[11px] text-[var(--tw-text-muted)]">
-                      <CalendarDays className="h-3 w-3" />
-                      {key}
-                    </dt>
-                    <dd className="mt-0.5 text-sm font-bold text-[var(--tw-text)]">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            ) : (
-              <EmptyState title={t('admin.emptyList')} icon={<CalendarDays className="h-10 w-10" />} />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="mt-5">
-        <CardContent className="p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-              <Star className="h-4 w-4 text-gold-400" />
-              {t('admin.reviewsOverview')}
-            </h3>
-            <Link to="/admin/reviews" className="text-xs font-bold text-brand-400 hover:text-brand-300">
-              {t('admin.nav.reviews')}
-            </Link>
-          </div>
-          {reviewStats.isLoading ? (
-            <Skeleton className="h-28" />
-          ) : reviewStats.data ? (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-              {reviewTiles.map(({ label, value, tone }) => (
-                <div key={label} className="rounded-lg border border-[var(--tw-border)] bg-[var(--tw-bg)]/40 px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--tw-text-muted)]">{label}</p>
-                  <p className={cn('mt-0.5 text-base font-bold text-[var(--tw-text)]', tone)} dir="ltr">
-                    {value}
+            {/* Chart area */}
+            {period === 'year' ? (
+              yearlyData.length >= 2 ? (
+                <FinancialChart data={yearlyData} lang={lang} height={340} />
+              ) : (
+                <div className="flex h-[340px] items-center justify-center">
+                  <p className="text-sm text-[var(--tw-text-muted)]">
+                    {lang === 'ar' ? 'لا توجد بيانات كافية' : 'Not enough data'}
                   </p>
                 </div>
-              ))}
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <div className="mt-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-bold text-[var(--tw-text)]">{t('admin.periodTitle')}</h2>
-          <div className="inline-flex rounded-lg border border-[var(--tw-border)] bg-[var(--tw-surface)] p-0.5">
-            {(['today', 'week', 'month'] as PeriodKey[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
-                  period === p ? 'bg-brand-600 text-white' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
-                )}
-              >
-                {t(PERIOD_KEYS[p])}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {periodCards.map(({ key, value, icon: Icon, trend }) => (
-            <Card key={key}>
-              <CardContent className="flex items-center gap-3 p-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-600/15 text-brand-400">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-[var(--tw-text-muted)]">{key}</p>
-                  <div className="mt-0.5 flex items-center gap-2">
-                    <p className="truncate text-xl font-extrabold text-[var(--tw-text)]">{value}</p>
-                    {trend && (
-                      <span className={cn(
-                        'inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
-                        trend.positive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400',
-                      )}>
-                        {trend.positive ? '↑' : '↓'} {trend.value.toFixed(1)}%
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.topProducts')}</h3>
-              {periodTop.length > 0 ? (
-                <ul className="space-y-2">
-                  {periodTop.map((p) => (
-                    <li key={`${p._id}-${p.name}`} className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-xs font-medium text-[var(--tw-text-muted)]">{p.name}</span>
-                      <span className="shrink-0 text-xs text-[var(--tw-text-muted)]">
-                        {p.count}× · {formatPrice(p.revenue, lang)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <EmptyState title={t('admin.emptyList')} icon={<Package className="h-10 w-10" />} />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-                {period === 'today' ? t('admin.unitsToday') : period === 'month' ? t('admin.unitsThisMonth') : t('admin.unitsTrend', { days: 7 })}
-              </h3>
-              {unitsWindow.length > 0 ? (
-                <div className="flex h-40 items-end gap-2">
-                  {unitsWindow.map((d) => {
-                    const max = Math.max(...unitsWindow.map((x) => x.unitsSold), 1);
-                    return (
-                      <div key={d.date} className="flex flex-1 flex-col items-center gap-1">
-                        <div
-                          className="w-full rounded-t-md bg-gradient-to-t from-brand-500 to-gold-400"
-                          style={{ height: `${Math.max(4, (d.unitsSold / max) * 110)}px` }}
-                        />
-                        <span className="text-[10px] text-[var(--tw-text-muted)]">{d.date.slice(8)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <EmptyState title={t('admin.emptyList')} icon={<Package className="h-10 w-10" />} />
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        {trendData.length > 0 ? (
-          <Card className="lg:col-span-1">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.last7Days')}</h3>
-              <div className="flex h-40 items-end gap-2">
-                {trendData.map((d) => {
-                  const max = Math.max(...trendData.map((x) => x.revenue), 1);
-                  return (
-                    <div key={d.date} className="flex flex-1 flex-col items-center gap-1">
-                      <div
-                        className="w-full rounded-t-md bg-gradient-to-t from-brand-700 to-brand-500"
-                        style={{ height: `${Math.max(4, (d.revenue / max) * 110)}px` }}
-                      />
-                      <span className="text-[10px] text-[var(--tw-text-muted)]">{d.date.slice(8)}</span>
-                    </div>
-                  );
-                })}
+              )
+            ) : financialData.length > 0 ? (
+              <FinancialChart data={financialData} lang={lang} height={340} />
+            ) : (
+              <div className="flex h-[340px] items-center justify-center">
+                <EmptyState
+                  title={lang === 'ar' ? 'لا توجد بيانات لهذه الفترة' : 'No data for this period'}
+                  icon={<TrendingUp className="h-10 w-10" />}
+                />
               </div>
-            </CardContent>
-          </Card>
-        ) : null}
-
-        <Card className="lg:col-span-1">
-          <CardContent className="p-4">
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.statusTitle')}</h3>
-            {statuses.length > 0 ? (
-              <ul className="space-y-2">
-                {statuses.map((s) => (
-                  <li key={s.status} className="flex items-center justify-between gap-3">
-                    <StatusBadge status={s.status} />
-                    <span className="text-sm font-bold text-[var(--tw-text)]">{s.count}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyState title={t('admin.emptyList')} icon={<Package className="h-10 w-10" />} />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-1">
-          <CardContent className="p-4">
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">{t('admin.topProducts')}</h3>
-            {top.length > 0 ? (
-              <ul className="space-y-2">
-                {top.map((p) => (
-                  <li key={p._id} className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate text-sm font-semibold text-[var(--tw-text-muted)]">{p.name}</span>
-                    <span className="shrink-0 text-xs text-[var(--tw-text-muted)]">
-                      {p.count}× · {formatPrice(p.revenue, lang)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyState title={t('admin.emptyList')} icon={<Package className="h-10 w-10" />} />
             )}
           </CardContent>
         </Card>
       </div>
 
+      {/* ═══ ADDITIONAL CHARTS ═══ */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        {/* Chart 1: Sales by Category — donut */}
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-bold tracking-tight text-[var(--tw-text)]">
+              {lang === 'ar' ? 'المبيعات حسب الفئة' : 'Sales by Category'}
+            </h3>
+            {categorySales.isLoading ? (
+              <Skeleton className="h-56" />
+            ) : categorySales.data && categorySales.data.length > 0 ? (
+              <CategorySalesChart data={categorySales.data} lang={lang} />
+            ) : (
+              <EmptyState
+                title={lang === 'ar' ? 'لا توجد بيانات لهذه الفترة' : 'No data for this period'}
+                icon={<Package className="h-10 w-10" />}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Chart 2: Top Selling Products — horizontal bar */}
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-bold tracking-tight text-[var(--tw-text)]">
+              {lang === 'ar' ? 'أكثر المنتجات مبيعاً' : 'Top Selling Products'}
+            </h3>
+            {periodTop.length > 0 ? (
+              <TopProductsChart data={periodTop.map((p) => ({ name: p.name, count: p.count, revenue: p.revenue }))} lang={lang} />
+            ) : (
+              <EmptyState
+                title={lang === 'ar' ? 'لا توجد بيانات لهذه الفترة' : 'No data for this period'}
+                icon={<ShoppingBag className="h-10 w-10" />}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Chart 3: Purchases vs Sales — grouped bar */}
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-bold tracking-tight text-[var(--tw-text)]">
+              {lang === 'ar' ? 'المشتريات مقابل المبيعات' : 'Purchases vs Sales'}
+            </h3>
+            {salesVsPurchasesData.length > 0 ? (
+              <SalesVsPurchasesChart data={salesVsPurchasesData} lang={lang} />
+            ) : (
+              <EmptyState
+                title={lang === 'ar' ? 'لا توجد بيانات لهذه الفترة' : 'No data for this period'}
+                icon={<TrendingUp className="h-10 w-10" />}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ═══ INVENTORY SECTION ═══ */}
+      <div className="mt-6">
+        <Card>
+          <CardContent className="p-5 sm:p-6">
+            <h3 className="mb-4 text-base font-bold tracking-tight text-[var(--tw-text)]">
+              {lang === 'ar' ? 'المخزون' : 'Inventory'}
+            </h3>
+
+            {/* Summary KPIs */}
+            {inventoryStats.isLoading ? (
+              <Skeleton className="h-16" />
+            ) : inventoryStats.data ? (
+              <div className="mb-4 grid grid-cols-3 gap-3">
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
+                  <p className="text-2xl font-extrabold tabular-nums text-emerald-500">{inventoryStats.data.trackableProducts - inventoryStats.data.lowStockCount - inventoryStats.data.outOfStockCount}</p>
+                  <p className="mt-0.5 text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'المخزون المتاح' : 'Available'}</p>
+                </div>
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
+                  <p className="text-2xl font-extrabold tabular-nums text-amber-500">{inventoryStats.data.lowStockCount}</p>
+                  <p className="mt-0.5 text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'مخزون منخفض' : 'Low Stock'}</p>
+                </div>
+                <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-center">
+                  <p className="text-2xl font-extrabold tabular-nums text-red-500">{inventoryStats.data.outOfStockCount}</p>
+                  <p className="mt-0.5 text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'غير متوفر' : 'Out of Stock'}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Search */}
+            <div className="relative mb-4">
+              <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--tw-text-muted)]" />
+              <Input
+                value={inventorySearch}
+                onChange={(e) => setInventorySearch(e.target.value)}
+                placeholder={lang === 'ar' ? 'بحث عن منتج...' : 'Search products...'}
+                className="ps-9"
+              />
+            </div>
+
+            {/* Table */}
+            {inventoryStats.isLoading ? (
+              <Skeleton className="h-48" />
+            ) : inventoryStats.data ? (() => {
+              // Merge low-stock + out-of-stock + available into one list
+              const lowMap = new Map(inventoryStats.data.lowStockProducts.map(p => [p._id, p]));
+              const outMap = new Map(inventoryStats.data.outOfStockProducts.map(p => [p._id, p]));
+              
+              // Build full list from inventoryStats
+              const allProducts: Array<{
+                _id: string; name: string; nameEn: string; stockQuantity: number;
+                lowStockThreshold: number; category: string; status: 'out' | 'low' | 'ok';
+              }> = [];
+
+              // Out of stock
+              for (const p of outMap.values()) {
+                allProducts.push({
+                  _id: p._id, name: p.name, nameEn: p.nameEn,
+                  stockQuantity: p.stockQuantity, lowStockThreshold: 0,
+                  category: p.category, status: 'out',
+                });
+              }
+              // Low stock
+              for (const p of lowMap.values()) {
+                if (!outMap.has(p._id)) {
+                  allProducts.push({
+                    _id: p._id, name: p.name, nameEn: p.nameEn,
+                    stockQuantity: p.stockQuantity, lowStockThreshold: p.lowStockThreshold,
+                    category: p.category, status: 'low',
+                  });
+                }
+              }
+
+              // Filter by search
+              const filtered = inventorySearch.trim()
+                ? allProducts.filter(p =>
+                    p.name.includes(inventorySearch) ||
+                    p.nameEn.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+                    p.category.includes(inventorySearch)
+                  )
+                : allProducts;
+
+              if (filtered.length === 0) {
+                return (
+                  <EmptyState
+                    title={lang === 'ar' ? 'لا توجد منتجات لعرضها' : 'No products to display'}
+                    icon={<Package className="h-10 w-10" />}
+                  />
+                );
+              }
+
+              return (
+                <TableWrap>
+                  <thead>
+                    <tr>
+                      <Th>{lang === 'ar' ? 'اسم المنتج' : 'Product'}</Th>
+                      <Th>{lang === 'ar' ? 'التصنيف' : 'Category'}</Th>
+                      <Th>{lang === 'ar' ? 'الكمية المتاحة' : 'Stock'}</Th>
+                      <Th>{lang === 'ar' ? 'الحالة' : 'Status'}</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((p) => (
+                      <tr key={p._id} className="transition-colors hover:bg-[var(--tw-hover)]">
+                        <Td className="font-bold text-[var(--tw-text)]">{p.name}</Td>
+                        <Td className="text-[var(--tw-text-muted)]">{p.category || '—'}</Td>
+                        <Td className="tabular-nums">{p.stockQuantity}</Td>
+                        <Td>
+                          {p.status === 'out' ? (
+                            <span className="inline-flex items-center rounded-full border border-red-500/30 bg-red-500/15 px-2.5 py-1 text-xs font-bold text-red-400">
+                              {lang === 'ar' ? 'غير متوفر' : 'Out of Stock'}
+                            </span>
+                          ) : p.status === 'low' ? (
+                            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-400">
+                              {lang === 'ar' ? 'منخفض' : 'Low'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-400">
+                              {lang === 'ar' ? 'متوفر' : 'Available'}
+                            </span>
+                          )}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </TableWrap>
+              );
+            })() : null}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ═══ RESET MODAL ═══ */}
       <Modal open={confirmClear} onClose={closeClearModal} title={t('admin.systemResetTitle')} size="sm">
         <div className="mb-4 rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-relaxed text-[var(--tw-text-muted)]">
           <p className="mb-2 font-bold text-red-400">⚠️ {t('admin.systemResetWarning')}</p>
@@ -1116,34 +836,37 @@ export function AdminIndexPage() {
         </div>
       </Modal>
 
-      {/* Purchase Reset Modal */}
-      <Modal open={confirmPurchaseReset} onClose={closePurchaseResetModal} title={lang === 'ar' ? 'تصفير المشتريات' : 'Reset Purchases'} size="sm">
+      {/* ═══ SALES RESET MODAL ═══ */}
+      <Modal open={confirmSalesReset} onClose={closeSalesResetModal} title={t('admin.salesResetTitle')} size="sm">
         <div className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm leading-relaxed text-[var(--tw-text-muted)]">
-          <p className="mb-2 font-bold text-amber-400">⚠️ {lang === 'ar' ? 'هل أنت متأكد من تصفير المشتريات؟' : 'Are you sure you want to reset purchases?'}</p>
-          <p>{lang === 'ar' ? 'سيتم تصفير بيانات المشتريات فقط.' : 'Only purchase data will be cleared.'}</p>
-          <div className="mt-3">
-            <p className="mb-1 text-xs font-bold text-red-400">{lang === 'ar' ? 'سيتم مسح:' : 'Will be cleared:'}</p>
-            <ul className="list-inside list-disc space-y-0.5 text-xs text-[var(--tw-text-muted)]">
-              <li>{lang === 'ar' ? 'جميع سجلات المشتريات' : 'All purchase records'}</li>
-              <li>{lang === 'ar' ? 'إجمالي تكلفة المشتريات' : 'Total purchase cost'}</li>
-              <li>{lang === 'ar' ? 'عدد المشتريات' : 'Purchase count'}</li>
-            </ul>
-            <p className="mt-2 mb-1 text-xs font-bold text-emerald-400">{lang === 'ar' ? 'سيتم الحفاظ على:' : 'Will be preserved:'}</p>
-            <ul className="list-inside list-disc space-y-0.5 text-xs text-[var(--tw-text-muted)]">
-              <li>{lang === 'ar' ? 'المنتجات والأسعار' : 'Products and prices'}</li>
-              <li>{lang === 'ar' ? 'المخزون الحالي' : 'Current inventory'}</li>
-              <li>{lang === 'ar' ? 'الطلبات والعملاء' : 'Orders and customers'}</li>
-              <li>{lang === 'ar' ? 'البيانات الأخرى' : 'Other data'}</li>
-            </ul>
+          <p className="mb-2 font-bold text-amber-400">⚠️ {t('admin.salesResetWarning')}</p>
+          <p>{t('admin.salesResetConfirm')}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs font-bold text-amber-400">{t('admin.salesResetClearTitle')}</p>
+              <ul className="list-inside list-disc space-y-0.5 text-xs text-[var(--tw-text-muted)]">
+                <li>{lang === 'ar' ? 'إجمالي المبيعات' : 'Total Sales'}</li>
+              </ul>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-bold text-emerald-400">{t('admin.salesResetKeepTitle')}</p>
+              <ul className="list-inside list-disc space-y-0.5 text-xs text-[var(--tw-text-muted)]">
+                <li>{lang === 'ar' ? 'المنتجات' : 'Products'}</li>
+                <li>{lang === 'ar' ? 'العملاء' : 'Customers'}</li>
+                <li>{lang === 'ar' ? 'الطلبات' : 'Orders'}</li>
+                <li>{lang === 'ar' ? 'المشتريات' : 'Purchases'}</li>
+                <li>{lang === 'ar' ? 'الإيرادات' : 'Revenue'}</li>
+              </ul>
+            </div>
           </div>
         </div>
         <div className="mb-5">
           <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-            {lang === 'ar' ? 'اكتب RESET للتأكيد' : 'Type RESET to confirm'}
+            {t('admin.systemResetTypeHint')}
           </label>
           <Input
-            value={purchaseResetTyped}
-            onChange={(e) => setPurchaseResetTyped(e.target.value)}
+            value={salesResetTyped}
+            onChange={(e) => setSalesResetTyped(e.target.value)}
             placeholder="RESET"
             dir="ltr"
             className="h-10 w-full font-mono text-center tracking-[0.3em]"
@@ -1151,21 +874,22 @@ export function AdminIndexPage() {
           />
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={closePurchaseResetModal} disabled={purchaseResetMutation.isPending}>
-            {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+          <Button variant="outline" size="sm" onClick={closeSalesResetModal} disabled={salesResetMutation.isPending}>
+            {t('common.cancel')}
           </Button>
           <Button
             variant="primary"
             size="sm"
-            loading={purchaseResetMutation.isPending}
-            disabled={purchaseResetTyped.trim().toUpperCase() !== 'RESET'}
-            onClick={() => purchaseResetMutation.mutate()}
+            loading={salesResetMutation.isPending}
+            disabled={salesResetTyped.trim().toUpperCase() !== 'RESET'}
+            onClick={() => salesResetMutation.mutate()}
           >
-            {lang === 'ar' ? 'تأكيد التصفير' : 'Confirm Reset'}
+            {t('admin.salesReset')}
           </Button>
         </div>
       </Modal>
 
+      {/* ═══ RECENT ORDERS ═══ */}
       <div className="mt-6">
         <PageHeader title={t('admin.recentOrders')} />
         {recent.isLoading ? (
@@ -1218,7 +942,7 @@ export function AdminIndexPage() {
         )}
       </div>
 
-      {/* Export Modal */}
+      {/* ═══ EXPORT MODAL ═══ */}
       {showExportModal && (
         <Modal open onClose={() => { setShowExportModal(false); setExportPreview(null); }} size="lg">
           <div className="w-full max-w-3xl space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -1229,7 +953,6 @@ export function AdminIndexPage() {
               {lang === 'ar' ? 'تقرير مفصل عن كل منتج: المشتريات والمبيعات والمرتجعات والهدايا والفاقد' : 'Detailed report for every product: purchases, sales, returns, gifts, waste'}
             </p>
 
-            {/* Export Type */}
             <div className="flex gap-2">
               <button
                 onClick={() => setExportType('movement')}
@@ -1255,7 +978,6 @@ export function AdminIndexPage() {
               </button>
             </div>
 
-            {/* Period Selector */}
             <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
                 {lang === 'ar' ? 'فترة التقرير' : 'Reporting Period'}
@@ -1283,7 +1005,6 @@ export function AdminIndexPage() {
               </div>
             </div>
 
-            {/* Custom Date Range */}
             {exportPeriod === 'custom' && (
               <div className="flex items-center gap-2">
                 <div className="flex-1">
@@ -1302,7 +1023,6 @@ export function AdminIndexPage() {
               </div>
             )}
 
-            {/* Preview Button */}
             {exportType === 'movement' && (
               <Button
                 variant="outline"
@@ -1315,7 +1035,6 @@ export function AdminIndexPage() {
               </Button>
             )}
 
-            {/* Preview */}
             {exportPreview && (
               <div className="max-h-64 overflow-auto rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)]/50 p-4">
                 <p className="mb-2 text-xs font-bold text-[var(--tw-text-muted)]">
@@ -1361,7 +1080,6 @@ export function AdminIndexPage() {
               </div>
             )}
 
-            {/* Download Buttons */}
             <div className="flex gap-2">
               <Button
                 onClick={() => {

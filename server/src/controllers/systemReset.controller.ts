@@ -43,3 +43,19 @@ export const resetPurchasesHandler = asyncHandler(async (_req: Request, res: Res
     }, 'Purchases reset completed successfully'),
   );
 });
+
+/**
+ * POST /api/system/reset-sales
+ *
+ * Reset sales display — admin only.
+ * Sets salesClearedAt so the sales stats query only counts new orders.
+ */
+export const resetSalesHandler = asyncHandler(async (_req: Request, res: Response) => {
+  const result = await systemResetRepo.resetSales();
+
+  res.json(
+    new ApiResponse(200, {
+      ok: result.ok,
+    }, 'Sales reset completed successfully'),
+  );
+});

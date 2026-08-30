@@ -1,6 +1,7 @@
 import { query, withTransaction } from './index';
 
 const STATS_CUTOFF_KEY = 'statsClearedAt';
+const SALES_CUTOFF_KEY = 'salesClearedAt';
 
 /**
  * Returns the stats reset point. When the admin "Clear Stats" is used, every
@@ -10,6 +11,19 @@ const STATS_CUTOFF_KEY = 'statsClearedAt';
  */
 export const getStatsCutoff = async (): Promise<Date | null> => {
   const rows = await query<{ value: unknown }>('SELECT value FROM settings WHERE key = $1', [STATS_CUTOFF_KEY]);
+  const raw = rows[0]?.value;
+  if (!raw) return null;
+  const d = new Date(String(raw));
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+/**
+ * Returns the sales-specific reset point. When "Reset Sales" is used,
+ * only the sales KPI (المبيعات) is affected — revenue, outgoing,
+ * purchases, and all other dashboard metrics remain untouched.
+ */
+export const getSalesCutoff = async (): Promise<Date | null> => {
+  const rows = await query<{ value: unknown }>('SELECT value FROM settings WHERE key = $1', [SALES_CUTOFF_KEY]);
   const raw = rows[0]?.value;
   if (!raw) return null;
   const d = new Date(String(raw));

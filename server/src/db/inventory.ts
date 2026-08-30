@@ -1,5 +1,6 @@
 import { query, withTransaction, type ReadClient } from './index';
 import { ApiError } from '../utils/ApiError';
+import { getStatsCutoff, getSalesCutoff } from './analytics';
 
 /**
  * Get stock for a product size (if product has sizes) or product itself.
@@ -415,6 +416,7 @@ export const getSalesStats = async (
     totalRevenue: number;
   }>;
 }> => {
+  const cutoff = await getSalesCutoff();
   const conds: string[] = [
     `o.status IN ('confirmed', 'preparing', 'ready_for_delivery', 'on_delivery', 'completed')`,
   ];
@@ -428,6 +430,10 @@ export const getSalesStats = async (
   if (endDate) {
     values.push(endDate);
     conds.push(`o."createdAt" <= $${nxt()}::timestamptz`);
+  }
+  if (cutoff) {
+    values.push(cutoff.toISOString());
+    conds.push(`o."createdAt" >= $${nxt()}::timestamptz`);
   }
 
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';

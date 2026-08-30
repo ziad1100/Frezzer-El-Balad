@@ -100,6 +100,11 @@ export const clear = asyncHandler(async (_req: Request, res: Response) => {
   res.json(new ApiResponse(200, { ok: true }, 'Dashboard statistics reset'));
 });
 
+export const categorySales = asyncHandler(async (_req: Request, res: Response) => {
+  const data = await analyticsRepo.categorySales();
+  res.json(new ApiResponse(200, data, 'Category sales fetched'));
+});
+
 // ---------------------------------------------------------------------------
 // Arabic Excel export
 // ---------------------------------------------------------------------------

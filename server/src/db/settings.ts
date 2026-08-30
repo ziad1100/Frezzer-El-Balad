@@ -2,7 +2,7 @@ import { query } from './index';
 import { DEFAULT_SETTINGS } from '../constants';
 
 /** Internal settings keys that power features but must never be exposed to clients. */
-const INTERNAL_SETTINGS_KEYS = new Set(['statsClearedAt']);
+const INTERNAL_SETTINGS_KEYS = new Set(['statsClearedAt', 'salesClearedAt']);
 
 export const getSettingsMap = async (): Promise<Record<string, unknown>> => {
   const docs = await query<{ key: string; value: unknown }>('SELECT key, value FROM settings');
