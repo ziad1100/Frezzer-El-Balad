@@ -30,6 +30,7 @@ import {
   X,
   Bell,
   TrendingUp,
+  Warehouse,
 } from 'lucide-react';
 import { Logo } from '@/components/logo/Logo';
 import { useAppDispatch, useAppSelector } from '@/hooks';
@@ -68,6 +69,7 @@ const navGroups: { label: string; items: { to: string; icon: typeof LayoutDashbo
       { to: '/admin/purchases', icon: TrendingUp, label: 'admin.nav.purchases' },
       { to: '/admin/reviews', icon: Star, label: 'admin.nav.reviews' },
       { to: '/admin/users', icon: Users, label: 'admin.nav.users' },
+      { to: '/admin/inventory', icon: Warehouse, label: 'admin.nav.inventory' },
     ],
   },
   {

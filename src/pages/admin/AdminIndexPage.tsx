@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Banknote, Download, Eraser, Package, RefreshCw, Search, ShoppingBag, TrendingDown, TrendingUp, ShoppingCart } from 'lucide-react';
+import { Banknote, Download, Eraser, Package, RefreshCw, Search, ShoppingBag, TrendingDown, TrendingUp, ShoppingCart, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminListOrders, exportDashboard, getCategorySales, getDashboard, getInventoryStats, getPurchaseStats, getSalesStats, listPurchases, refreshDashboard, resetPurchases, resetSales, systemReset } from '@/api/admin';
 import { exportMovementReport, getMovementReport, type MovementReport } from '@/api/stock-movements';
@@ -300,6 +300,11 @@ export function AdminIndexPage() {
   const netProfit = totalRevenue - totalOutgoing;
   const orderCount = dashboard.data?.orders ?? 0;
   const productCount = dashboard.data?.products ?? 0;
+  const customerCount = dashboard.data?.customers ?? 0;
+  const pendingOrders = dashboard.data?.pendingOrders ?? 0;
+  const completedOrders = dashboard.data?.completedOrders ?? 0;
+  const cancelledOrders = dashboard.data?.cancelledOrders ?? 0;
+  const avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0;
 
   // ─── Purchases vs Sales chart data ───────────────────────────
   const salesVsPurchasesData = useMemo(() => {
@@ -530,6 +535,91 @@ export function AdminIndexPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 8. Total Customers */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-500">
+                <Users className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'عدد العملاء' : 'Total Customers'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-sky-500">
+                  {customerCount}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 9. Average Order Value */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
+                <Banknote className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'متوسط قيمة الطلب' : 'Avg Order Value'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-indigo-500">
+                  {formatPrice(avgOrderValue, lang)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 10. Pending Orders */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                <ShoppingBag className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'طلبات قيد الانتظار' : 'Pending Orders'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-amber-500">
+                  {pendingOrders}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 11. Completed Orders */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                <ShoppingBag className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'طلبات مكتملة' : 'Completed Orders'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-emerald-500">
+                  {completedOrders}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 12. Cancelled Orders */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
+                <ShoppingBag className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'طلبات ملغاة' : 'Cancelled Orders'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-red-500">
+                  {cancelledOrders}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -680,6 +770,58 @@ export function AdminIndexPage() {
               <EmptyState
                 title={lang === 'ar' ? 'لا توجد بيانات لهذه الفترة' : 'No data for this period'}
                 icon={<TrendingUp className="h-10 w-10" />}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ═══ ORDER STATUS BREAKDOWN ═══ */}
+      <div className="mt-6">
+        <Card>
+          <CardContent className="p-5 sm:p-6">
+            <h3 className="mb-4 text-base font-bold tracking-tight text-[var(--tw-text)]">
+              {lang === 'ar' ? 'حالة الطلبات' : 'Order Status Breakdown'}
+            </h3>
+            {dashboard.data?.statusBreakdown && dashboard.data.statusBreakdown.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {dashboard.data.statusBreakdown.map((s) => {
+                  const colors: Record<string, { bg: string; text: string; border: string }> = {
+                    pending: { bg: 'bg-amber-500/10', text: 'text-amber-500', border: 'border-amber-500/20' },
+                    confirmed: { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/20' },
+                    preparing: { bg: 'bg-indigo-500/10', text: 'text-indigo-500', border: 'border-indigo-500/20' },
+                    ready_for_delivery: { bg: 'bg-cyan-500/10', text: 'text-cyan-500', border: 'border-cyan-500/20' },
+                    on_delivery: { bg: 'bg-violet-500/10', text: 'text-violet-500', border: 'border-violet-500/20' },
+                    completed: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', border: 'border-emerald-500/20' },
+                    cancelled: { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/20' },
+                    refunded: { bg: 'bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-500/20' },
+                  };
+                  const c = colors[s.status] ?? { bg: 'bg-gray-500/10', text: 'text-gray-500', border: 'border-gray-500/20' };
+                  const statusLabels: Record<string, { ar: string; en: string }> = {
+                    pending: { ar: 'قيد الانتظار', en: 'Pending' },
+                    confirmed: { ar: 'مؤكد', en: 'Confirmed' },
+                    preparing: { ar: 'قيد التحضير', en: 'Preparing' },
+                    ready_for_delivery: { ar: 'جاهز للتسليم', en: 'Ready' },
+                    on_delivery: { ar: 'في الطريق', en: 'On Delivery' },
+                    completed: { ar: 'مكتمل', en: 'Completed' },
+                    cancelled: { ar: 'ملغي', en: 'Cancelled' },
+                    refunded: { ar: 'مسترجع', en: 'Refunded' },
+                  };
+                  const label = statusLabels[s.status] ?? { ar: s.status, en: s.status };
+                  return (
+                    <div key={s.status} className={cn('rounded-xl border p-4 text-center', c.border, c.bg)}>
+                      <p className={cn('text-2xl font-extrabold tabular-nums', c.text)}>{s.count}</p>
+                      <p className="mt-1 text-xs font-medium text-[var(--tw-text-muted)]">
+                        {lang === 'ar' ? label.ar : label.en}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState
+                title={lang === 'ar' ? 'لا توجد بيانات حالة الطلبات' : 'No order status data'}
+                icon={<ShoppingBag className="h-10 w-10" />}
               />
             )}
           </CardContent>
