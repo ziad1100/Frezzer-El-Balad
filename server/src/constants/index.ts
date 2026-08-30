@@ -124,6 +124,7 @@ export const PAYMENT_METHODS = {
   CASH: 'cash',
   CARD: 'card',
   VODAFONE_CASH: 'vodafone_cash',
+  INSTAPAY: 'instapay',
 } as const;
 
 export const PAYMENT_STATUS = {
