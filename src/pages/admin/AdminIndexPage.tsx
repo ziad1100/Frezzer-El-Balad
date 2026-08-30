@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -342,16 +342,37 @@ export function AdminIndexPage() {
   ];
 
   const dailyStats = dashboard.data?.dailyStats ?? [];
-  // Filter dailyStats to the actual calendar period for accurate display
+  const [showComparison, setShowComparison] = useState(false);
+
+  // Compute period date ranges
   const now = new Date();
   const periodStart = period === 'today'
     ? new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 10)
     : period === 'month'
       ? new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      : period === 'custom' && customStart
-        ? customStart
-        : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString().slice(0, 10);
+      : period === 'year'
+        ? new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10)
+        : period === '3years'
+          ? new Date(now.getFullYear() - 3, 0, 1).toISOString().slice(0, 10)
+          : period === '5years'
+            ? new Date(now.getFullYear() - 5, 0, 1).toISOString().slice(0, 10)
+            : period === 'custom' && customStart
+              ? customStart
+              : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString().slice(0, 10);
   const periodEnd = period === 'custom' && customEnd ? customEnd : undefined;
+
+  // Compute previous period for comparison
+  const prevPeriodData = useMemo(() => {
+    if (period === 'custom' || period === '5years' || period === '3years') return [];
+    const startDate = new Date(periodStart);
+    const endDate = periodEnd ? new Date(periodEnd) : new Date();
+    const diffMs = endDate.getTime() - startDate.getTime();
+    const prevEnd = new Date(startDate.getTime() - 1);
+    const prevStart = new Date(prevEnd.getTime() - diffMs);
+    return dailyStats
+      .filter((d) => d.date >= prevStart.toISOString().slice(0, 10) && d.date <= prevEnd.toISOString().slice(0, 10))
+      .map((d) => ({ date: d.date, revenue: d.revenue, orders: d.orders }));
+  }, [dailyStats, periodStart, periodEnd, period]);
   const unitsWindow = dailyStats.filter((d) => d.date >= periodStart && (!periodEnd || d.date <= periodEnd));
   const periodTop: Array<{ _id?: string; name: string; count: number; revenue: number }> = (metrics?.topProducts as any) ?? [];
 
@@ -584,6 +605,21 @@ export function AdminIndexPage() {
               />
             </div>
           ) : null}
+          {/* Comparison toggle */}
+          {period !== 'custom' && prevPeriodData.length > 0 && (
+            <button
+              onClick={() => setShowComparison((v) => !v)}
+              className={cn(
+                'ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200',
+                showComparison
+                  ? 'bg-gold-500/15 text-gold-400 ring-1 ring-gold-500/30'
+                  : 'text-[var(--tw-text-muted)] hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]',
+              )}
+            >
+              <span className={cn('h-2 w-2 rounded-full', showComparison ? 'bg-gold-400' : 'bg-[var(--tw-text-subtle)]')} />
+              {lang === 'ar' ? 'مقارنة بالفترة السابقة' : 'Compare with previous period'}
+            </button>
+          )}
         </div>
 
         {/* Revenue Summary */}
@@ -628,7 +664,12 @@ export function AdminIndexPage() {
                 {lang === 'ar' ? 'المبيعات على مدار الوقت' : 'Sales Over Time'}
               </h3>
               {trendData.length > 0 ? (
-                <SalesChart data={trendData} lang={lang} />
+                <SalesChart
+                  data={trendData}
+                  lang={lang}
+                  comparisonData={showComparison ? prevPeriodData : undefined}
+                  comparisonLabel={lang === 'ar' ? 'الفترة السابقة' : 'Previous Period'}
+                />
               ) : (
                 <EmptyState title={t('admin.emptyList')} icon={<TrendingUp className="h-10 w-10" />} />
               )}
