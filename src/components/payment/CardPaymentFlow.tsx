@@ -33,7 +33,7 @@ export function CardPaymentFlow({ amount, onCancel }: CardPaymentFlowProps) {
         <CreditCard className="h-8 w-8 text-brand-400" />
         <div>
           <h3 className="font-bold text-[var(--tw-text)]">
-            {isAr ? 'الدفع ببطاقة ائتمان' : 'Credit Card Payment'}
+            {isAr ? 'الدفع بالفيزا' : 'Visa Payment'}
           </h3>
           <p className="text-sm text-[var(--tw-text-muted)]">
             {isAr ? 'المبلغ:' : 'Amount:'} {amount.toLocaleString()} EGP

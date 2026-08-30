@@ -25,6 +25,7 @@ import { cn, formatPrice } from '@/lib/utils';
 import type { Role } from '@/types';
 import vodafoneLogo from '@/assets/vodafone.jpeg';
 import instapayLogo from '@/assets/instapay.jpeg';
+import visaLogo from '@/assets/visa.jpeg';
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
@@ -643,7 +644,7 @@ const PAYMENT_METHODS: Array<{
   { value: 'cash', icon: <Banknote className="h-5 w-5" />, labelAr: 'الدفع عند الاستلام', labelEn: 'Cash on Delivery', descAr: 'ادفع عند استلام الطلب', descEn: 'Pay when you receive your order', requiresSettings: 'cashOnDelivery' },
   { value: 'vodafone_cash', icon: <Banknote className="h-5 w-5" />, image: vodafoneLogo, labelAr: 'Vodafone Cash', labelEn: 'Vodafone Cash', descAr: 'محفظة إلكترونية', descEn: 'Digital wallet transfer', requiresSettings: 'vodafoneCash' },
   { value: 'instapay', icon: <Banknote className="h-5 w-5" />, image: instapayLogo, labelAr: 'InstaPay', labelEn: 'InstaPay', descAr: 'تحويل فوري عبر InstaPay', descEn: 'Instant transfer via InstaPay', requiresSettings: 'instapay' },
-  { value: 'card', icon: <CreditCard className="h-5 w-5" />, labelAr: 'بطاقة ائتمان', labelEn: 'Card', descAr: 'دفع إلكتروني آمن', descEn: 'Secure online payment', requiresSettings: 'card' },
+  { value: 'card', icon: <CreditCard className="h-5 w-5" />, image: visaLogo, labelAr: 'الدفع بالفيزا', labelEn: 'Visa Payment', descAr: 'دفع إلكتروني آمن عبر فيزا', descEn: 'Secure payment via Visa', requiresSettings: 'card' },
 ];
 
 function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
