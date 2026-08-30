@@ -88,15 +88,24 @@ export function AdminUsersPage() {
             </thead>
             <tbody>
               {users.data.items.map((u) => (
-                <tr key={u._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+                <tr key={u._id} className="group transition-colors hover:bg-[var(--tw-hover)]">
                   <Td>
-                    <p className="font-bold text-[var(--tw-text)]">{u.fullName}</p>
-                    <p dir="ltr" className="text-xs text-[var(--tw-text-muted)]">{u.phone}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500/10 text-sm font-bold text-brand-400">
+                        {u.fullName?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                      <div>
+                        <p className="font-bold tracking-tight text-[var(--tw-text)]">{u.fullName}</p>
+                        <p dir="ltr" className="text-xs text-[var(--tw-text-muted)]">{u.phone}</p>
+                      </div>
+                    </div>
                   </Td>
-                  <Td dir="ltr">{u.email}</Td>
+                  <Td dir="ltr">
+                    <span className="text-sm text-[var(--tw-text-muted)]">{u.email}</span>
+                  </Td>
                   <Td>
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-brand-500" />
+                      <ShieldCheck className="h-4 w-4 shrink-0 text-brand-500" />
                       <Select
                         value={u.role}
                         onChange={(e) => roleMutation.mutate({ id: u._id, role: e.target.value as Role })}

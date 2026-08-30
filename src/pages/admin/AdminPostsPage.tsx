@@ -134,13 +134,15 @@ export function AdminPostsPage() {
             </thead>
             <tbody>
               {posts.data.items.map((p) => (
-                <tr key={p._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+                <tr key={p._id} className="group transition-colors hover:bg-[var(--tw-hover)]">
                   <Td>
-                    <p className="flex items-center gap-2 font-bold text-[var(--tw-text)]">
-                      <FileText className="h-4 w-4 text-brand-500" />
+                    <p className="flex items-center gap-2 font-bold tracking-tight text-[var(--tw-text)]">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500/10">
+                        <FileText className="h-4 w-4 text-brand-400" />
+                      </span>
                       {p.title}
                     </p>
-                    {p.titleEn ? <p className="text-xs text-[var(--tw-text-muted)]">{p.titleEn}</p> : null}
+                    {p.titleEn ? <p className="ms-10 text-xs text-[var(--tw-text-muted)]">{p.titleEn}</p> : null}
                   </Td>
                   <Td>
                     {p.image ? (
@@ -149,7 +151,12 @@ export function AdminPostsPage() {
                       '—'
                     )}
                   </Td>
-                  <Td>{p.isPublished ? t('admin.enabled') : t('admin.disabled')}</Td>
+                  <Td>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${p.isPublished ? 'bg-emerald-500/10 text-emerald-400' : 'bg-[var(--tw-surface-alt)] text-[var(--tw-text-muted)]'}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${p.isPublished ? 'bg-emerald-400' : 'bg-[var(--tw-text-subtle)]'}`} />
+                      {p.isPublished ? t('admin.enabled') : t('admin.disabled')}
+                    </span>
+                  </Td>
                   <Td>{fmt(p.publishedAt)}</Td>
                   <Td className="text-end">
                     <div className="inline-flex gap-1">

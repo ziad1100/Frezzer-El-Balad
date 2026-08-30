@@ -177,7 +177,7 @@ export function AdminReviewsPage() {
             </thead>
             <tbody>
               {reviews.data.items.map((r) => (
-                <tr key={r._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+                <tr key={r._id} className="group transition-colors hover:bg-[var(--tw-hover)]">
                   <Td>
                     <div className="flex items-center gap-3">
                       {productImage(r) ? (
@@ -187,7 +187,7 @@ export function AdminReviewsPage() {
                           {t(r.reviewType === 'restaurant' ? 'review.experienceTitle' : 'admin.mealReviews')}
                         </span>
                       )}
-                      <span className="max-w-[180px] truncate font-semibold text-[var(--tw-text)]">{productName(r)}</span>
+                      <span className="max-w-[180px] truncate font-bold tracking-tight text-[var(--tw-text)]">{productName(r)}</span>
                     </div>
                   </Td>
                   <Td>

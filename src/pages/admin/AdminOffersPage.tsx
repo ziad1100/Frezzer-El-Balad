@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BadgePercent, Pencil, Plus, Trash2 } from 'lucide-react';
+import { BadgePercent, Pencil, Plus, Trash2, Percent, DollarSign, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminListOffers, adminListProducts, createOffer, deleteOffer, updateOffer } from '@/api/admin';
 import { Button } from '@/components/ui/Button';
@@ -156,18 +156,34 @@ export function AdminOffersPage() {
           </thead>
           <tbody>
             {(offers.data ?? []).map((o) => (
-              <tr key={o._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+              <tr key={o._id} className="group transition-colors hover:bg-[var(--tw-hover)]">
                 <Td>
-                  <p className="flex items-center gap-2 font-bold text-[var(--tw-text)]">
-                    <BadgePercent className="h-4 w-4 text-brand-500" />
+                  <p className="flex items-center gap-2 font-bold tracking-tight text-[var(--tw-text)]">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gold-500/10">
+                      <BadgePercent className="h-4 w-4 text-gold-400" />
+                    </span>
                     {o.title}
                   </p>
                 </Td>
-                <Td>{o.discountType === 'percent' ? t('admin.percent') : t('admin.fixed')}</Td>
-                <Td>{o.discountType === 'percent' ? `${o.discountValue}%` : `${o.discountValue} EGP`}</Td>
-                <Td>{o.startDate.slice(0, 10)}</Td>
-                <Td>{o.endDate.slice(0, 10)}</Td>
-                <Td>{o.isActive ? t('admin.enabled') : t('admin.disabled')}</Td>
+                <Td>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--tw-surface-alt)] px-2.5 py-1 text-xs font-bold">
+                    {o.discountType === 'percent' ? <Percent className="h-3 w-3" /> : <DollarSign className="h-3 w-3" />}
+                    {o.discountType === 'percent' ? t('admin.percent') : t('admin.fixed')}
+                  </span>
+                </Td>
+                <Td>
+                  <span className="text-sm font-extrabold tracking-tight text-gold-400">
+                    {o.discountType === 'percent' ? `${o.discountValue}%` : `${o.discountValue} EGP`}
+                  </span>
+                </Td>
+                <Td><span className="text-xs text-[var(--tw-text-muted)]"><Calendar className="mr-1 inline h-3 w-3" />{o.startDate.slice(0, 10)}</span></Td>
+                <Td><span className="text-xs text-[var(--tw-text-muted)]">{o.endDate.slice(0, 10)}</span></Td>
+                <Td>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${o.isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-[var(--tw-surface-alt)] text-[var(--tw-text-muted)]'}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${o.isActive ? 'bg-emerald-400' : 'bg-[var(--tw-text-subtle)]'}`} />
+                    {o.isActive ? t('admin.enabled') : t('admin.disabled')}
+                  </span>
+                </Td>
                 <Td className="text-end">
                   <div className="inline-flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(o)} aria-label={t('common.edit')}>

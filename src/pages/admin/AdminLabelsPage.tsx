@@ -119,9 +119,7 @@ export function AdminLabelsPage() {
         <TableWrap>
           <thead>
             <tr>
-              <Th>{lang === 'ar' ? 'اللون' : 'Color'}</Th>
-              <Th>{t('admin.nameAr')}</Th>
-              <Th>{t('admin.nameEn')}</Th>
+              <Th>{lang === 'ar' ? 'البطاقة' : 'Label'}</Th>
               <Th>{lang === 'ar' ? 'المنتجات' : 'Products'}</Th>
               <Th>{t('admin.available')}</Th>
               <Th className="text-end">{t('admin.actions')}</Th>
@@ -129,21 +127,21 @@ export function AdminLabelsPage() {
           </thead>
           <tbody>
             {labels.data.map((l) => (
-              <tr key={l._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
+              <tr key={l._id} className="group transition-colors hover:bg-[var(--tw-hover)]">
                 <Td>
-                  <span
-                    className="inline-block h-6 w-6 rounded-full border border-[var(--tw-border-strong)]"
-                    style={{ backgroundColor: l.color }}
-                  />
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="h-8 w-8 shrink-0 rounded-full ring-2 ring-inset ring-white/10 shadow-sm"
+                      style={{ backgroundColor: l.color }}
+                    />
+                    <div>
+                      <p className="font-bold tracking-tight text-[var(--tw-text)]">{l.name}</p>
+                      {l.nameEn && <p className="text-xs text-[var(--tw-text-muted)]">{l.nameEn}</p>}
+                    </div>
+                  </div>
                 </Td>
                 <Td>
-                  <p className="font-bold text-[var(--tw-text)]">{l.name}</p>
-                </Td>
-                <Td>
-                  <p className="text-sm text-[var(--tw-text-muted)]">{l.nameEn || '—'}</p>
-                </Td>
-                <Td>
-                  <span className="text-sm text-[var(--tw-text-muted)]">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-500/10 px-2.5 py-1 text-xs font-bold text-brand-400">
                     {l.productCount ?? 0} {lang === 'ar' ? 'منتج' : 'products'}
                   </span>
                 </Td>

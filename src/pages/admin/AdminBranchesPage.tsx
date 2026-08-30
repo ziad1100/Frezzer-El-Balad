@@ -154,14 +154,17 @@ export function AdminBranchesPage() {
           </thead>
           <tbody>
             {branches.data.map((b) => (
-              <tr key={b._id} className="transition-colors hover:hover:bg-[var(--tw-hover)]">
-                <Td>
-                  <p className="flex items-center gap-2 font-bold text-[var(--tw-text)]">
-                    <MapPin className="h-4 w-4 text-brand-500" />
-                    {b.name}
-                  </p>
-                  {b.nameEn ? <p className="text-xs text-[var(--tw-text-muted)]">{b.nameEn}</p> : null}
-                </Td>
+              <tr key={b._id} className="group transition-colors hover:bg-[var(--tw-hover)]">                  <Td>
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500/10">
+                        <MapPin className="h-4 w-4 text-brand-400" />
+                      </span>
+                      <div>
+                        <p className="font-bold tracking-tight text-[var(--tw-text)]">{b.name}</p>
+                        {b.nameEn && <p className="text-xs text-[var(--tw-text-muted)]">{b.nameEn}</p>}
+                      </div>
+                    </div>
+                  </Td>
                 <Td className="max-w-xs">{b.address}</Td>
                 <Td dir="ltr">{b.phone}</Td>
                 <Td>

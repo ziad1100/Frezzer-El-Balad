@@ -17,10 +17,10 @@ import {
   type PendingPaymentItem,
 } from '@/api/payment';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, Skeleton } from '@/components/ui/Card';
+import { Skeleton } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { PageHeader, Pagination } from '@/components/admin/primitives';
+import { PageHeader, Pagination, TableWrap, Td, Th } from '@/components/admin/primitives';
 import { formatPrice } from '@/lib/utils';
 
 export function AdminPaymentsPage() {
@@ -86,85 +86,65 @@ export function AdminPaymentsPage() {
         <Skeleton className="h-96" />
       ) : pendingPayments.data && pendingPayments.data.items.length > 0 ? (
         <>
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--tw-border)] text-left text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
-                      <th className="px-4 py-3">{isAr ? 'رقم الطلب' : 'Order'}</th>
-                      <th className="px-4 py-3">{isAr ? 'العميل' : 'Customer'}</th>
-                      <th className="px-4 py-3">{isAr ? 'المبلغ' : 'Amount'}</th>
-                      <th className="px-4 py-3">{isAr ? 'طريقة الدفع' : 'Method'}</th>
-                      <th className="px-4 py-3">{isAr ? 'رقم العملية' : 'Reference'}</th>
-                      <th className="px-4 py-3">{isAr ? 'رقم الهاتف' : 'Phone'}</th>
-                      <th className="px-4 py-3">{isAr ? 'التاريخ' : 'Date'}</th>
-                      <th className="px-4 py-3 text-end">{isAr ? 'إجراءات' : 'Actions'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pendingPayments.data.items.map((item) => (
-                      <tr key={item.id} className="border-b border-[var(--tw-border)]/50 transition-colors hover:bg-[var(--tw-surface-alt)]/30">
-                        <td className="px-4 py-3 font-bold text-[var(--tw-text)]">#{item.orderNo}</td>
-                        <td className="px-4 py-3">
-                          <p className="text-[var(--tw-text)]">{item.customerName}</p>
-                          <p className="text-xs text-[var(--tw-text-muted)]" dir="ltr">{item.phone}</p>
-                        </td>
-                        <td className="px-4 py-3 font-bold text-[var(--tw-text)]">
-                          {formatPrice(item.amount, lang)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="rounded-md bg-brand-500/15 px-2 py-0.5 text-xs font-bold text-brand-400">
-                            {paymentMethodLabel(item.paymentMethod)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-[var(--tw-text-muted)]">
-                          {item.transactionReference || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-[var(--tw-text-muted)]" dir="ltr">
-                          {item.senderPhone || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-[var(--tw-text-muted)]">
-                          {fmtDate(item.createdAt)}
-                        </td>
-                        <td className="px-4 py-3 text-end">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setSelectedTransaction(item)}
-                              title={isAr ? 'عرض التفاصيل' : 'View details'}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-emerald-400 hover:bg-emerald-500/10"
-                              loading={approveMutation.isPending}
-                              onClick={() => approveMutation.mutate(item.id)}
-                              title={isAr ? 'تأكيد الدفع' : 'Approve payment'}
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-400 hover:bg-red-500/10"
-                              onClick={() => { setRejectTarget(item); setShowRejectDialog(true); setRejectReason(''); }}
-                              title={isAr ? 'رفض الدفع' : 'Reject payment'}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          <TableWrap>
+            <thead>
+              <tr>
+                <Th>{isAr ? 'رقم الطلب' : 'Order'}</Th>
+                <Th>{isAr ? 'العميل' : 'Customer'}</Th>
+                <Th>{isAr ? 'المبلغ' : 'Amount'}</Th>
+                <Th>{isAr ? 'طريقة الدفع' : 'Method'}</Th>
+                <Th>{isAr ? 'رقم العملية' : 'Reference'}</Th>
+                <Th>{isAr ? 'التاريخ' : 'Date'}</Th>
+                <Th className="text-end">{isAr ? 'إجراءات' : 'Actions'}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingPayments.data.items.map((item) => (
+                <tr key={item.id} className="group transition-colors hover:bg-[var(--tw-hover)]">
+                  <Td>
+                    <span className="font-mono font-bold tracking-tight text-[var(--tw-text)]">#{item.orderNo}</span>
+                  </Td>
+                  <Td>
+                    <p className="font-bold text-[var(--tw-text)]">{item.customerName}</p>
+                    <p className="text-xs text-[var(--tw-text-muted)]" dir="ltr">{item.phone}</p>
+                  </Td>
+                  <Td>
+                    <span className="text-sm font-extrabold tracking-tight text-brand-400">
+                      {formatPrice(item.amount, lang)}
+                    </span>
+                  </Td>
+                  <Td>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-500/10 px-2.5 py-1 text-xs font-bold text-brand-400">
+                      {paymentMethodLabel(item.paymentMethod)}
+                    </span>
+                  </Td>
+                  <Td>
+                    <span className="font-mono text-xs text-[var(--tw-text-muted)]">
+                      {item.transactionReference || '—'}
+                    </span>
+                  </Td>
+                  <Td>
+                    <span className="text-xs text-[var(--tw-text-muted)]">
+                      {fmtDate(item.createdAt)}
+                    </span>
+                  </Td>
+                  <Td className="text-end">
+                    <div className="inline-flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => setSelectedTransaction(item)} title={isAr ? 'عرض التفاصيل' : 'View details'}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-emerald-400 hover:bg-emerald-500/10" loading={approveMutation.isPending} onClick={() => approveMutation.mutate(item.id)} title={isAr ? 'تأكيد الدفع' : 'Approve payment'}>
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-red-400 hover:bg-red-500/10" onClick={() => { setRejectTarget(item); setShowRejectDialog(true); setRejectReason(''); }} title={isAr ? 'رفض الدفع' : 'Reject payment'}>
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </TableWrap>
           <Pagination
             page={pendingPayments.data.page}
             pages={pendingPayments.data.pages}
@@ -172,14 +152,17 @@ export function AdminPaymentsPage() {
           />
         </>
       ) : (
-        <Card>
-          <CardContent className="py-14 text-center">
-            <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-500/50" />
-            <p className="text-sm text-[var(--tw-text-muted)]">
-              {isAr ? 'لا توجد مدفوعات تنتظر التحقق' : 'No pending payments to verify'}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-3xl border border-[var(--tw-card-border)] bg-[var(--tw-card-bg)] py-16 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10">
+            <CheckCircle className="h-8 w-8 text-emerald-400" />
+          </div>
+          <p className="text-sm font-bold text-[var(--tw-text)]">
+            {isAr ? 'لا توجد مدفوعات تنتظر التحقق' : 'No pending payments to verify'}
+          </p>
+          <p className="mt-1 text-xs text-[var(--tw-text-muted)]">
+            {isAr ? 'جميع المدفوعات تم التحقق منها' : 'All payments have been verified'}
+          </p>
+        </div>
       )}
 
       {/* Transaction Detail Modal */}

@@ -70,16 +70,26 @@ export function AdminContactsPage() {
             {(contacts.data.items ?? []).map((c) => (
               <tr
                 key={c._id}
-                className={`transition-colors hover:hover:bg-[var(--tw-hover)] ${c.isRead ? 'opacity-60' : ''}`}
+                className={`group transition-colors hover:bg-[var(--tw-hover)] ${c.isRead ? 'opacity-60' : ''}`}
               >
                 <Td>
-                  <p className="font-bold text-[var(--tw-text)]">{c.name}</p>
-                  <p dir="ltr" className="text-xs text-[var(--tw-text-muted)]">{c.email}</p>
+                  <div className="flex items-center gap-3">
+                    {!c.isRead && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-400" />}
+                    <div>
+                      <p className="font-bold tracking-tight text-[var(--tw-text)]">{c.name}</p>
+                      <p dir="ltr" className="text-xs text-[var(--tw-text-muted)]">{c.email}</p>
+                    </div>
+                  </div>
                 </Td>
                 <Td className="max-w-xs truncate">{c.message}</Td>
                 <Td dir="ltr">{c.phone}</Td>
                 <Td>{fmt(c.createdAt)}</Td>
-                <Td>{c.isRead ? t('admin.markedRead') : t('admin.status.pending')}</Td>
+                <Td>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${c.isRead ? 'bg-[var(--tw-surface-alt)] text-[var(--tw-text-muted)]' : 'bg-brand-500/10 text-brand-400'}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${c.isRead ? 'bg-[var(--tw-text-subtle)]' : 'bg-brand-400'}`} />
+                    {c.isRead ? t('admin.markedRead') : t('admin.status.pending')}
+                  </span>
+                </Td>
                 <Td className="text-end">
                   <div className="inline-flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => setSelected(c)} aria-label={t('common.viewAll')}>
