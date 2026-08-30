@@ -6,12 +6,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { Lock, AlertTriangle, Tag, ShoppingBag, Check, CreditCard, Banknote, Minus, Plus } from 'lucide-react';
+import { Lock, AlertTriangle, Tag, ShoppingBag, Check, Banknote, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { createOrder, getSettings } from '@/api/orders';
 import { getPaymentSettings, type PaymentSettings } from '@/api/payment';
 import { VodafoneCashFlow } from '@/components/payment/VodafoneCashFlow';
-import { CardPaymentFlow } from '@/components/payment/CardPaymentFlow';
 import { InstaPayFlow } from '@/components/payment/InstaPayFlow';
 import { validateCoupon } from '@/api/coupons';
 import { clearCoupon, clearCart, selectSubtotal, setCoupon } from '@/store/slices/cartSlice';
@@ -25,7 +24,7 @@ import { cn, formatPrice } from '@/lib/utils';
 import type { Role } from '@/types';
 import vodafoneLogo from '@/assets/vodafone.jpeg';
 import instapayLogo from '@/assets/instapay.jpeg';
-import visaLogo from '@/assets/visa.jpeg';
+
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
@@ -194,12 +193,11 @@ export function CheckoutPage() {
   };
 
   const isManualPayment = selectedPaymentMethod === 'vodafone_cash' || selectedPaymentMethod === 'instapay';
-  const isCardPayment = selectedPaymentMethod === 'card';
 
   const orderMutation = useMutation({
     mutationFn: (values: FormValues) => createOrder(buildOrderPayload(values)),
     onSuccess: (order) => {
-      if (isManualPayment || isCardPayment) {
+      if (isManualPayment) {
         setCreatedOrderId(order._id);
         toast.success(t('checkout.orderSuccess'));
       } else {
@@ -215,7 +213,7 @@ export function CheckoutPage() {
   const adminOrderMutation = useMutation({
     mutationFn: (values: AdminFormValues) => createOrder(buildOrderPayload(values)),
     onSuccess: (order) => {
-      if (isManualPayment || isCardPayment) {
+      if (isManualPayment) {
         setCreatedOrderId(order._id);
         toast.success(t('checkout.orderSuccess'));
       } else {
@@ -588,19 +586,7 @@ export function CheckoutPage() {
               />
             )}
 
-            {selectedPaymentMethod === 'card' && (
-              <CardPaymentFlow
-                orderId={createdOrderId}
-                amount={Math.max(0, total)}
-                provider={paymentSettings.data?.card?.provider ?? 'none'}
-                onSuccess={() => {
-                  dispatch(clearCoupon());
-                  dispatch(clearCart());
-                  navigate(isAdmin ? '/admin/orders' : '/orders', { replace: true });
-                }}
-                onCancel={() => setCreatedOrderId(null)}
-              />
-            )}
+
           </div>
         </div>
       )}
@@ -644,7 +630,7 @@ const PAYMENT_METHODS: Array<{
   { value: 'cash', icon: <Banknote className="h-5 w-5" />, labelAr: 'الدفع عند الاستلام', labelEn: 'Cash on Delivery', descAr: 'ادفع عند استلام الطلب', descEn: 'Pay when you receive your order', requiresSettings: 'cashOnDelivery' },
   { value: 'vodafone_cash', icon: <Banknote className="h-5 w-5" />, image: vodafoneLogo, labelAr: 'Vodafone Cash', labelEn: 'Vodafone Cash', descAr: 'محفظة إلكترونية', descEn: 'Digital wallet transfer', requiresSettings: 'vodafoneCash' },
   { value: 'instapay', icon: <Banknote className="h-5 w-5" />, image: instapayLogo, labelAr: 'InstaPay', labelEn: 'InstaPay', descAr: 'تحويل فوري عبر InstaPay', descEn: 'Instant transfer via InstaPay', requiresSettings: 'instapay' },
-  { value: 'card', icon: <CreditCard className="h-5 w-5" />, image: visaLogo, labelAr: 'الدفع بالفيزا', labelEn: 'Visa Payment', descAr: 'دفع إلكتروني آمن عبر فيزا', descEn: 'Secure payment via Visa', requiresSettings: 'card' },
+
 ];
 
 function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {

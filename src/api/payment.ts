@@ -109,18 +109,6 @@ export const getOrderPayments = (orderId: string): Promise<PaymentTransaction[]>
 export const getPaymentSettings = (): Promise<PaymentSettings> =>
   unwrap(api.get<ApiEnvelope<PaymentSettings>>('/payment/settings'));
 
-/**
- * Initiate a card (Visa) payment via Paymob.
- * Returns a redirect URL to Paymob's hosted checkout.
- */
-export const initCardPayment = (orderId: string): Promise<{ redirectUrl: string; transactionId: string }> =>
-  unwrap(api.post<ApiEnvelope<{ redirectUrl: string; transactionId: string }>>('/payment/card/init', { orderId }));
-
-/**
- * Check card payment status for an order.
- */
-export const getCardPaymentStatus = (orderId: string): Promise<{ paymentStatus: string; status: string; orderNo: string }> =>
-  unwrap(api.get<ApiEnvelope<{ paymentStatus: string; status: string; orderNo: string }>>(`/payment/card/status/${orderId}`));
 
 // ── Admin API ──────────────────────────────────────────────────────────────
 
