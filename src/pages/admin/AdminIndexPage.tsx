@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Banknote, Download, Eraser, Package, RefreshCw, Search, ShoppingBag, TrendingDown, TrendingUp } from 'lucide-react';
+import { Banknote, Download, Eraser, Package, RefreshCw, Search, ShoppingBag, TrendingDown, TrendingUp, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
-import { adminListOrders, exportDashboard, getCategorySales, getDashboard, getInventoryStats, getPurchaseStats, getSalesStats, listPurchases, refreshDashboard, resetSales, systemReset } from '@/api/admin';
+import { adminListOrders, exportDashboard, getCategorySales, getDashboard, getInventoryStats, getPurchaseStats, getSalesStats, listPurchases, refreshDashboard, resetPurchases, resetSales, systemReset } from '@/api/admin';
 import { exportMovementReport, getMovementReport, type MovementReport } from '@/api/stock-movements';
 import { getErrorMessage } from '@/lib/api';
 import { Card, CardContent, EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
@@ -122,6 +122,29 @@ export function AdminIndexPage() {
   const closeSalesResetModal = () => {
     setConfirmSalesReset(false);
     setSalesResetTyped('');
+  };
+
+  // ─── Reset Purchases ─────────────────────────────────────
+  const [confirmPurchasesReset, setConfirmPurchasesReset] = useState(false);
+  const [purchasesResetTyped, setPurchasesResetTyped] = useState('');
+
+  const purchasesResetMutation = useMutation({
+    mutationFn: resetPurchases,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', 'purchases'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] }),
+      ]);
+      toast.success(t('admin.purchasesResetSuccess'));
+      setConfirmPurchasesReset(false);
+      setPurchasesResetTyped('');
+    },
+    onError: () => toast.error(t('admin.purchasesResetError')),
+  });
+
+  const closePurchasesResetModal = () => {
+    setConfirmPurchasesReset(false);
+    setPurchasesResetTyped('');
   };
 
   // Export state
@@ -334,6 +357,17 @@ export function AdminIndexPage() {
             >
               <TrendingDown className="h-4 w-4" />
               {t('admin.salesReset')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              loading={purchasesResetMutation.isPending}
+              disabled={purchasesResetMutation.isPending}
+              onClick={() => setConfirmPurchasesReset(true)}
+              title={t('admin.purchasesResetTitle')}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {t('admin.purchasesReset')}
             </Button>
             <Button
               variant="outline"
@@ -885,6 +919,58 @@ export function AdminIndexPage() {
             onClick={() => salesResetMutation.mutate()}
           >
             {t('admin.salesReset')}
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal open={confirmPurchasesReset} onClose={closePurchasesResetModal} title={t('admin.purchasesResetTitle')} size="sm">
+        <div className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm leading-relaxed text-[var(--tw-text-muted)]">
+          <p className="mb-2 font-bold text-amber-400">⚠️ {t('admin.purchasesResetWarning')}</p>
+          <p>{t('admin.purchasesResetConfirm')}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs font-bold text-amber-400">{t('admin.purchasesResetClearTitle')}</p>
+              <ul className="list-inside list-disc space-y-0.5 text-xs text-[var(--tw-text-muted)]">
+                <li>{lang === 'ar' ? 'إجمالي المشتريات' : 'Total Purchases'}</li>
+              </ul>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-bold text-emerald-400">{t('admin.purchasesResetKeepTitle')}</p>
+              <ul className="list-inside list-disc space-y-0.5 text-xs text-[var(--tw-text-muted)]">
+                <li>{lang === 'ar' ? 'المنتجات' : 'Products'}</li>
+                <li>{lang === 'ar' ? 'العملاء' : 'Customers'}</li>
+                <li>{lang === 'ar' ? 'الطلبات' : 'Orders'}</li>
+                <li>{lang === 'ar' ? 'المبيعات' : 'Sales'}</li>
+                <li>{lang === 'ar' ? 'الإيرادات' : 'Revenue'}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div className="mb-5">
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+            {t('admin.systemResetTypeHint')}
+          </label>
+          <Input
+            value={purchasesResetTyped}
+            onChange={(e) => setPurchasesResetTyped(e.target.value)}
+            placeholder="RESET"
+            dir="ltr"
+            className="h-10 w-full font-mono text-center tracking-[0.3em]"
+            autoComplete="off"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={closePurchasesResetModal} disabled={purchasesResetMutation.isPending}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={purchasesResetMutation.isPending}
+            disabled={purchasesResetTyped.trim().toUpperCase() !== 'RESET'}
+            onClick={() => purchasesResetMutation.mutate()}
+          >
+            {t('admin.purchasesReset')}
           </Button>
         </div>
       </Modal>
