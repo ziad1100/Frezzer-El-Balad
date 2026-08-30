@@ -1,6 +1,6 @@
 import { query, withTransaction, type ReadClient } from './index';
 import { ApiError } from '../utils/ApiError';
-import { getStatsCutoff, getSalesCutoff } from './analytics';
+import { getSalesCutoff } from './analytics';
 
 /**
  * Get stock for a product size (if product has sizes) or product itself.

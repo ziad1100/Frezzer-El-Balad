@@ -17,6 +17,7 @@ import { ApiResponse } from '../utils/ApiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
 import type { AuthRequest } from '../middlewares/auth';
 import { ROLES, PAYMENT_STATUS } from '../constants';
+import { paymentManager } from '../services/payment/paymentAdapter';
 
 /**
  * Submit a manual payment (Vodafone Cash, Bank Transfer, InstaPay).
@@ -235,6 +236,121 @@ export const getPaymentSettings = asyncHandler(async (_req: Request, res: Respon
 
   const settings = result[0]?.value ?? defaultSettings;
   res.json(new ApiResponse(200, settings));
+});
+
+/**
+ * Initiate a card (Visa) payment via Paymob.
+ *
+ * Creates a Paymob payment session for an existing order and returns
+ * the redirect URL where the customer enters card details on Paymob's
+ * hosted checkout.
+ *
+ * POST /api/v1/payments/card/init
+ * Body: { orderId: string }
+ */
+export const initCardPayment = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { orderId } = req.body;
+  if (!orderId) throw new ApiError(400, 'Order ID is required');
+
+  // Get the order
+  const order = await ordersRepo.getById(orderId);
+  if (!order) throw new ApiError(404, 'Order not found');
+
+  // Verify the order belongs to this user (or user is admin)
+  const userId = req.user!.id;
+  const isAdmin = req.user!.role === ROLES.ADMIN || req.user!.role === ROLES.MANAGER || req.user!.role === ROLES.EMPLOYEE;
+  const orderUserId = typeof order.user === 'string' ? order.user : (order.user as { _id: string })?._id;
+
+  if (!isAdmin && orderUserId !== userId) {
+    throw new ApiError(403, 'You can only initiate payment for your own orders');
+  }
+
+  // Verify payment method is card
+  if (order.paymentMethod !== 'card') {
+    throw new ApiError(400, 'This order does not use card payment');
+  }
+
+  // Verify order is in a payable state
+  const payableStatuses = ['pending', 'confirmed'];
+  if (!payableStatuses.includes(order.status as string)) {
+    throw new ApiError(400, 'This order cannot be paid in its current status');
+  }
+
+  // Check if there's already a pending card payment transaction (idempotency)
+  const existingTransactions = await paymentRepo.getTransactionsByOrder(orderId);
+  const pendingCardTx = existingTransactions.find(
+    (tx) => tx.paymentMethod === 'card' && tx.provider === 'paymob' && ['pending', 'processing'].includes(tx.status),
+  );
+  if (pendingCardTx) {
+    throw new ApiError(409, 'A card payment is already in progress for this order');
+  }
+
+  // Get the paymob provider
+  const paymobProvider = paymentManager.getProvider('paymob');
+  if (!paymobProvider) {
+    throw new ApiError(503, 'Card payment is not configured. Please contact the administrator.');
+  }
+
+  // Create payment request
+  const paymentRequest = {
+    orderId: order.id as string,
+    orderNo: order.orderNo as string,
+    amount: Number(order.total),
+    currency: 'EGP',
+    method: 'card' as const,
+    customerName: order.customerName as string,
+    customerPhone: order.phone as string,
+    description: `Order ${order.orderNo}`,
+  };
+
+  // Charge via Paymob
+  const result = await paymobProvider.charge(paymentRequest);
+
+  if (!result.success || !result.redirectUrl) {
+    throw new ApiError(502, result.errorMessage ?? 'Failed to initiate card payment');
+  }
+
+  // Store the payment transaction
+  await paymentRepo.createTransaction({
+    orderId: order.id as string,
+    paymentMethod: 'card',
+    provider: 'paymob',
+    amount: Number(order.total),
+    status: 'processing',
+    providerTransactionId: result.transactionId ?? '',
+    transactionReference: result.reference ?? '',
+    metadata: {
+      paymobOrderId: result.transactionId,
+      paymobToken: result.reference,
+    },
+  });
+
+  // Update order payment status to processing
+  await paymentRepo.updateOrderPaymentStatus(orderId, 'processing');
+
+  res.json(new ApiResponse(200, {
+    redirectUrl: result.redirectUrl,
+    transactionId: result.transactionId,
+  }, 'Card payment initiated'));
+});
+
+/**
+ * Check card payment status for an order.
+ * Used by the frontend to poll for payment confirmation after redirect.
+ *
+ * GET /api/v1/payments/card/status/:orderId
+ */
+export const getCardPaymentStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { orderId } = req.params;
+
+  const order = await ordersRepo.getById(orderId);
+  if (!order) throw new ApiError(404, 'Order not found');
+
+  res.json(new ApiResponse(200, {
+    paymentStatus: order.paymentStatus ?? 'pending',
+    status: order.status,
+    orderNo: order.orderNo,
+  }));
 });
 
 /**

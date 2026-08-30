@@ -19,6 +19,7 @@
  * Sandbox: https://accept.paymob.com/ (test mode)
  */
 
+import crypto from 'crypto';
 import type { PaymentProvider, PaymentRequest, PaymentResult, WebhookPayload } from '../paymentAdapter';
 
 export interface PaymobConfig {
@@ -261,30 +262,52 @@ export class PaymobPaymentProvider implements PaymentProvider {
     }
   }
 
+  /**
+   * Verify Paymob webhook HMAC signature.
+   * Paymob v2 webhooks send HMAC-SHA512 of the raw body using the webhook secret.
+   */
   async verifyWebhook(payload: WebhookPayload): Promise<WebhookPayload | null> {
     if (!this.config) return null;
 
-    // Paymob sends HMAC signature in headers for verification
-    // In production, verify payload.signature against HMAC-SHA512
+    // Verify HMAC signature if secret is configured
     if (this.config.webhookHmacSecret && payload.signature) {
-      // TODO: Implement HMAC verification when webhook secret is configured
-      // const expectedSignature = crypto.createHmac('sha512', this.config.webhookHmacSecret)
-      //   .update(payload.rawBody).digest('hex');
-      // if (payload.signature !== expectedSignature) return null;
+      try {
+        const expectedSignature = crypto
+          .createHmac('sha512', this.config.webhookHmacSecret)
+          .update(payload.rawBody)
+          .digest('hex');
+        // Constant-time comparison to prevent timing attacks
+        const sigBuffer = Buffer.from(payload.signature, 'hex');
+        const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+        if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+          console.warn('[payment:paymob] Webhook HMAC verification failed');
+          return null;
+        }
+      } catch (err) {
+        console.error('[payment:paymob] HMAC verification error:', err);
+        return null;
+      }
     }
 
     if (!payload.transactionId) return null;
 
-    // Determine status from metadata
+    // Determine status from metadata or top-level status field
+    // Paymob webhook sends: { status: "SUCCESS"|"FAILED", transaction_id, merchant_order_id, ... }
     const metadata = payload.metadata as Record<string, unknown> | undefined;
-    const paymobStatus = String(metadata?.transaction_status ?? '');
+    const paymobStatus = String(
+      metadata?.status ?? metadata?.transaction_status ?? payload.status ?? ''
+    ).toUpperCase();
     const statusMap: Record<string, PaymentStatus> = {
       'AUTHORIZATION_SUCCESS': 'paid',
       'CAPTURED': 'paid',
+      'SUCCESS': 'paid',
       'PEND': 'processing',
+      'PENDING': 'processing',
       'AUTHORIZATION_INVALID': 'failed',
+      'FAILED': 'failed',
       'EXPIRED': 'expired',
       'CANCELLED': 'cancelled',
+      'REFUNDED': 'refunded',
     };
 
     return {

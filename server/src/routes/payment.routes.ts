@@ -4,17 +4,23 @@ import { requireAuth, requirePermission } from '../middlewares/auth';
 
 const router = Router();
 
-// All routes require authentication
+// Public: payment settings (non-sensitive config) — no auth required
+router.get('/settings', payment.getPaymentSettings);
+
+// ── Authenticated routes below ──
 router.use(requireAuth);
 
 // Customer: submit manual payment proof
 router.post('/submit', payment.submitManualPayment);
 
+// Customer: initiate card (Visa) payment via Paymob
+router.post('/card/init', payment.initCardPayment);
+
+// Customer: check card payment status
+router.get('/card/status/:orderId', payment.getCardPaymentStatus);
+
 // Customer: get payment transactions for an order
 router.get('/order/:orderId', payment.getOrderPayments);
-
-// Public: payment settings (non-sensitive config)
-router.get('/settings', payment.getPaymentSettings);
 
 // Admin: payment verification
 router.get(

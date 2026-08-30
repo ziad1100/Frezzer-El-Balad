@@ -44,14 +44,15 @@ export const handleWebhook = asyncHandler(async (req: Request, res: Response) =>
   const rawBody = JSON.stringify(req.body);
 
   // Parse the webhook payload
+  // Paymob sends merchant_order_id for our internal order ID
   const payload = {
     provider,
     transactionId: req.body.transaction_id ?? req.body.referenceNumber ?? req.body.id ?? '',
-    orderId: req.body.order_id ?? req.body.merchantRefNumber ?? req.body.orderId ?? '',
+    orderId: req.body.merchant_order_id ?? req.body.order_id ?? req.body.merchantRefNumber ?? req.body.orderId ?? '',
     status: req.body.status ?? 'pending',
     amount: req.body.amount ?? req.body.amount_cents,
     rawBody,
-    signature: req.headers['x-signature'] as string ?? req.body.signature ?? '',
+    signature: req.headers['x-paymob-signature'] as string ?? req.headers['x-signature'] as string ?? req.body.signature ?? '',
     timestamp: req.body.timestamp ?? new Date().toISOString(),
     metadata: req.body,
   };
