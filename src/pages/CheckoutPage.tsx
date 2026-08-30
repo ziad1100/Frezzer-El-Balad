@@ -6,13 +6,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { Lock, AlertTriangle, Tag, ShoppingBag, Check, CreditCard, Banknote, Smartphone, Building, Zap, Minus, Plus } from 'lucide-react';
+import { Lock, AlertTriangle, Tag, ShoppingBag, Check, CreditCard, Banknote, Building, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { createOrder, getSettings } from '@/api/orders';
 import { getPaymentSettings, type PaymentSettings } from '@/api/payment';
 import { VodafoneCashFlow } from '@/components/payment/VodafoneCashFlow';
 import { CardPaymentFlow } from '@/components/payment/CardPaymentFlow';
 import { BankTransferFlow } from '@/components/payment/BankTransferFlow';
+import { InstaPayFlow } from '@/components/payment/InstaPayFlow';
 import { validateCoupon } from '@/api/coupons';
 import { clearCoupon, clearCart, selectSubtotal, setCoupon } from '@/store/slices/cartSlice';
 import { useAppDispatch, useAppSelector } from '@/hooks';
@@ -571,6 +572,19 @@ export function CheckoutPage() {
                 onCancel={() => setCreatedOrderId(null)}
               />
             )}
+            {selectedPaymentMethod === 'instapay' && paymentSettings.data?.instapay && (
+              <InstaPayFlow
+                orderId={createdOrderId}
+                amount={Math.max(0, total)}
+                settings={paymentSettings.data.instapay}
+                onSuccess={() => {
+                  dispatch(clearCoupon());
+                  dispatch(clearCart());
+                  navigate(isAdmin ? '/admin/orders' : '/orders', { replace: true });
+                }}
+                onCancel={() => setCreatedOrderId(null)}
+              />
+            )}
             {selectedPaymentMethod === 'bank_transfer' && paymentSettings.data?.bankTransfer && (
               <BankTransferFlow
                 orderId={createdOrderId}
@@ -626,12 +640,42 @@ function Row({ label, value, accent, free }: { label: string; value: string; acc
 
 type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'bank_transfer' | 'instapay';
 
-const PAYMENT_METHODS: Array<{ value: PaymentMethod; icon: ReactNode; labelAr: string; labelEn: string; requiresSettings?: keyof PaymentSettings }> = [
-  { value: 'cash', icon: <Banknote className="h-5 w-5" />, labelAr: 'الدفع عند الاستلام', labelEn: 'Cash on Delivery', requiresSettings: 'cashOnDelivery' },
-  { value: 'vodafone_cash', icon: <Smartphone className="h-5 w-5" />, labelAr: 'فودافون كاش', labelEn: 'Vodafone Cash', requiresSettings: 'vodafoneCash' },
-  { value: 'bank_transfer', icon: <Building className="h-5 w-5" />, labelAr: 'تحويل بنكي', labelEn: 'Bank Transfer', requiresSettings: 'bankTransfer' },
-  { value: 'instapay', icon: <Zap className="h-5 w-5" />, labelAr: 'انستاباي', labelEn: 'InstaPay', requiresSettings: 'instapay' },
-  { value: 'card', icon: <CreditCard className="h-5 w-5" />, labelAr: 'بطاقة ائتمان', labelEn: 'Credit Card', requiresSettings: 'card' },
+/* ── Brand Icons ─────────────────────────────────────────────── */
+function VodafoneCashIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="24" height="24" rx="6" fill="#E60000" />
+      <path d="M6 16.5V8.5L12 12.5L6 16.5Z" fill="white" />
+      <path d="M12 16.5V8.5L18 12.5L12 16.5Z" fill="white" fillOpacity="0.6" />
+    </svg>
+  );
+}
+
+function InstaPayIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="24" height="24" rx="6" fill="#004B87" />
+      <path d="M7 7H17V10H14V17H10V10H7V7Z" fill="white" />
+      <circle cx="17" cy="17" r="4" fill="#FFD700" />
+      <path d="M16 16L18 18M18 16L16 18" stroke="#004B87" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const PAYMENT_METHODS: Array<{
+  value: PaymentMethod;
+  icon: ReactNode;
+  labelAr: string;
+  labelEn: string;
+  descAr: string;
+  descEn: string;
+  requiresSettings?: keyof PaymentSettings;
+}> = [
+  { value: 'cash', icon: <Banknote className="h-5 w-5" />, labelAr: 'الدفع عند الاستلام', labelEn: 'Cash on Delivery', descAr: 'ادفع عند استلام الطلب', descEn: 'Pay when you receive your order', requiresSettings: 'cashOnDelivery' },
+  { value: 'vodafone_cash', icon: <VodafoneCashIcon className="h-6 w-6 rounded-md" />, labelAr: 'فودافون كاش', labelEn: 'Vodafone Cash', descAr: 'محفظة إلكترونية', descEn: 'Digital wallet transfer', requiresSettings: 'vodafoneCash' },
+  { value: 'bank_transfer', icon: <Building className="h-5 w-5" />, labelAr: 'تحويل بنكي', labelEn: 'Bank Transfer', descAr: 'تحويل إلى حساب بنكي', descEn: 'Transfer to bank account', requiresSettings: 'bankTransfer' },
+  { value: 'instapay', icon: <InstaPayIcon className="h-6 w-6 rounded-md" />, labelAr: 'انستاباي', labelEn: 'InstaPay', descAr: 'تحويل فوري عبر InstaPay', descEn: 'Instant transfer via InstaPay', requiresSettings: 'instapay' },
+  { value: 'card', icon: <CreditCard className="h-5 w-5" />, labelAr: 'بطاقة ائتمان', labelEn: 'Credit Card', descAr: 'دفع إلكتروني آمن', descEn: 'Secure online payment', requiresSettings: 'card' },
 ];
 
 function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
@@ -675,9 +719,14 @@ function PaymentMethodSelector({ lang, value, onChange, paymentSettings }: {
           )}>
             {method.icon}
           </span>
-          <span className={cn('text-sm font-bold', value === method.value ? 'text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)]')}>
-            {lang === 'ar' ? method.labelAr : method.labelEn}
-          </span>
+          <div className="min-w-0">
+            <span className={cn('text-sm font-bold', value === method.value ? 'text-[var(--tw-text)]' : 'text-[var(--tw-text-muted)]')}>
+              {lang === 'ar' ? method.labelAr : method.labelEn}
+            </span>
+            <p className="text-xs text-[var(--tw-text-subtle)]">
+              {lang === 'ar' ? method.descAr : method.descEn}
+            </p>
+          </div>
           {value === method.value && (
             <span className="ms-auto flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white">
               <Check className="h-3.5 w-3.5" />

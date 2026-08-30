@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input, Label, FieldError, Textarea } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
@@ -133,35 +133,41 @@ export function VodafoneCashFlow({ orderId, amount, settings, onSuccess, onCance
   return (
     <div className="space-y-5">
       {/* Wallet Number & Instructions */}
-      <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-4">
-        <h4 className="mb-2 text-sm font-bold text-brand-400">
-          {isAr ? '步骤 1: قم بالتحويل' : 'Step 1: Make the transfer'}
-        </h4>
-        <p className="mb-3 text-sm text-[var(--tw-text-muted)]">
+      <div className="rounded-2xl border border-[#E60000]/20 bg-gradient-to-br from-[#E60000]/10 via-[#E60000]/5 to-transparent p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#E60000]/15">
+            <Smartphone className="h-4 w-4 text-[#E60000]" />
+          </span>
+          <h4 className="text-sm font-bold text-[#E60000]">
+            {isAr ? 'الخطوة 1: قم بالتحويل عبر Vodafone Cash' : 'Step 1: Transfer via Vodafone Cash'}
+          </h4>
+        </div>
+        <p className="mb-4 text-sm leading-relaxed text-[var(--tw-text-muted)]">
           {settings.instructions[isAr ? 'ar' : 'en'] ||
             (isAr ? 'قم بالتحويل إلى رقم المحفظة التالي' : 'Transfer to the following wallet number')}
         </p>
         {settings.walletNumber && (
-          <div className="flex items-center justify-between rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] p-3">
-            <span className="text-sm text-[var(--tw-text-muted)]">
-              {isAr ? 'رقم المحفظة' : 'Wallet Number'}:
+          <div className="flex items-center justify-between rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] px-4 py-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--tw-text-muted)]">
+              {isAr ? 'رقم المحفظة' : 'Wallet Number'}
             </span>
             <span className="font-mono text-lg font-bold text-[var(--tw-text)]" dir="ltr">
               {settings.walletNumber}
             </span>
           </div>
         )}
-        <div className="mt-3 rounded-lg border border-gold-500/30 bg-gold-500/10 p-3">
+        <div className="mt-3 rounded-xl border border-gold-500/30 bg-gold-500/10 p-3">
           <p className="text-sm font-bold text-gold-400">
-            {isAr ? 'المبلغ المطلوب:' : 'Amount to pay:'} {amount.toLocaleString()} EGP
+            {isAr ? 'المبلغ المطلوب:' : 'Amount to pay:'}{' '}
+            <span className="text-lg">{amount.toLocaleString()} EGP</span>
           </p>
         </div>
       </div>
 
       {/* Transfer Details Form */}
       <div className="space-y-4">
-        <h4 className="text-sm font-bold text-[var(--tw-text-muted)]">
-          {isAr ? '步骤 2: أدخل بيانات التحويل' : 'Step 2: Enter transfer details'}
+        <h4 className="text-sm font-bold text-[var(--tw-text)]">
+          {isAr ? 'الخطوة 2: أدخل بيانات التحويل' : 'Step 2: Enter transfer details'}
         </h4>
 
         <div>
@@ -211,8 +217,8 @@ export function VodafoneCashFlow({ orderId, amount, settings, onSuccess, onCance
 
       {/* Proof Upload */}
       <div className="space-y-3">
-        <h4 className="text-sm font-bold text-[var(--tw-text-muted)]">
-          {isAr ? '步骤 3: إرفاق إثبات التحويل (اختياري)' : 'Step 3: Attach transfer proof (optional)'}
+        <h4 className="text-sm font-bold text-[var(--tw-text)]">
+          {isAr ? 'الخطوة 3: إرفاق إثبات التحويل (اختياري)' : 'Step 3: Attach transfer proof (optional)'}
         </h4>
 
         <div className="flex items-center gap-3">

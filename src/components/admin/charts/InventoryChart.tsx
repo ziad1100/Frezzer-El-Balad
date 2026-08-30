@@ -1,12 +1,9 @@
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
   Tooltip,
   ResponsiveContainer,
-  Cell,
 } from 'recharts';
 
 interface InventoryData {
@@ -20,6 +17,8 @@ interface InventoryChartProps {
   lang: string;
 }
 
+const COLORS = ['#22C55E', '#F59E0B', '#EF4444'];
+
 function CustomTooltip({ active, payload, lang }: any) {
   if (!active || !payload?.length) return null;
   const labels: Record<string, string> = {
@@ -28,11 +27,11 @@ function CustomTooltip({ active, payload, lang }: any) {
     outOfStock: lang === 'ar' ? 'نفد المخزون' : 'Out of Stock',
   };
   return (
-    <div className="rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] px-3 py-2 shadow-lg">
-      <p className="text-xs font-semibold text-[var(--tw-text)]">
-        {labels[payload[0]?.dataKey] ?? payload[0]?.dataKey}
+    <div className="rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] px-4 py-3 shadow-xl">
+      <p className="text-xs font-semibold text-[var(--tw-text-muted)]">
+        {labels[payload[0]?.name] ?? payload[0]?.name}
       </p>
-      <p className="mt-1 text-sm font-bold" style={{ color: payload[0]?.fill }}>
+      <p className="mt-1 text-lg font-extrabold" style={{ color: payload[0]?.fill }}>
         {payload[0]?.value}
       </p>
     </div>
@@ -40,53 +39,54 @@ function CustomTooltip({ active, payload, lang }: any) {
 }
 
 export function InventoryChart({ data, lang }: InventoryChartProps) {
-  const chartData = [
-    {
-      key: 'available',
-      label: lang === 'ar' ? 'متوفر' : 'Available',
-      value: data.available,
-      color: '#22C55E',
-    },
-    {
-      key: 'lowStock',
-      label: lang === 'ar' ? 'مخزون منخفض' : 'Low Stock',
-      value: data.lowStock,
-      color: '#F59E0B',
-    },
-    {
-      key: 'outOfStock',
-      label: lang === 'ar' ? 'نفد المخزون' : 'Out of Stock',
-      value: data.outOfStock,
-      color: '#EF4444',
-    },
-  ];
+  const total = data.available + data.lowStock + data.outOfStock;
+  if (total === 0) return null;
 
-  const hasData = chartData.some((d) => d.value > 0);
-  if (!hasData) return null;
+  const chartData = [
+    { name: 'available', label: lang === 'ar' ? 'متوفر' : 'Available', value: data.available, color: COLORS[0] },
+    { name: 'lowStock', label: lang === 'ar' ? 'مخزون منخفض' : 'Low Stock', value: data.lowStock, color: COLORS[1] },
+    { name: 'outOfStock', label: lang === 'ar' ? 'نفد المخزون' : 'Out of Stock', value: data.outOfStock, color: COLORS[2] },
+  ].filter((d) => d.value > 0);
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
-      <BarChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--tw-border)" strokeOpacity={0.5} />
-        <XAxis
-          dataKey="label"
-          tick={{ fontSize: 11, fill: 'var(--tw-text-muted)' }}
-          tickLine={false}
-          axisLine={false}
-        />
-        <YAxis
-          tick={{ fontSize: 11, fill: 'var(--tw-text-muted)' }}
-          tickLine={false}
-          axisLine={false}
-          allowDecimals={false}
-        />
-        <Tooltip content={<CustomTooltip lang={lang} />} />
-        <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={48}>
-          {chartData.map((entry) => (
-            <Cell key={entry.key} fill={entry.color} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="flex flex-col items-center">
+      <ResponsiveContainer width="100%" height={200}>
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="50%"
+            innerRadius={55}
+            outerRadius={85}
+            paddingAngle={4}
+            dataKey="value"
+            nameKey="name"
+            stroke="none"
+          >
+            {chartData.map((entry) => (
+              <Cell key={entry.name} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomTooltip lang={lang} />} />
+        </PieChart>
+      </ResponsiveContainer>
+      {/* Center label */}
+      <div className="relative -mt-28 mb-8 text-center">
+        <p className="text-2xl font-extrabold tracking-tight text-[var(--tw-text)]">{total}</p>
+        <p className="text-xs text-[var(--tw-text-muted)]">
+          {lang === 'ar' ? 'إجمالي' : 'Total'}
+        </p>
+      </div>
+      {/* Legend */}
+      <div className="flex flex-wrap justify-center gap-4">
+        {chartData.map((d) => (
+          <div key={d.name} className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+            <span className="text-xs text-[var(--tw-text-muted)]">{d.label}</span>
+            <span className="text-xs font-bold text-[var(--tw-text)]">{d.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

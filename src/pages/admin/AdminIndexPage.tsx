@@ -21,12 +21,15 @@ import { OrdersDonutChart } from '@/components/admin/charts/OrdersDonutChart';
 import { InventoryChart } from '@/components/admin/charts/InventoryChart';
 import { RevenuesChart } from '@/components/admin/charts/RevenuesChart';
 
-type PeriodKey = 'today' | 'week' | 'month' | 'custom';
+type PeriodKey = 'today' | 'week' | 'month' | 'year' | '3years' | '5years' | 'custom';
 
 const PERIOD_KEYS: Record<PeriodKey, string> = {
   today: 'admin.overview.today',
   week: 'admin.overview.thisWeek',
   month: 'admin.overview.thisMonth',
+  year: 'admin.overview.thisYear',
+  '3years': 'admin.overview.last3Years',
+  '5years': 'admin.overview.last5Years',
   custom: 'admin.overview.custom',
 };
 
@@ -77,6 +80,10 @@ export function AdminIndexPage() {
         queryClient.invalidateQueries({ queryKey: ['admin', 'day'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'reviews'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'offers'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'sales'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'purchases'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'inventory'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'purchases', 'chart'] }),
       ]);
       toast.success(t('admin.systemResetSuccess'));
       setConfirmClear(false);
@@ -201,6 +208,19 @@ export function AdminIndexPage() {
       const me = today.toISOString().slice(0, 10);
       return { startDate: ms, endDate: me + 'T23:59:59' };
     }
+    if (period === 'year') {
+      const ys = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
+      const ye = today.toISOString().slice(0, 10);
+      return { startDate: ys, endDate: ye + 'T23:59:59' };
+    }
+    if (period === '3years') {
+      const start = new Date(now.getFullYear() - 3, 0, 1).toISOString().slice(0, 10);
+      return { startDate: start, endDate: today.toISOString().slice(0, 10) + 'T23:59:59' };
+    }
+    if (period === '5years') {
+      const start = new Date(now.getFullYear() - 5, 0, 1).toISOString().slice(0, 10);
+      return { startDate: start, endDate: today.toISOString().slice(0, 10) + 'T23:59:59' };
+    }
     if (period === 'custom' && customStart && customEnd) {
       return { startDate: customStart, endDate: customEnd + 'T23:59:59' };
     }
@@ -285,12 +305,40 @@ export function AdminIndexPage() {
   const statuses = dashboard.data?.statusBreakdown ?? [];
   const top = dashboard.data?.topProducts ?? [];
 
-  const metrics = period === 'custom' ? undefined : dashboard.data?.periodOverview?.[period];
+  const metrics = period === 'custom' ? undefined : (dashboard.data?.periodOverview as Record<string, any>)?.[period];
+  const prevMetrics = period === 'custom' ? undefined : (dashboard.data?.periodOverview as Record<string, any>)?.[`prev_${period}`];
+
+  const calcTrend = (current: number | undefined, previous: number | undefined): { value: number; positive: boolean } | null => {
+    if (current === undefined || previous === undefined || previous === 0) return null;
+    const change = ((current - previous) / previous) * 100;
+    return { value: Math.abs(change), positive: change >= 0 };
+  };
+
   const periodCards = [
-    { key: t('admin.revenue'), value: metrics ? formatPrice(metrics.revenue, lang) : '—', icon: Banknote },
-    { key: t('admin.nav.orders'), value: metrics?.orders ?? '—', icon: ShoppingBag },
-    { key: t('admin.overview.productsSold'), value: metrics?.unitsSold ?? '—', icon: Package },
-    { key: t('admin.overview.customers'), value: metrics?.customers ?? '—', icon: Users },
+    {
+      key: t('admin.revenue'),
+      value: metrics ? formatPrice(metrics.revenue, lang) : '—',
+      icon: Banknote,
+      trend: calcTrend(metrics?.revenue, (prevMetrics as any)?.revenue),
+    },
+    {
+      key: t('admin.nav.orders'),
+      value: metrics?.orders ?? '—',
+      icon: ShoppingBag,
+      trend: calcTrend(metrics?.orders, (prevMetrics as any)?.orders),
+    },
+    {
+      key: t('admin.overview.productsSold'),
+      value: metrics?.unitsSold ?? '—',
+      icon: Package,
+      trend: calcTrend(metrics?.unitsSold, (prevMetrics as any)?.unitsSold),
+    },
+    {
+      key: t('admin.overview.customers'),
+      value: metrics?.customers ?? '—',
+      icon: Users,
+      trend: calcTrend(metrics?.customers, (prevMetrics as any)?.customers),
+    },
   ];
 
   const dailyStats = dashboard.data?.dailyStats ?? [];
@@ -305,7 +353,7 @@ export function AdminIndexPage() {
         : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString().slice(0, 10);
   const periodEnd = period === 'custom' && customEnd ? customEnd : undefined;
   const unitsWindow = dailyStats.filter((d) => d.date >= periodStart && (!periodEnd || d.date <= periodEnd));
-  const periodTop = metrics?.topProducts ?? [];
+  const periodTop: Array<{ _id?: string; name: string; count: number; revenue: number }> = (metrics?.topProducts as any) ?? [];
 
   return (
     <div>
@@ -502,13 +550,13 @@ export function AdminIndexPage() {
 
         {/* Period filter for all charts */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="inline-flex rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-0.5">
-            {(['today', 'week', 'month', 'custom'] as PeriodKey[]).map((p) => (
+          <div className="inline-flex flex-wrap rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-0.5">
+            {(['today', 'week', 'month', 'year', '3years', '5years', 'custom'] as PeriodKey[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={cn(
-                  'rounded-lg px-4 py-1.5 text-xs font-semibold transition-all duration-200',
+                  'rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200',
                   period === p ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20' : 'text-[var(--tw-text-muted)] hover:text-[var(--tw-text)]',
                 )}
               >
@@ -839,15 +887,25 @@ export function AdminIndexPage() {
         </div>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {periodCards.map(({ key, value, icon: Icon }) => (
+          {periodCards.map(({ key, value, icon: Icon, trend }) => (
             <Card key={key}>
               <CardContent className="flex items-center gap-3 p-4">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-600/15 text-brand-400">
                   <Icon className="h-5 w-5" />
                 </span>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-xs text-[var(--tw-text-muted)]">{key}</p>
-                  <p className="mt-0.5 text-xl font-extrabold text-[var(--tw-text)]">{value}</p>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <p className="truncate text-xl font-extrabold text-[var(--tw-text)]">{value}</p>
+                    {trend && (
+                      <span className={cn(
+                        'inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+                        trend.positive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400',
+                      )}>
+                        {trend.positive ? '↑' : '↓'} {trend.value.toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

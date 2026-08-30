@@ -284,6 +284,7 @@
     "systemResetClearItems": [
       "Orders",
       "Order items",
+      "Sales / Outgoing (derived from orders)",
       "Carts",
       "Offers",
       "Offer-product associations",
@@ -479,7 +480,11 @@
       "today": "Today",
       "thisWeek": "This week",
       "thisMonth": "This month",
-      "productsSold": "Products sold"
+      "productsSold": "Products sold",
+      "thisYear": "This Year",
+      "last3Years": "Last 3 Years",
+      "last5Years": "Last 5 Years",
+      "custom": "Custom"
     },
     "periodTitle": "Period breakdown",
     "unitsTrend": "Units sold — last {{days}} days",

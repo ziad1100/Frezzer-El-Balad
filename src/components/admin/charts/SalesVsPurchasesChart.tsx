@@ -24,13 +24,21 @@ interface SalesVsPurchasesChartProps {
 function CustomTooltip({ active, payload, label, lang }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] px-3 py-2 shadow-lg">
-      <p className="text-xs font-semibold text-[var(--tw-text)]">{label}</p>
-      {payload.map((entry: any, i: number) => (
-        <p key={i} className="mt-1 text-xs" style={{ color: entry.color }}>
-          {entry.name}: <span className="font-bold">{formatPrice(entry.value, lang)}</span>
-        </p>
-      ))}
+    <div className="rounded-xl border border-[var(--tw-border-strong)] bg-[var(--tw-surface)] px-4 py-3 shadow-xl">
+      <p className="text-xs font-semibold text-[var(--tw-text-muted)]">{label}</p>
+      <div className="mt-2 space-y-1.5">
+        {payload.map((entry: any, i: number) => (
+          <div key={i} className="flex items-center justify-between gap-6">
+            <span className="flex items-center gap-1.5 text-xs text-[var(--tw-text-muted)]">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+              {entry.name}
+            </span>
+            <span className="text-sm font-bold" style={{ color: entry.color }}>
+              {formatPrice(entry.value, lang)}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -40,37 +48,49 @@ export function SalesVsPurchasesChart({ data, lang }: SalesVsPurchasesChartProps
 
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <BarChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 0 }} barGap={4}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--tw-border)" strokeOpacity={0.5} />
+      <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }} barGap={4}>
+        <defs>
+          <linearGradient id="colorSalesBar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#6366F1" stopOpacity={0.9} />
+            <stop offset="100%" stopColor="#6366F1" stopOpacity={0.6} />
+          </linearGradient>
+          <linearGradient id="colorPurchasesBar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#22C55E" stopOpacity={0.9} />
+            <stop offset="100%" stopColor="#22C55E" stopOpacity={0.6} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--tw-border)" strokeOpacity={0.4} vertical={false} />
         <XAxis
           dataKey="date"
           tick={{ fontSize: 11, fill: 'var(--tw-text-muted)' }}
           tickLine={false}
           axisLine={false}
+          dy={8}
         />
         <YAxis
           tick={{ fontSize: 11, fill: 'var(--tw-text-muted)' }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+          dx={-4}
         />
-        <Tooltip content={<CustomTooltip lang={lang} />} />
+        <Tooltip content={<CustomTooltip lang={lang} />} cursor={{ fill: 'var(--tw-hover)', radius: 4 }} />
         <Legend
-          wrapperStyle={{ fontSize: 12 }}
+          wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
           formatter={(value) => <span className="text-[var(--tw-text-muted)]">{value}</span>}
         />
         <Bar
           dataKey="sales"
           name={lang === 'ar' ? 'المبيعات' : 'Sales'}
-          fill="#6366F1"
-          radius={[4, 4, 0, 0]}
+          fill="url(#colorSalesBar)"
+          radius={[6, 6, 0, 0]}
           maxBarSize={32}
         />
         <Bar
           dataKey="purchases"
           name={lang === 'ar' ? 'المشتريات' : 'Purchases'}
-          fill="#22C55E"
-          radius={[4, 4, 0, 0]}
+          fill="url(#colorPurchasesBar)"
+          radius={[6, 6, 0, 0]}
           maxBarSize={32}
         />
       </BarChart>
