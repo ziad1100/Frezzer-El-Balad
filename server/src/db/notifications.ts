@@ -72,3 +72,25 @@ export const sendToUsers = async (data: {
     );
   }
 };
+
+/**
+ * Send a notification to all users with a specific role (admin, manager, etc.).
+ * Uses audience='role' so it appears in the notifications list for every user
+ * with that role.
+ */
+export const sendToRole = async (data: {
+  role: string;
+  title: string;
+  titleEn?: string;
+  body?: string;
+  bodyEn?: string;
+  type?: string;
+  link?: string;
+}): Promise<void> => {
+  await query(
+    `INSERT INTO notifications ("userId", audience, role, title, "titleEn", body, "bodyEn", type, link)
+     VALUES ('00000000-0000-0000-0000-000000000000'::uuid, 'role', $1::user_role, $2, $3, $4, $5, $6, $7)`,
+    [data.role, data.title, data.titleEn ?? '', data.body ?? '', data.bodyEn ?? '',
+     data.type ?? 'info', data.link ?? ''],
+  );
+};

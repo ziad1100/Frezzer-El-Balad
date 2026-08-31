@@ -133,7 +133,94 @@ export const deductStock = async (
     }
   });
 
+  // After deduction, check for low-stock / out-of-stock alerts
+  if (deductedCount > 0) {
+    const productIds = [...new Set(orderItems.map((i) => i.productId))];
+    try {
+      await checkLowStockAlerts(productIds);
+    } catch {
+      // Non-critical — log but don't fail the order
+      console.error('[inventory] low-stock alert check failed');
+    }
+  }
+
   return deductedCount;
+};
+
+/**
+ * Check products for low-stock or out-of-stock conditions after a deduction.
+ * Sends an in-app notification to admin/manager role if any product is at or below threshold.
+ * Avoids duplicate alerts by only alerting once per product per deduction batch.
+ */
+const checkLowStockAlerts = async (productIds: string[]): Promise<void> => {
+  if (productIds.length === 0) return;
+
+  // Check product-level stock
+  const productRows = await query<{
+    id: string; name: string; nameEn: string;
+    stockQuantity: number; lowStockThreshold: number;
+  }>(
+    `SELECT id::text AS "id", name, "nameEn", "stockQuantity", "lowStockThreshold"
+     FROM products
+     WHERE id = ANY($1::uuid[]) AND "trackInventory" = true`,
+    [productIds],
+  );
+
+  // Check size-level stock for products that have sizes
+  const sizeRows = await query<{
+    productId: string; name: string; nameEn: string;
+    stockQuantity: number; lowStockThreshold: number;
+    productName: string; productNameEn: string;
+  }>(
+    `SELECT ps."productId"::text AS "productId", ps.name, ps."nameEn",
+            ps."stockQuantity", ps."lowStockThreshold",
+            p.name AS "productName", p."nameEn" AS "productNameEn"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     WHERE ps."productId" = ANY($1::uuid[]) AND p."trackInventory" = true`,
+    [productIds],
+  );
+
+  const alerts: string[] = [];
+
+  for (const p of productRows) {
+    if (p.stockQuantity <= 0) {
+      alerts.push(`❌ ${p.name || p.nameEn} — Out of Stock`);
+    } else if (p.stockQuantity <= p.lowStockThreshold) {
+      alerts.push(`⚠️ ${p.name || p.nameEn} — Low Stock: ${p.stockQuantity} remaining`);
+    }
+  }
+
+  for (const s of sizeRows) {
+    const label = `${s.productName || s.productNameEn} (${s.name || s.nameEn})`;
+    if (s.stockQuantity <= 0) {
+      alerts.push(`❌ ${label} — Out of Stock`);
+    } else if (s.stockQuantity <= s.lowStockThreshold) {
+      alerts.push(`⚠️ ${label} — Low Stock: ${s.stockQuantity} remaining`);
+    }
+  }
+
+  if (alerts.length === 0) return;
+
+  // Send a single notification to admin and manager roles
+  const body = alerts.join('\n');
+  const bodyEn = alerts.join('\n');
+  const hasOutOfStock = alerts.some((a) => a.startsWith('❌'));
+  const title = hasOutOfStock ? '⚠️ تنبيه: منتجات نفدت من المخزون' : '⚠️ تنبيه: مخزون منخفض';
+  const titleEn = hasOutOfStock ? '⚠️ Alert: Products Out of Stock' : '⚠️ Alert: Low Stock';
+
+  const { sendToRole } = await import('./notifications');
+  for (const role of ['admin', 'manager']) {
+    await sendToRole({
+      role,
+      title,
+      titleEn,
+      body,
+      bodyEn,
+      type: 'stock_alert',
+      link: '/admin/inventory',
+    });
+  }
 };
 
 /**
