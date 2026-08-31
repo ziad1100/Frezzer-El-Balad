@@ -49,6 +49,7 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
   const orderItems = items.map((item) => {
     const product = productMap.get(String(item.product));
     if (!product) throw new ApiError(404, 'Product not found in order');
+    if (product.isAvailable === false) throw new ApiError(400, `Product "${product.name}" is not available`);
     const sizes = (product.sizes as Array<{ _id: string; price: number; name: string }>) ?? [];
     const size = sizes.find((s) => String(s._id) === String(item.size));
     const normalUnitPrice = size?.price ?? (product.basePrice as number) ?? 0;

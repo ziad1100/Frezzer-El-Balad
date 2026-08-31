@@ -266,7 +266,9 @@
       "cancelled": "Cancelled",
       "delivery_failed": "Delivery Failed",
       "refunded": "Refunded",
-      "complimentary": "Complimentary"
+      "complimentary": "Complimentary",
+      "active": "Active",
+      "inactive": "Inactive"
     },
     "refresh": "Refresh Data",
     "refreshing": "Updating data…",

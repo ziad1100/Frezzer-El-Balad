@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Package } from 'lucide-react';
-import { getInventoryStats, adminListProducts } from '@/api/admin';
+import { toast } from 'sonner';
+import { getInventoryStats, adminListProducts, toggleProduct } from '@/api/admin';
 import { Card, CardContent, EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { PageHeader, StatusBadge, TableWrap, Td, Th } from '@/components/admin/primitives';
+import { PageHeader, StatusBadge, TableWrap, Td, Th, ToggleSwitch } from '@/components/admin/primitives';
 import { formatPrice } from '@/lib/utils';
 import type { Product } from '@/types';
 
@@ -18,10 +19,21 @@ export function AdminInventoryPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StockFilter>('all');
 
+  const queryClient = useQueryClient();
   const stats = useQuery({ queryKey: ['admin', 'inventory'], queryFn: getInventoryStats });
   const products = useQuery({
     queryKey: ['admin', 'products', { page: 1, limit: 200 }],
     queryFn: () => adminListProducts({ page: 1, limit: 200 }),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: toggleProduct,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'inventory'] });
+      toast.success(lang === 'ar' ? 'تم تحديث الحالة' : 'Status updated');
+    },
+    onError: () => toast.error(lang === 'ar' ? 'فشل تحديث الحالة' : 'Failed to update status'),
   });
 
   type ItemStatus = 'active' | 'inactive';
@@ -129,6 +141,7 @@ export function AdminInventoryPage() {
                   <Th>{lang === 'ar' ? 'الحجم' : 'Size'}</Th>
                   <Th>{lang === 'ar' ? 'الفئة' : 'Category'}</Th>
                   <Th>{lang === 'ar' ? 'الحالة' : 'Status'}</Th>
+                  <Th>{lang === 'ar' ? 'تفعيل' : 'Toggle'}</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--tw-border)]">
@@ -169,6 +182,13 @@ export function AdminInventoryPage() {
                     </Td>
                     <Td>
                       <StatusBadge status={p.isAvailable ? 'active' : 'inactive'} />
+                    </Td>
+                    <Td>
+                      <ToggleSwitch
+                        checked={p.isAvailable}
+                        onChange={() => toggleMutation.mutate(p._id)}
+                        disabled={toggleMutation.isPending}
+                      />
                     </Td>
                   </tr>
                 ))}

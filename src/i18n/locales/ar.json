@@ -266,7 +266,9 @@
       "cancelled": "ملغي",
       "delivery_failed": "فشل التسليم",
       "refunded": "مسترد",
-      "complimentary": "مجاني / هدية"
+      "complimentary": "مجاني / هدية",
+      "active": "نشط",
+      "inactive": "غير نشط"
     },
     "refresh": "تحديث البيانات",
     "refreshing": "جارٍ تحديث البيانات…",
