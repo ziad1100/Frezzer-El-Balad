@@ -41,7 +41,7 @@ export function ContactPage() {
   });
 
   const contactInfo = [
-    { icon: Phone, label: isAr ? 'الهاتف' : 'Phone', value: '010 000 000 000', href: 'tel:+201000000000', color: 'emerald' },
+    { icon: Phone, label: isAr ? 'الهاتف' : 'Phone', value: '01204019307', href: 'tel:01204019307', color: 'emerald' },
     { icon: MessageCircle, label: 'WhatsApp', value: isAr ? 'راسلنا على واتساب' : 'Chat on WhatsApp', href: '#', color: 'fresh' },
     { icon: Mail, label: isAr ? 'البريد الإلكتروني' : 'Email', value: 'info@freezerelbalad.com', href: 'mailto:info@freezerelbalad.com', color: 'brand' },
     { icon: MapPin, label: isAr ? 'العنوان' : 'Address', value: isAr ? 'القاهرة، مصر' : 'Cairo, Egypt', href: '#', color: 'gold' },
@@ -204,7 +204,7 @@ export function ContactPage() {
               : 'Our customer service team is available daily to assist you.'}
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
-            <a href="tel:+201000000000">
+            <a href="tel:01204019307">
               <Button variant="primary" size="lg">
                 <Phone className="h-4 w-4" />
                 {isAr ? 'اتصل الآن' : 'Call Now'}
