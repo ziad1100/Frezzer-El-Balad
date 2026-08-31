@@ -43,3 +43,15 @@ export const getStock = asyncHandler(async (req: Request, res: Response) => {
   const stock = await inventoryRepo.getStock(productId, sizeId);
   res.json(new ApiResponse(200, stock));
 });
+
+/** Get inventory value breakdown by category */
+export const getInventoryValueByCategory = asyncHandler(async (_req: Request, res: Response) => {
+  const data = await inventoryRepo.getInventoryValueByCategory();
+  res.json(new ApiResponse(200, data));
+});
+
+/** Get total inventory value */
+export const getTotalInventoryValue = asyncHandler(async (_req: Request, res: Response) => {
+  const data = await inventoryRepo.getTotalInventoryValue();
+  res.json(new ApiResponse(200, data));
+});

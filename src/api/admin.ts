@@ -418,6 +418,27 @@ export const updateProductStock = (data: { productId: string; sizeId?: string; s
 export const setTrackInventory = (data: { productId: string; track: boolean }): Promise<null> =>
   unwrap(api.patch<ApiEnvelope<null>>('/inventory/track', data));
 
+export interface InventoryValueByCategory {
+  categoryId: string;
+  categoryName: string;
+  categoryNameEn: string;
+  totalStock: number;
+  totalValue: number;
+  productCount: number;
+}
+
+export const getInventoryValueByCategory = (): Promise<InventoryValueByCategory[]> =>
+  unwrap(api.get<ApiEnvelope<InventoryValueByCategory[]>>('/inventory/value-by-category'));
+
+export interface TotalInventoryValue {
+  totalStock: number;
+  totalValue: number;
+  totalProducts: number;
+}
+
+export const getTotalInventoryValue = (): Promise<TotalInventoryValue> =>
+  unwrap(api.get<ApiEnvelope<TotalInventoryValue>>('/inventory/value'));
+
 // ── Purchases ─────────────────────────────────────────────────────────────
 
 export interface Purchase {

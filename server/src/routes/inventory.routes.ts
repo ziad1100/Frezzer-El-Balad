@@ -9,6 +9,8 @@ router.use(requireAuth);
 
 router.get('/stats', requirePermission('products', 'read'), inventory.getInventoryStats);
 router.get('/sales', requirePermission('orders', 'read'), inventory.getSalesStats);
+router.get('/value', requirePermission('products', 'read'), inventory.getTotalInventoryValue);
+router.get('/value-by-category', requirePermission('products', 'read'), inventory.getInventoryValueByCategory);
 router.get('/stock', requirePermission('products', 'read'), inventory.getStock);
 router.patch('/stock', requirePermission('products', 'update'), inventory.updateStock);
 router.patch('/track', requirePermission('products', 'update'), inventory.setTrackInventory);

@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Banknote, Download, Eraser, Package, RefreshCw, Search, ShoppingBag, TrendingDown, TrendingUp, ShoppingCart, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { adminListOrders, exportDashboard, getCategorySales, getDashboard, getInventoryStats, getPurchaseStats, getSalesStats, listPurchases, refreshDashboard, resetPurchases, resetSales, systemReset } from '@/api/admin';
+import { adminListOrders, exportDashboard, getCategorySales, getDashboard, getInventoryStats, getInventoryValueByCategory, getPurchaseStats, getSalesStats, getTotalInventoryValue, listPurchases, refreshDashboard, resetPurchases, resetSales, systemReset } from '@/api/admin';
 import { exportMovementReport, getMovementReport, type MovementReport } from '@/api/stock-movements';
 import { getErrorMessage } from '@/lib/api';
 import { Card, CardContent, EmptyState, ErrorState, Skeleton } from '@/components/ui/Card';
@@ -17,6 +17,7 @@ import { FinancialChart } from '@/components/admin/charts/FinancialChart';
 import { CategorySalesChart } from '@/components/admin/charts/CategorySalesChart';
 import { TopProductsChart } from '@/components/admin/charts/TopProductsChart';
 import { SalesVsPurchasesChart } from '@/components/admin/charts/SalesVsPurchasesChart';
+import { InventoryValueChart } from '@/components/admin/charts/InventoryValueChart';
 
 type PeriodKey = 'today' | 'week' | 'month' | 'year' | 'custom';
 
@@ -46,6 +47,8 @@ export function AdminIndexPage() {
   const purchaseStats = useQuery({ queryKey: ['admin', 'purchases', 'stats'], queryFn: () => getPurchaseStats() });
   const categorySales = useQuery({ queryKey: ['admin', 'category-sales'], queryFn: getCategorySales });
   const inventoryStats = useQuery({ queryKey: ['admin', 'inventory'], queryFn: getInventoryStats });
+  const inventoryValue = useQuery({ queryKey: ['admin', 'inventory-value'], queryFn: getTotalInventoryValue });
+  const inventoryValueByCategory = useQuery({ queryKey: ['admin', 'inventory-value-category'], queryFn: getInventoryValueByCategory });
 
   const [period, setPeriod] = useState<PeriodKey>('today');
   const [inventorySearch, setInventorySearch] = useState('');
@@ -620,6 +623,23 @@ export function AdminIndexPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 13. Total Inventory Value */}
+          <Card variant="interactive">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
+                <Package className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-[var(--tw-text-muted)]">
+                  {lang === 'ar' ? 'قيمة المخزون' : 'Inventory Value'}
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold tracking-tight text-brand-500">
+                  {formatPrice(inventoryValue.data?.totalValue ?? 0, lang)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -824,6 +844,59 @@ export function AdminIndexPage() {
                 icon={<ShoppingBag className="h-10 w-10" />}
               />
             )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ═══ INVENTORY VALUE BY CATEGORY ═══ */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-bold tracking-tight text-[var(--tw-text)]">
+              {lang === 'ar' ? 'قيمة المخزون حسب الفئة' : 'Inventory Value by Category'}
+            </h3>
+            {inventoryValueByCategory.isLoading ? (
+              <Skeleton className="h-64" />
+            ) : inventoryValueByCategory.data && inventoryValueByCategory.data.length > 0 ? (
+              <InventoryValueChart data={inventoryValueByCategory.data} lang={lang} height={Math.max(200, inventoryValueByCategory.data.length * 36)} />
+            ) : (
+              <EmptyState
+                title={lang === 'ar' ? 'لا توجد بيانات مخزون' : 'No inventory data'}
+                icon={<Package className="h-10 w-10" />}
+              />
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-bold tracking-tight text-[var(--tw-text)]">
+              {lang === 'ar' ? 'ملخص المخزون' : 'Inventory Summary'}
+            </h3>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-4">
+                <p className="text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي قيمة المخزون' : 'Total Inventory Value'}</p>
+                <p className="mt-1 text-2xl font-extrabold text-brand-500">{formatPrice(inventoryValue.data?.totalValue ?? 0, lang)}</p>
+              </div>
+              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-4">
+                <p className="text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'إجمالي الوحدات' : 'Total Units'}</p>
+                <p className="mt-1 text-2xl font-extrabold text-[var(--tw-text)]">{inventoryValue.data?.totalStock ?? 0}</p>
+              </div>
+              <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-4">
+                <p className="text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'منتجات مُتتبّعة' : 'Tracked Products'}</p>
+                <p className="mt-1 text-2xl font-extrabold text-[var(--tw-text)]">{inventoryValue.data?.totalProducts ?? 0}</p>
+              </div>
+              {inventoryValueByCategory.data && inventoryValueByCategory.data.length > 0 && (
+                <div className="rounded-xl border border-[var(--tw-border)] bg-[var(--tw-surface-alt)] p-4">
+                  <p className="mb-2 text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? 'أعلى الفئات قيمة' : 'Top Categories by Value'}</p>
+                  {inventoryValueByCategory.data.slice(0, 5).map((cat) => (
+                    <div key={cat.categoryId} className="flex items-center justify-between py-1.5">
+                      <span className="text-xs text-[var(--tw-text-muted)]">{lang === 'ar' ? cat.categoryName : (cat.categoryNameEn || cat.categoryName)}</span>
+                      <span className="text-xs font-bold tabular-nums text-[var(--tw-text)]">{formatPrice(cat.totalValue, lang)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -686,3 +686,110 @@ export const getAllProductsWithStock = async (): Promise<Array<{
 
   return [...productRows, ...sizeRows];
 };
+
+/**
+ * Get inventory value breakdown by category.
+ * Returns each category with its total stock quantity and total inventory value.
+ * Inventory value = stock × unit price for each product/size.
+ */
+export const getInventoryValueByCategory = async (): Promise<Array<{
+  categoryId: string;
+  categoryName: string;
+  categoryNameEn: string;
+  totalStock: number;
+  totalValue: number;
+  productCount: number;
+}>> => {
+  // Product-level stock (no sizes)
+  const productRows = await query<{
+    categoryId: string; categoryName: string; categoryNameEn: string;
+    totalStock: number; totalValue: number; productCount: number;
+  }>(
+    `SELECT c.id::text AS "categoryId",
+            c.name AS "categoryName",
+            c."nameEn" AS "categoryNameEn",
+            COALESCE(SUM(p."stockQuantity"), 0)::int AS "totalStock",
+            COALESCE(SUM(p."stockQuantity" * p."basePrice"), 0)::float8 AS "totalValue",
+            count(DISTINCT p.id)::int AS "productCount"
+     FROM products p
+     JOIN categories c ON c.id = p."categoryId"
+     WHERE p."trackInventory" = true
+       AND NOT EXISTS (SELECT 1 FROM product_sizes ps WHERE ps."productId" = p.id)
+     GROUP BY c.id, c.name, c."nameEn"`,
+  );
+
+  // Size-level stock
+  const sizeRows = await query<{
+    categoryId: string; categoryName: string; categoryNameEn: string;
+    totalStock: number; totalValue: number; productCount: number;
+  }>(
+    `SELECT c.id::text AS "categoryId",
+            c.name AS "categoryName",
+            c."nameEn" AS "categoryNameEn",
+            COALESCE(SUM(ps."stockQuantity"), 0)::int AS "totalStock",
+            COALESCE(SUM(ps."stockQuantity" * ps.price), 0)::float8 AS "totalValue",
+            count(DISTINCT ps."productId")::int AS "productCount"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     JOIN categories c ON c.id = p."categoryId"
+     WHERE p."trackInventory" = true
+     GROUP BY c.id, c.name, c."nameEn"`,
+  );
+
+  // Merge by category
+  const map = new Map<string, {
+    categoryId: string; categoryName: string; categoryNameEn: string;
+    totalStock: number; totalValue: number; productCount: number;
+  }>();
+  for (const row of [...productRows, ...sizeRows]) {
+    const existing = map.get(row.categoryId);
+    if (existing) {
+      existing.totalStock += row.totalStock;
+      existing.totalValue += row.totalValue;
+      existing.productCount += row.productCount;
+    } else {
+      map.set(row.categoryId, { ...row });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.totalValue - a.totalValue);
+};
+
+/**
+ * Get total inventory value across all products.
+ */
+export const getTotalInventoryValue = async (): Promise<{
+  totalStock: number;
+  totalValue: number;
+  totalProducts: number;
+}> => {
+  // Product-level
+  const productStats = await query<{
+    totalStock: number; totalValue: number; totalProducts: number;
+  }>(
+    `SELECT COALESCE(SUM("stockQuantity"), 0)::int AS "totalStock",
+            COALESCE(SUM("stockQuantity" * "basePrice"), 0)::float8 AS "totalValue",
+            count(*)::int AS "totalProducts"
+     FROM products
+     WHERE "trackInventory" = true
+       AND NOT EXISTS (SELECT 1 FROM product_sizes ps WHERE ps."productId" = products.id)`,
+  );
+
+  // Size-level
+  const sizeStats = await query<{
+    totalStock: number; totalValue: number; totalProducts: number;
+  }>(
+    `SELECT COALESCE(SUM(ps."stockQuantity"), 0)::int AS "totalStock",
+            COALESCE(SUM(ps."stockQuantity" * ps.price), 0)::float8 AS "totalValue",
+            count(DISTINCT ps."productId")::int AS "totalProducts"
+     FROM product_sizes ps
+     JOIN products p ON p.id = ps."productId"
+     WHERE p."trackInventory" = true`,
+  );
+
+  return {
+    totalStock: (productStats[0]?.totalStock ?? 0) + (sizeStats[0]?.totalStock ?? 0),
+    totalValue: (productStats[0]?.totalValue ?? 0) + (sizeStats[0]?.totalValue ?? 0),
+    totalProducts: (productStats[0]?.totalProducts ?? 0) + (sizeStats[0]?.totalProducts ?? 0),
+  };
+};
