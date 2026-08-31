@@ -794,7 +794,7 @@ function AdminSearchSection({ lang, selectedSearchProduct, searchSizeId, searchQ
               <span className="min-w-10 text-center text-sm font-bold tabular-nums text-[var(--tw-text)]">{searchQty}</span>
               <button
                 type="button"
-                onClick={() => onSearchQtyChange(Math.min(99, searchQty + 1))}
+                onClick={() => onSearchQtyChange(searchQty + 1)}
                 className="flex h-8 w-8 items-center justify-center rounded-r-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
               >
                 <Plus className="h-3 w-3" />

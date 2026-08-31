@@ -172,14 +172,15 @@ describe('create order', () => {
     expect(res.status).toBe(422);
   });
 
-  it('rejects a quantity over 99 with 422', async () => {
+  it('accepts large quantities (no artificial limit)', async () => {
     const { product } = await setupCatalog();
     const user = await createUser();
     const res = await api
       .post(ORDERS)
       .set(bearer(user.id))
       .send(orderBody(toId(product._id), { items: [{ product: toId(product._id), qty: 100 }] }));
-    expect(res.status).toBe(422);
+    // Should not be rejected due to quantity limit
+    expect(res.status).not.toBe(422);
   });
 
   it('applies a percent coupon discount', async () => {
