@@ -2,7 +2,7 @@
  * Payment Adapter Architecture
  *
  * Provides a clean abstraction layer for payment providers.
- * Each provider (Fawry, Aman, Paymob, etc.) implements the PaymentProvider interface.
+ * Each provider (Fawry, Aman, etc.) implements the PaymentProvider interface.
  * The CheckoutPage uses PaymentManager to delegate payment processing.
  *
  * Currently: Cash-only (no gateway integration).
@@ -20,7 +20,7 @@ export type PaymentStatus =
   | 'expired'      // Payment window expired (e.g., OTP timeout)
   | 'refunded';    // Payment was refunded
 
-export type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'fawry' | 'aman' | 'paymob' | 'other';
+export type PaymentMethod = 'cash' | 'vodafone_cash' | 'instapay';
 
 // ── Payment Result ──────────────────────────────────────────────────────────
 

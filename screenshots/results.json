@@ -1,0 +1,74 @@
+[
+  {
+    "name": "admin-dashboard",
+    "url": "/admin",
+    "heading": "لوحة التحكم",
+    "table": false,
+    "onPage": true
+  },
+  {
+    "name": "admin-orders",
+    "url": "/admin/orders",
+    "heading": "لوحة التحكم",
+    "table": false,
+    "onPage": true
+  },
+  {
+    "name": "admin-purchases",
+    "url": "/admin/purchases",
+    "heading": "لوحة التحكم",
+    "table": false,
+    "onPage": true
+  },
+  {
+    "name": "admin-products",
+    "url": "/admin/products",
+    "heading": "لوحة التحكم",
+    "table": true,
+    "onPage": true
+  },
+  {
+    "name": "admin-categories",
+    "url": "/admin/categories",
+    "heading": "لوحة التحكم",
+    "table": true,
+    "onPage": true
+  },
+  {
+    "name": "admin-coupons",
+    "url": "/admin/coupons",
+    "heading": "لوحة التحكم",
+    "table": true,
+    "onPage": true
+  },
+  {
+    "name": "admin-banners",
+    "url": "/admin/banners",
+    "heading": "لوحة التحكم",
+    "table": true,
+    "onPage": true
+  },
+  {
+    "name": "admin-settings",
+    "url": "/admin/settings",
+    "heading": "لوحة التحكم",
+    "table": false,
+    "onPage": true
+  },
+  {
+    "name": "client-home-desktop",
+    "heading": "ولاد حلال"
+  },
+  {
+    "name": "client-menu-desktop",
+    "heading": "المنتجات"
+  },
+  {
+    "name": "client-login-desktop",
+    "heading": "لوحة التحكم"
+  },
+  {
+    "name": "client-register-desktop",
+    "heading": "لوحة التحكم"
+  }
+]

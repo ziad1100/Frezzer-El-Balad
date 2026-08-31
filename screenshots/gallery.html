@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freezer El Balad — Redesign Visual Verification</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; }
+  h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+  h1 span { color: #818CF8; }
+  .subtitle { color: #94a3b8; margin-bottom: 32px; font-size: 14px; }
+  h2 { font-size: 20px; font-weight: 700; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #1e293b; }
+  h2 .badge { font-size: 11px; background: #818CF8; color: white; padding: 2px 8px; border-radius: 12px; margin-left: 8px; vertical-align: middle; }
+  .grid { display: grid; gap: 16px; margin-bottom: 24px; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-1 { grid-template-columns: 1fr; }
+  .card { background: #1e293b; border-radius: 12px; border: 1px solid #334155; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .card img { width: 100%; display: block; }
+  .card .label { padding: 10px 14px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .card .label .size { color: #64748b; font-size: 11px; font-weight: 400; }
+  .card .viewport { font-size: 10px; color: #818CF8; background: #818CF820; padding: 1px 6px; border-radius: 4px; }
+  @media (max-width: 1024px) { .grid-3 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>🎨 <span>Freezer El Balad</span> — UI/UX Redesign Verification</h1>
+<p class="subtitle">21 screenshots captured across desktop (1440px), tablet (768px), and mobile (375px)</p>
+
+<!-- CLIENT PAGES -->
+<h2>👤 Client — Desktop <span class="badge">1440×900</span></h2>
+<div class="grid grid-2">
+  <div class="card">
+    <img src="client-home-desktop.png" alt="Home" loading="lazy">
+    <div class="label">Home Page <span class="viewport">1440×900</span></div>
+  </div>
+  <div class="card">
+    <img src="client-menu-desktop.png" alt="Menu" loading="lazy">
+    <div class="label">Menu Page <span class="viewport">1440×900</span></div>
+  </div>
+  <div class="card">
+    <img src="client-login-desktop.png" alt="Login" loading="lazy">
+    <div class="label">Login Page <span class="viewport">1440×900</span></div>
+  </div>
+  <div class="card">
+    <img src="client-register-desktop.png" alt="Register" loading="lazy">
+    <div class="label">Register Page <span class="viewport">1440×900</span></div>
+  </div>
+</div>
+
+<h2>📱 Client — Tablet <span class="badge">768×1024</span></h2>
+<div class="grid grid-2">
+  <div class="card">
+    <img src="client-home-tablet.png" alt="Home Tablet" loading="lazy">
+    <div class="label">Home Page <span class="viewport">768×1024</span></div>
+  </div>
+  <div class="card">
+    <img src="client-menu-tablet.png" alt="Menu Tablet" loading="lazy">
+    <div class="label">Menu Page <span class="viewport">768×1024</span></div>
+  </div>
+</div>
+
+<h2>📲 Client — Mobile <span class="badge">375×812</span></h2>
+<div class="grid grid-3">
+  <div class="card">
+    <img src="client-home-mobile.png" alt="Home Mobile" loading="lazy">
+    <div class="label">Home Page <span class="viewport">375×812</span></div>
+  </div>
+  <div class="card">
+    <img src="client-menu-mobile.png" alt="Menu Mobile" loading="lazy">
+    <div class="label">Menu Page <span class="viewport">375×812</span></div>
+  </div>
+  <div class="card">
+    <img src="client-login-mobile.png" alt="Login Mobile" loading="lazy">
+    <div class="label">Login Page <span class="viewport">375×812</span></div>
+  </div>
+</div>
+
+<h2>📜 Client — Full Page Scroll <span class="badge">1440px wide</span></h2>
+<div class="grid grid-1">
+  <div class="card">
+    <img src="client-home-fullpage.png" alt="Home Fullpage" loading="lazy">
+    <div class="label">Home Page — Full Scroll <span class="viewport">1440px full</span></div>
+  </div>
+</div>
+
+<!-- ADMIN PAGES -->
+<h2>⚙️ Admin — Dashboard <span class="badge">1440×900</span></h2>
+<div class="grid grid-2">
+  <div class="card">
+    <img src="admin-dashboard.png" alt="Admin Dashboard" loading="lazy">
+    <div class="label">Dashboard <span class="viewport">1440×900</span></div>
+  </div>
+  <div class="card">
+    <img src="admin-dashboard-tablet.png" alt="Admin Dashboard Tablet" loading="lazy">
+    <div class="label">Dashboard <span class="viewport">768×1024</span></div>
+  </div>
+</div>
+
+<h2>⚙️ Admin — Management Pages <span class="badge">1440×900</span></h2>
+<div class="grid grid-3">
+  <div class="card">
+    <img src="admin-orders.png" alt="Admin Orders" loading="lazy">
+    <div class="label">Orders <span class="viewport">1440×900</span></div>
+  </div>
+  <div class="card">
+    <img src="admin-purchases.png" alt="Admin Purchases" loading="lazy">
+    <div class="label">Purchases <span class="viewport">1440×900</span></div>
+  </div>
+  <div class="card">
+    <img src="admin-products.png" alt="Admin Products" loading="lazy">
+    <div class="label">Products <span class="viewport">1440×900</span></div>
+  </div>
+  <div class="card">
+    <img src="admin-categories.png" alt="Admin Categories" loading="lazy">
+    <div class="label">Categories <span class="viewport">1440×900</span></div>
+  </div>
+  <div class="card">
+    <img src="admin-coupons.png" alt="Admin Coupons" loading="lazy">
+    <div class="label">Coupons <span class="viewport">1440×900</span></div>
+  </div>
+  <div class="card">
+    <img src="admin-banners.png" alt="Admin Banners" loading="lazy">
+    <div class="label">Banners <span class="viewport">1440×900</span></div>
+  </div>
+  <div class="card">
+    <img src="admin-settings.png" alt="Admin Settings" loading="lazy">
+    <div class="label">Settings <span class="viewport">1440×900</span></div>
+  </div>
+</div>
+
+</body>
+</html>

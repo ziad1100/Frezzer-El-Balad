@@ -37,7 +37,7 @@ export function CheckoutPage() {
   const couponCode = useAppSelector((state) => state.cart.couponCode);
   const couponDiscount = useAppSelector((state) => state.cart.couponDiscount);
   const note = useAppSelector((state) => state.cart.note);
-  type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'instapay';
+  type PaymentMethod = 'cash' | 'vodafone_cash' | 'instapay';
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('cash');
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
 
@@ -614,7 +614,7 @@ function Row({ label, value, accent, free }: { label: string; value: string; acc
   );
 }
 
-type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'instapay';
+type PaymentMethod = 'cash' | 'vodafone_cash' | 'instapay';
 
 /* ── Payment Method Config ───────────────────────────────────── */
 const PAYMENT_METHODS: Array<{

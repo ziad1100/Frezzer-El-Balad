@@ -122,7 +122,6 @@ export const ORDER_STATUS_LABELS: Record<string, [string, string]> = {
 
 export const PAYMENT_METHODS = {
   CASH: 'cash',
-  CARD: 'card',
   VODAFONE_CASH: 'vodafone_cash',
   INSTAPAY: 'instapay',
 } as const;

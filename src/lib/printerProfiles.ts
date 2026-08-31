@@ -56,12 +56,9 @@ export interface PrinterCapabilities {
 // ── POS Device Types ────────────────────────────────────────────────────────
 
 export type POSType =
-  | 'fawry'
-  | 'aman'
   | 'bee'
   | 'masary'
   | 'paysky'
-  | 'paymob'
   | 'geidea'
   | 'other';
 
@@ -178,12 +175,9 @@ export const CONNECTION_TYPES: { value: ConnectionType; labelAr: string; labelEn
 ];
 
 export const POS_TYPES: { value: POSType; labelAr: string; labelEn: string }[] = [
-  { value: 'fawry', labelAr: 'فوبري', labelEn: 'Fawry' },
-  { value: 'aman', labelAr: 'أمان', labelEn: 'AMAN' },
   { value: 'bee', labelAr: 'بي', labelEn: 'Bee' },
   { value: 'masary', labelAr: 'مسري', labelEn: 'Masary' },
   { value: 'paysky', labelAr: 'باي سكاي', labelEn: 'PaySky' },
-  { value: 'paymob', labelAr: 'بايموب', labelEn: 'Paymob' },
   { value: 'geidea', labelAr: 'جديعة', labelEn: 'Geidea' },
   { value: 'other', labelAr: 'أخرى', labelEn: 'Other' },
 ];

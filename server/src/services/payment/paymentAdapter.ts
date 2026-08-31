@@ -19,7 +19,7 @@ export type PaymentStatus =
   | 'expired'
   | 'refunded';
 
-export type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'fawry' | 'aman' | 'paymob' | 'other';
+export type PaymentMethod = 'cash' | 'vodafone_cash' | 'instapay';
 
 export interface PaymentResult {
   success: boolean;

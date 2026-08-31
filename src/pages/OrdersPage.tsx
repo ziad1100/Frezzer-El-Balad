@@ -358,8 +358,8 @@ export function OrdersPage() {
                         </p>
                         <p className="text-sm capitalize text-[var(--tw-text)]">
                           {order.payment?.method === 'cash' ? (lang === 'ar' ? 'الدفع عند الاستلام' : 'Cash on Delivery')
-                            : order.payment?.method === 'card' ? (lang === 'ar' ? 'بطاقة ائتمان' : 'Credit Card')
                             : order.payment?.method === 'vodafone_cash' ? 'Vodafone Cash'
+                            : order.payment?.method === 'instapay' ? 'InstaPay'
                             : order.payment?.method ?? '—'}
                         </p>
                       </div>

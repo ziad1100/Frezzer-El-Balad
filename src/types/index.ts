@@ -348,7 +348,7 @@ export interface Order {
 }
 
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready_for_delivery' | 'on_delivery' | 'completed' | 'cancelled' | 'delivery_failed' | 'refunded' | 'complimentary';
-export type PaymentMethod = 'cash' | 'card' | 'vodafone_cash' | 'bank_transfer' | 'instapay';
+export type PaymentMethod = 'cash' | 'vodafone_cash' | 'instapay';
 
 export interface Contact {
   _id: string;

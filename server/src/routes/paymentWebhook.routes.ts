@@ -11,7 +11,6 @@ const router = Router();
 
 // Provider-specific webhook endpoint
 // POST /api/v1/payments/webhook/fawry
-// POST /api/v1/payments/webhook/paymob
 // POST /api/v1/payments/webhook/aman
 router.post('/webhook/:provider', handleWebhook);
 

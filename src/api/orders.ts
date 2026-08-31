@@ -15,7 +15,7 @@ export interface CreateOrderPayload {
   phone?: string;
   customerName?: string;
   notes?: string;
-  paymentMethod: 'cash' | 'card' | 'vodafone_cash' | 'bank_transfer' | 'instapay';
+  paymentMethod: 'cash' | 'vodafone_cash' | 'instapay';
 }
 
 export const createOrder = (payload: CreateOrderPayload): Promise<Order> =>
