@@ -715,6 +715,22 @@ function AdminSearchSection({ lang, selectedSearchProduct, searchSizeId, searchQ
   onAdd: () => void;
   onClear: () => void;
 }) {
+  // Compute available stock for the selected product/size
+  const searchAvailableStock = useMemo(() => {
+    if (!selectedSearchProduct) return Infinity;
+    if (selectedSearchProduct.trackInventory === false) return Infinity;
+    const hasSizes = selectedSearchProduct.sizes && selectedSearchProduct.sizes.length > 0;
+    if (hasSizes && searchSizeId) {
+      const selected = selectedSearchProduct.sizes.find((s) => s._id === searchSizeId);
+      return selected?.stockQuantity ?? Infinity;
+    }
+    if (hasSizes && !searchSizeId) {
+      // Sum all sizes
+      return selectedSearchProduct.sizes.reduce((s, sz) => s + (sz.stockQuantity ?? 0), 0);
+    }
+    return selectedSearchProduct.stockQuantity ?? Infinity;
+  }, [selectedSearchProduct, searchSizeId]);
+  const searchIsOutOfStock = searchAvailableStock <= 0;
   return (
     <Section title={lang === 'ar' ? '🔍 بحث سريع عن منتج' : '🔍 Quick Product Search'}>
       <ProductSearch
@@ -794,15 +810,26 @@ function AdminSearchSection({ lang, selectedSearchProduct, searchSizeId, searchQ
               <span className="min-w-10 text-center text-sm font-bold tabular-nums text-[var(--tw-text)]">{searchQty}</span>
               <button
                 type="button"
-                onClick={() => onSearchQtyChange(searchQty + 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-r-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)]"
+                onClick={() => onSearchQtyChange(Math.min(searchQty + 1, typeof searchAvailableStock === 'number' ? searchAvailableStock : 9999))}
+                disabled={searchIsOutOfStock || searchQty >= searchAvailableStock}
+                className="flex h-8 w-8 items-center justify-center rounded-r-xl text-[var(--tw-text-muted)] transition-colors hover:bg-[var(--tw-hover)] hover:text-[var(--tw-text)] disabled:opacity-30"
               >
                 <Plus className="h-3 w-3" />
               </button>
             </div>
           </div>
 
-          <Button onClick={onAdd} className="w-full" size="sm">
+          {searchIsOutOfStock && (
+            <p className="mb-2 text-xs font-bold text-red-500">
+              {lang === 'ar' ? '⚠️ هذا المنتج غير متوفر حالياً' : '⚠️ This product is currently out of stock'}
+            </p>
+          )}
+          {searchAvailableStock > 0 && searchAvailableStock <= 10 && !searchIsOutOfStock && (
+            <p className="mb-2 text-xs font-semibold text-amber-500">
+              {lang === 'ar' ? `متبقي ${searchAvailableStock} فقط` : `Only ${searchAvailableStock} left in stock`}
+            </p>
+          )}
+          <Button onClick={onAdd} className="w-full" size="sm" disabled={searchIsOutOfStock}>
             {lang === 'ar' ? 'إضافة للطلب' : 'Add to Order'}
           </Button>
         </motion.div>

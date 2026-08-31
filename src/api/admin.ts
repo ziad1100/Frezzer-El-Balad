@@ -50,8 +50,10 @@ export interface AdminSearchProduct {
   images: string[];
   isAvailable: boolean;
   tags: string[];
+  stockQuantity?: number;
+  trackInventory?: boolean;
   category: { _id: string; name: string; nameEn?: string } | null;
-  sizes: { _id: string; name: string; nameEn?: string; price: number; isAvailable: boolean }[];
+  sizes: { _id: string; name: string; nameEn?: string; price: number; isAvailable: boolean; stockQuantity?: number }[];
 }
 
 export const adminSearchProducts = (q: string): Promise<AdminSearchProduct[]> =>

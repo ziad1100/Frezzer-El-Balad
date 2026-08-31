@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ChevronRight, Clock, Flame, Heart, Minus, Plus, ShoppingBag, Star, Weight, Shield, Truck } from 'lucide-react';
+import { ChevronRight, Clock, Flame, Heart, Minus, Plus, ShoppingBag, Star, Weight, Shield, Truck, AlertTriangle } from 'lucide-react';
 import { getProduct } from '@/api/products';
 import { useAppDispatch, useAppSelector } from '@/hooks';
 import { addLine } from '@/store/slices/cartSlice';
@@ -93,6 +93,29 @@ export function ProductPage() {
     : (size?.price ?? product?.basePrice ?? 0) + extras.reduce((s, e) => s + e.price, 0);
   const lineTotal = unitPrice;
   const isWished = product ? wishlist.includes(product._id) : false;
+
+  // Stock calculation: determine available stock for the selected variant
+  const availableStock = useMemo(() => {
+    if (!product) return 0;
+    // If product tracks inventory at product level (no sizes)
+    if (product.sizes.length === 0) {
+      return product.trackInventory ? (product.stockQuantity ?? 0) : Infinity;
+    }
+    // Product has sizes — use selected size stock
+    if (size?.stockQuantity !== undefined) {
+      return size.stockQuantity;
+    }
+    return Infinity;
+  }, [product, size]);
+
+  const isOutOfStock = product?.trackInventory && availableStock <= 0;
+
+  // Auto-cap qty when available stock is lower than current qty
+  useEffect(() => {
+    if (product?.trackInventory && typeof availableStock === 'number' && availableStock > 0) {
+      setQty((q) => Math.min(q, availableStock));
+    }
+  }, [availableStock, product?.trackInventory]);
 
   if (isLoading) {
     return (
@@ -434,8 +457,9 @@ export function ProductPage() {
                 </button>
                 <span className="min-w-12 text-center text-lg font-extrabold tabular-nums text-[var(--tw-text)]">{qty}</span>
                 <button
-                  onClick={() => setQty((q) => q + 1)}
-                  className="flex h-12 w-12 items-center justify-center text-[var(--tw-text-muted)] transition-colors hover:text-brand-500"
+                  onClick={() => setQty((q) => Math.min(q + 1, typeof availableStock === 'number' ? availableStock : 9999))}
+                  disabled={isOutOfStock || (product?.trackInventory && qty >= availableStock)}
+                  className="flex h-12 w-12 items-center justify-center text-[var(--tw-text-muted)] transition-colors hover:text-brand-500 disabled:opacity-30"
                   aria-label="plus"
                 >
                   <Plus className="h-4 w-4" />
@@ -448,12 +472,31 @@ export function ProductPage() {
                 size="lg"
                 className="flex-1"
                 onClick={handleAdd}
-                disabled={customWeightEnabled && !isCustomWeightValid}
+                disabled={isOutOfStock || (customWeightEnabled && !isCustomWeightValid)}
               >
-                <ShoppingBag className="h-5 w-5" />
-                {t('menu.addToCart')}
+                {isOutOfStock ? (
+                  <><AlertTriangle className="h-5 w-5" />{lang === 'ar' ? 'غير متوفر' : 'Out of Stock'}</>
+                ) : (
+                  <><ShoppingBag className="h-5 w-5" />{t('menu.addToCart')}</>
+                )}
               </Button>
             </motion.div>
+
+            {/* Stock indicator */}
+            {product.trackInventory && (
+              <motion.div variants={fadeUp} className="mt-2">
+                {isOutOfStock ? (
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-red-500">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    {lang === 'ar' ? 'هذا المنتج غير متوفر حالياً' : 'This product is currently out of stock'}
+                  </p>
+                ) : availableStock <= 10 ? (
+                  <p className="text-xs font-semibold text-amber-500">
+                    {lang === 'ar' ? `متبقي ${availableStock} فقط` : `Only ${availableStock} left in stock`}
+                  </p>
+                ) : null}
+              </motion.div>
+            )}
 
             {/* Admin Checkout */}
             {isAdmin && (

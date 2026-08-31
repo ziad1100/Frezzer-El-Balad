@@ -167,6 +167,7 @@ export const adminSearch = async (q: string, limit: number = 20): Promise<Record
     p.id::text AS "_id",
     p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
     p.images, p."isAvailable", p.tags,
+    p."stockQuantity", p."trackInventory",
     CASE WHEN c.id IS NULL THEN NULL
          ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
     ${SIZES_JSON} AS "sizes"
@@ -200,6 +201,7 @@ export const adminSearchAll = async (limit: number = 50): Promise<Record<string,
     p.id::text AS "_id",
     p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
     p.images, p."isAvailable", p.tags,
+    p."stockQuantity", p."trackInventory",
     CASE WHEN c.id IS NULL THEN NULL
          ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
     ${SIZES_JSON} AS "sizes"

@@ -50,9 +50,19 @@ export const createOrder = asyncHandler(async (req: AuthRequest, res: Response) 
     const product = productMap.get(String(item.product));
     if (!product) throw new ApiError(404, 'Product not found in order');
     if (product.isAvailable === false) throw new ApiError(400, `Product "${product.name}" is not available`);
-    const sizes = (product.sizes as Array<{ _id: string; price: number; name: string }>) ?? [];
+    const sizes = (product.sizes as Array<{ _id: string; price: number; name: string; stockQuantity?: number }>) ?? [];
     const size = sizes.find((s) => String(s._id) === String(item.size));
     const normalUnitPrice = size?.price ?? (product.basePrice as number) ?? 0;
+
+    // Stock validation: check available stock before allowing the order
+    if (product.trackInventory) {
+      const stockQty = size?.stockQuantity ?? (product.stockQuantity as number ?? 0);
+      if (stockQty < item.qty) {
+        const sizeLabel = size ? ` (${size.name})` : '';
+        throw new ApiError(400, `Insufficient stock for "${product.name}"${sizeLabel}. Available: ${stockQty}, Requested: ${item.qty}`);
+      }
+    }
+
     const extras = (item.extras ?? []).map((e) => {
       const dbExtra = ((product.extras as Array<{ name: string; nameEn: string; price: number }>) ?? []).find(
         (p) => p.name === e.name || p.nameEn === e.name,
