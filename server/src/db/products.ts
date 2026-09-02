@@ -24,7 +24,9 @@ const LABELS_JSON = `(SELECT COALESCE(jsonb_agg(jsonb_build_object('_id', lb.id:
 export const PUBLIC_COLS = `
   p.id::text AS "_id",
   p.name, p."nameEn", p.slug, p.description, p."descriptionEn",
-  p."basePrice"::float8 AS "basePrice", p.images, p.ingredients, p."ingredientsEn", p.tags,
+  p."basePrice"::float8 AS "basePrice", p."purchaseCost"::float8 AS "purchaseCost",
+  p.barcode, p.unit, p."productType", p."supplierCode",
+  p.images, p.ingredients, p."ingredientsEn", p.tags,
   p."categoryId"::text AS "category",
   p."isAvailable", p."isBestSeller", p."isOffer", p.discount::float8 AS "discount",
   p.rating::float8 AS "rating", p."reviewsCount", p."preparationTime", p.calories,
@@ -35,7 +37,9 @@ export const PUBLIC_COLS = `
 export const ADMIN_COLS = `
   p.id::text AS "_id",
   p.name, p."nameEn", p.slug, p.description, p."descriptionEn",
-  p."basePrice"::float8 AS "basePrice", p.images, p.ingredients, p."ingredientsEn", p.tags,
+  p."basePrice"::float8 AS "basePrice", p."purchaseCost"::float8 AS "purchaseCost",
+  p.barcode, p.unit, p."productType", p."supplierCode",
+  p.images, p.ingredients, p."ingredientsEn", p.tags,
   CASE WHEN c.id IS NULL THEN NULL
        ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
   p."isAvailable", p."isBestSeller", p."isOffer", p.discount::float8 AS "discount",
@@ -159,6 +163,7 @@ export const adminSearch = async (q: string, limit: number = 20): Promise<Record
   const searchCondition = `
     (p.name ILIKE '%' || $1 || '%'
      OR p."nameEn" ILIKE '%' || $1 || '%'
+     OR p.barcode ILIKE '%' || $1 || '%'
      OR EXISTS (SELECT 1 FROM unnest(p.tags) t WHERE t ILIKE '%' || $1 || '%')
      OR EXISTS (SELECT 1 FROM categories c WHERE c.id = p."categoryId" AND (c.name ILIKE '%' || $1 || '%' OR c."nameEn" ILIKE '%' || $1 || '%'))
   )`;
@@ -166,6 +171,8 @@ export const adminSearch = async (q: string, limit: number = 20): Promise<Record
   const SEARCH_COLS = `
     p.id::text AS "_id",
     p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
+    p."purchaseCost"::float8 AS "purchaseCost",
+    p.barcode, p.unit, p."productType", p."supplierCode",
     p.images, p."isAvailable", p.tags,
     p."stockQuantity", p."trackInventory",
     CASE WHEN c.id IS NULL THEN NULL
@@ -200,6 +207,8 @@ export const adminSearchAll = async (limit: number = 50): Promise<Record<string,
   const SEARCH_COLS = `
     p.id::text AS "_id",
     p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
+    p."purchaseCost"::float8 AS "purchaseCost",
+    p.barcode, p.unit, p."productType", p."supplierCode",
     p.images, p."isAvailable", p.tags,
     p."stockQuantity", p."trackInventory",
     CASE WHEN c.id IS NULL THEN NULL
@@ -258,6 +267,37 @@ export const exists = async (id: string): Promise<boolean> => {
   return rows.length > 0;
 };
 
+/**
+ * Search product by barcode for POS scanner support.
+ * Returns minimal product data needed for POS cart.
+ */
+export const searchByBarcode = async (barcode: string): Promise<Record<string, unknown> | null> => {
+  if (!barcode || barcode.trim() === '') return null;
+  
+  const SEARCH_COLS = `
+    p.id::text AS "_id",
+    p.name, p."nameEn", p."basePrice"::float8 AS "basePrice",
+    p."purchaseCost"::float8 AS "purchaseCost",
+    p.barcode, p.unit, p."productType",
+    p.images, p."isAvailable", p.tags,
+    p."stockQuantity", p."trackInventory",
+    CASE WHEN c.id IS NULL THEN NULL
+         ELSE jsonb_build_object('_id', c.id::text, 'name', c.name, 'nameEn', c."nameEn") END AS "category",
+    ${SIZES_JSON} AS "sizes"
+  `;
+
+  const rows = await query(
+    `SELECT ${SEARCH_COLS}
+     FROM products p
+     LEFT JOIN categories c ON c.id = p."categoryId"
+     WHERE p.barcode = $1 AND p."isAvailable" = true
+     LIMIT 1`,
+    [barcode.trim()],
+  ) as Record<string, unknown>[];
+
+  return rows[0] ?? null;
+};
+
 const syncSizes = async (client: typeof query, productId: string, sizes: Array<{ name: string; nameEn?: string; price: number; isAvailable?: boolean }> | undefined) => {
   await client('DELETE FROM product_sizes WHERE "productId" = $1', [productId]);
   for (const [i, s] of (sizes ?? []).entries()) {
@@ -287,6 +327,11 @@ export const create = async (data: {
   description?: string;
   descriptionEn?: string;
   basePrice: number;
+  purchaseCost?: number;
+  barcode?: string;
+  unit?: string;
+  productType?: string;
+  supplierCode?: string;
   images?: string[];
   ingredients?: string[];
   ingredientsEn?: string[];
@@ -309,14 +354,17 @@ export const create = async (data: {
   let id = '';
   await withTransaction(async (tx) => {
     const inserted = await tx.query<{ id: string }>(
-      `INSERT INTO products (name, "nameEn", slug, description, "descriptionEn", "basePrice", images,
-        ingredients, "ingredientsEn", tags, "categoryId", "isAvailable", "isBestSeller", "isOffer",
+      `INSERT INTO products (name, "nameEn", slug, description, "descriptionEn", "basePrice", "purchaseCost",
+        barcode, unit, "productType", "supplierCode",
+        images, ingredients, "ingredientsEn", tags, "categoryId", "isAvailable", "isBestSeller", "isOffer",
         discount, "preparationTime", calories, "sortOrder",
         "trackInventory", "stockQuantity", "lowStockThreshold")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::uuid,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
        RETURNING id`,
       [data.name, data.nameEn ?? '', data.slug, data.description ?? '', data.descriptionEn ?? '',
-       Number(data.basePrice), data.images ?? [], data.ingredients ?? [], data.ingredientsEn ?? [],
+       Number(data.basePrice), Number(data.purchaseCost) || 0,
+       data.barcode || null, data.unit || 'قطعة', data.productType || 'مخزوني', data.supplierCode || '',
+       data.images ?? [], data.ingredients ?? [], data.ingredientsEn ?? [],
        data.tags ?? [], data.category ?? null, data.isAvailable ?? true, data.isBestSeller ?? false,
        data.isOffer ?? false, Number(data.discount) || 0, Number(data.preparationTime) || 20,
        Number(data.calories) || 0, Number(data.sortOrder) || 0,
@@ -340,7 +388,8 @@ export const update = async (
   id: string,
   data: {
     name?: string; nameEn?: string; description?: string; descriptionEn?: string;
-    basePrice?: number; images?: string[]; ingredients?: string[]; ingredientsEn?: string[]; tags?: string[];
+    basePrice?: number; purchaseCost?: number; barcode?: string; unit?: string; productType?: string; supplierCode?: string;
+    images?: string[]; ingredients?: string[]; ingredientsEn?: string[]; tags?: string[];
     category?: string; isAvailable?: boolean; isBestSeller?: boolean; isOffer?: boolean;
     discount?: number; preparationTime?: number; calories?: number;
     sizes?: Array<{ name: string; nameEn?: string; price: number; isAvailable?: boolean }>;
@@ -361,6 +410,11 @@ export const update = async (
     if (data.description !== undefined) push('description', data.description);
     if (data.descriptionEn !== undefined) push('descriptionEn', data.descriptionEn);
     if (data.basePrice !== undefined) push('basePrice', Number(data.basePrice));
+    if (data.purchaseCost !== undefined) push('purchaseCost', Number(data.purchaseCost));
+    if (data.barcode !== undefined) push('barcode', data.barcode || null);
+    if (data.unit !== undefined) push('unit', data.unit);
+    if (data.productType !== undefined) push('productType', data.productType);
+    if (data.supplierCode !== undefined) push('supplierCode', data.supplierCode);
     if (data.images !== undefined) push('images', data.images);
     if (data.ingredients !== undefined) push('ingredients', data.ingredients);
     if (data.ingredientsEn !== undefined) push('ingredientsEn', data.ingredientsEn);

@@ -31,18 +31,19 @@ const phoneRegex = /^01[0125]\d{8}$/;
 
 /** Admin orders: phone & address are optional (admin creates on behalf of a customer). */
 export const createAdminOrderSchema = z.object({
-  items: z.array(adminItem).min(1, 'At least one item is required').max(100),
+  items: z.array(adminItem).min(1, 'At least one item is required'),
   couponCode: z.string().trim().max(40).optional(),
   phone: z.string().trim().regex(phoneRegex).optional(),
   customerName: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(1000).optional(),
   address: addressSchema.optional(),
   paymentMethod: z.enum(['cash', 'vodafone_cash', 'instapay']).default('cash'),
+  orderType: z.string().max(50).optional(),
 });
 
 /** Customer orders: phone & address are required. */
 export const createOrderSchema = z.object({
-  items: z.array(item).min(1, 'At least one item is required').max(100),
+  items: z.array(item).min(1, 'At least one item is required'),
   couponCode: z.string().trim().max(40).optional(),
   phone: z
     .string()
@@ -52,6 +53,7 @@ export const createOrderSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
   address: addressSchema,
   paymentMethod: z.enum(['cash', 'vodafone_cash', 'instapay']).default('cash'),
+  orderType: z.string().max(50).optional(),
 });
 
 export const updateStatusSchema = z.object({

@@ -83,6 +83,16 @@ export const adminSearch = asyncHandler(async (req: Request, res: Response) => {
   }
 });
 
+export const searchByBarcode = asyncHandler(async (req: Request, res: Response) => {
+  const barcode = String(req.params.barcode || '').trim();
+  if (!barcode) throw new ApiError(400, 'Barcode is required');
+  
+  const product = await productsRepo.searchByBarcode(barcode);
+  if (!product) throw new ApiError(404, 'Product not found for this barcode');
+  
+  res.json(new ApiResponse(200, product));
+});
+
 export const getBestSellers = asyncHandler(async (_req: Request, res: Response) => {
   res.json(new ApiResponse(200, await productsRepo.bestSellers()));
 });
@@ -143,7 +153,12 @@ const sanitizeBody = (body: Record<string, unknown>) => {
   if (body.sizes !== undefined) clean.sizes = body.sizes;
   if (body.extras !== undefined) clean.extras = body.extras;
   if (body.labelIds !== undefined) clean.labelIds = Array.isArray(body.labelIds) ? body.labelIds.map(String) : [];
-  for (const f of ['basePrice', 'discount', 'preparationTime', 'calories'] as const) {
+  // POS fields
+  if (body.barcode !== undefined) clean.barcode = body.barcode;
+  if (body.unit !== undefined) clean.unit = body.unit;
+  if (body.productType !== undefined) clean.productType = body.productType;
+  if (body.supplierCode !== undefined) clean.supplierCode = body.supplierCode;
+  for (const f of ['basePrice', 'purchaseCost', 'discount', 'preparationTime', 'calories'] as const) {
     if (body[f] !== undefined) clean[f] = Number(body[f]);
   }
   for (const f of ['isAvailable', 'isBestSeller', 'isOffer'] as const) {

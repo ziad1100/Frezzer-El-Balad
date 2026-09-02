@@ -13,6 +13,7 @@ const querySuffix = (req: { url: string }): string => req.url.split('?')[1] ?? '
 router.get('/', cached({ resource: 'products', ttl: 60, suffix: querySuffix, skip: (req) => Boolean(new URL(req.url, 'http://x').searchParams.get('search')) }), product.listProducts);
 router.get('/admin', requireAuth, requirePermission('products', 'read'), product.adminList);
 router.get('/admin/search', requireAuth, requirePermission('products', 'read'), product.adminSearch);
+router.get('/barcode/:barcode', requireAuth, product.searchByBarcode);
 router.get('/best-sellers', cached({ resource: 'products', ttl: 60, suffix: 'best-sellers' }), product.getBestSellers);
 router.get('/offers', cached({ resource: 'products', ttl: 60, suffix: 'offers' }), product.getOffers);
 router.get('/:slug', cached({ resource: 'products', ttl: 60, suffix: (req) => `slug:${req.params.slug}` }), product.getProductBySlug);
