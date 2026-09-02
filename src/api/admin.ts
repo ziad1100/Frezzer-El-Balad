@@ -47,6 +47,11 @@ export interface AdminSearchProduct {
   name: string;
   nameEn?: string;
   basePrice: number;
+  purchaseCost?: number;
+  barcode?: string;
+  unit?: string;
+  productType?: string;
+  supplierCode?: string;
   images: string[];
   isAvailable: boolean;
   tags: string[];
@@ -58,6 +63,9 @@ export interface AdminSearchProduct {
 
 export const adminSearchProducts = (q: string): Promise<AdminSearchProduct[]> =>
   unwrap(api.get<ApiEnvelope<AdminSearchProduct[]>>('/products/admin/search', { params: { q } }));
+
+export const searchProductByBarcode = (barcode: string): Promise<AdminSearchProduct> =>
+  unwrap(api.get<ApiEnvelope<AdminSearchProduct>>(`/products/barcode/${encodeURIComponent(barcode)}`));
 
 export const createProduct = (payload: ProductPayload): Promise<Product> =>
   unwrap(api.post<ApiEnvelope<Product>>('/products', payload));

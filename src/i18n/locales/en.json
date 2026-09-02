@@ -481,6 +481,18 @@
     "allMeals": "All products",
     "mealReviews": "Product reviews",
     "restaurantReviews": "Experience reviews",
+    "productTypes": {
+      "inventory": "Inventory",
+      "service": "Service",
+      "raw": "Raw Materials",
+      "assembled": "Assembled"
+    },
+    "units": {
+      "piece": "Piece",
+      "kg": "Kilogram",
+      "gram": "Gram",
+      "liter": "Liter"
+    },
     "newest": "Newest",
     "oldest": "Oldest",
     "unverified": "Not verified",

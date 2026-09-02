@@ -481,6 +481,18 @@
     "allMeals": "كل المنتجات",
     "mealReviews": "تقييمات المنتجات",
     "restaurantReviews": "تقييمات التجربة",
+    "productTypes": {
+      "inventory": "مخزوني",
+      "service": "خدمي",
+      "raw": "خامات",
+      "assembled": "مجمّع"
+    },
+    "units": {
+      "piece": "قطعة",
+      "kg": "كيلو",
+      "gram": "جرام",
+      "liter": "لتر"
+    },
     "newest": "الأحدث",
     "oldest": "الأقدم",
     "unverified": "غير موثّق",

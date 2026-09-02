@@ -96,6 +96,11 @@ export interface Product {
   ingredients: string[];
   ingredientsEn?: string[];
   basePrice: number;
+  purchaseCost?: number;
+  barcode?: string;
+  unit?: string;
+  productType?: string;
+  supplierCode?: string;
   discount: number;
   rating: number;
   reviewsCount: number;
@@ -338,6 +343,9 @@ export interface Order {
     amount: number;
   };
   status: OrderStatus;
+  orderType?: string;
+  createdByName?: string;
+  shift?: number;
   deliveryAddress: Address;
   phone: string;
   customerName: string;
@@ -467,6 +475,11 @@ export interface ProductPayload {
   ingredients?: string[];
   ingredientsEn?: string[];
   basePrice: number;
+  purchaseCost?: number;
+  barcode?: string;
+  unit?: string;
+  productType?: string;
+  supplierCode?: string;
   discount?: number;
   preparationTime?: number;
   calories?: number;
@@ -486,3 +499,19 @@ export interface SettingsMap {
   freeDeliveryOver?: number;
   [key: string]: unknown;
 }
+
+export interface Supplier {
+  _id: string;
+  name: string;
+  nameEn: string;
+  phone: string;
+  email: string;
+  address: string;
+  contactPerson: string;
+  notes: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProductType = 'مخزوني' | 'خدمي' | 'خامات' | 'مجمّع';
