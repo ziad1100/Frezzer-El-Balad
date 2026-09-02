@@ -1,7 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -22,7 +21,6 @@ import {
   ChevronDown,
   Menu,
   X,
-  Receipt,
   ClipboardList,
   Layers,
   DollarSign,
@@ -30,7 +28,6 @@ import {
   Wrench,
   UserCog,
   Briefcase,
-  Store,
 } from 'lucide-react';
 import { Logo } from '@/components/logo/Logo';
 import { useAppDispatch, useAppSelector } from '@/hooks';
@@ -115,7 +112,7 @@ interface POSShellProps {
 }
 
 export function POSShell({ children }: POSShellProps) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -126,8 +123,7 @@ export function POSShell({ children }: POSShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  // Get current page title
-  const currentPage = navigationItems.find((item) => item.path && location.pathname === item.path);
+
 
   const handleLogout = () => {
     void api.post('/auth/logout');

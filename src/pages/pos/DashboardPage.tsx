@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
@@ -7,20 +6,14 @@ import {
   Package,
   TrendingUp,
   Warehouse,
-  BarChart3,
   Users,
   Truck,
-  Settings,
   DollarSign,
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Clock,
-  ArrowUpRight,
-  ArrowDownRight,
 } from 'lucide-react';
-import { adminListProducts, getDashboard, getOrderStats, getInventoryStats } from '@/api/admin';
-import { Card, CardContent } from '@/components/ui/Card';
+import { adminListProducts, getOrderStats, getInventoryStats, getDashboard } from '@/api/admin';
 import { cn, formatPrice } from '@/lib/utils';
 
 export function DashboardPage() {
@@ -30,7 +23,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
 
   // Fetch dashboard data
-  const { data: dashboard, isLoading: dashboardLoading } = useQuery({
+  const { isLoading: dashboardLoading } = useQuery({
     queryKey: ['admin', 'dashboard'],
     queryFn: getDashboard,
   });

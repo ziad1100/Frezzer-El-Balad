@@ -89,7 +89,7 @@ export interface Product {
   slug: string;
   description: string;
   descriptionEn: string;
-  category: string;
+  category: string | { _id: string; name: string; nameEn?: string };
   images: string[];
   sizes: ProductSize[];
   extras: ProductExtra[];

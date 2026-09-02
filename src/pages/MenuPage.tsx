@@ -63,15 +63,16 @@ export function MenuPage() {
     for (const s of sections) groups.set(s._id, { section: s, items: [], subs: [] });
 
     for (const p of data) {
-      const sub = subById.get(p.category);
+      const categoryId = typeof p.category === 'object' ? p.category?._id : p.category;
+      const sub = subById.get(categoryId);
       if (sub?.parentId) {
         const g = groups.get(sub.parentId);
         if (!g) continue;
         let sg = g.subs.find((x) => x.sub._id === sub._id);
         if (!sg) { sg = { sub, items: [] }; g.subs.push(sg); }
         sg.items.push(p);
-      } else if (sections.some((s) => s._id === p.category)) {
-        groups.get(p.category)?.items.push(p);
+      } else if (sections.some((s) => s._id === categoryId)) {
+        groups.get(categoryId)?.items.push(p);
       }
     }
 

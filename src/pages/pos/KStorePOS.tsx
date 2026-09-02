@@ -1,39 +1,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  ShoppingCart,
   Search,
-  Plus,
-  Minus,
-  Trash2,
   Check,
-  X,
-  Barcode,
   Package,
   RefreshCw,
   User,
   Printer,
   Calendar,
-  Warehouse,
   Users,
-  Truck,
-  BarChart3,
   Settings,
-  HelpCircle,
-  Wrench,
-  DollarSign,
   UserCog,
-  FileText,
-  Briefcase,
-  Phone,
   ClipboardList,
-  Layers,
   LayoutDashboard,
 } from 'lucide-react';
-import { searchProductByBarcode, type AdminSearchProduct } from '@/api/admin';
-import { createOrder } from '@/api/orders';
 import { useAppSelector } from '@/hooks';
 import { ProductModal } from '@/components/pos/ProductModal';
 
@@ -187,9 +168,7 @@ function Taskbar() {
 // ── Main KStore POS Component ─────────────────────────────────────────────────
 
 export function KStorePOS() {
-  const { i18n } = useTranslation();
-  const isAr = i18n.language === 'ar';
-  const queryClient = useQueryClient();
+  const { i18n: _i18n } = useTranslation();
   const user = useAppSelector((state) => state.auth.user);
 
   // State
@@ -283,12 +262,7 @@ export function KStorePOS() {
     setCart(newCart);
   };
 
-  // Remove item
-  const removeItem = (index: number) => {
-    const newCart = [...cart];
-    newCart.splice(index, 1);
-    setCart(newCart);
-  };
+
 
   // Clear cart
   const clearCart = () => {

@@ -6,22 +6,18 @@ import {
   Package,
   Search,
   Edit,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
   TrendingUp,
   TrendingDown,
-  Filter,
 } from 'lucide-react';
 import {
   adminListProducts,
   updateProduct,
   getInventoryStats,
-  type AdminSearchProduct,
 } from '@/api/admin';
 import { Card, CardContent } from '@/components/ui/Card';
 import { PageHeader, Pagination, TableWrap, Td, Th } from '@/components/admin/primitives';
 import { cn, formatPrice } from '@/lib/utils';
+import type { Product } from '@/types';
 
 type StockFilter = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
 
@@ -35,7 +31,7 @@ export function InventoryPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StockFilter>('all');
   const [page, setPage] = useState(1);
-  const [showAdjustModal, setShowAdjustModal] = useState<AdminSearchProduct | null>(null);
+  const [showAdjustModal, setShowAdjustModal] = useState<Product | null>(null);
   const [adjustType, setAdjustType] = useState<'increase' | 'decrease'>('increase');
   const [adjustQty, setAdjustQty] = useState('');
   const [adjustReason, setAdjustReason] = useState('');

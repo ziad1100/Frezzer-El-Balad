@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { Send, Phone, Mail, MapPin, Clock, MessageCircle, Headphones, Snowflake, ExternalLink } from 'lucide-react';
+import { Send, Phone, Mail, MapPin, Clock, MessageCircle, Headphones, Snowflake } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';

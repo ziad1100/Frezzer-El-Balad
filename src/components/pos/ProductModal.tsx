@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Printer, Save, FileText } from 'lucide-react';
+import { Printer, Save, FileText } from 'lucide-react';
 
 interface ProductModalProps {
   isOpen: boolean;

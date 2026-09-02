@@ -46,14 +46,7 @@ const AdminPurchasesPage = lazy(() => import('@/pages/admin/AdminPurchasesPage')
 const AdminPaymentsPage = lazy(() => import('@/pages/admin/AdminPaymentsPage').then((m) => ({ default: m.AdminPaymentsPage })));
 const AdminInventoryPage = lazy(() => import('@/pages/admin/AdminInventoryPage').then((m) => ({ default: m.AdminInventoryPage })));
 
-// POS Pages
-const POSShell = lazy(() => import('@/components/pos/POSShell').then((m) => ({ default: m.POSShell })));
-const POSPage = lazy(() => import('@/pages/pos/POSPage').then((m) => ({ default: m.POSPage })));
-const OrderLogPage = lazy(() => import('@/pages/pos/OrderLogPage').then((m) => ({ default: m.OrderLogPage })));
-const PurchasesPage = lazy(() => import('@/pages/pos/PurchasesPage').then((m) => ({ default: m.PurchasesPage })));
-const ProductManagementPage = lazy(() => import('@/pages/pos/ProductManagementPage').then((m) => ({ default: m.ProductManagementPage })));
-const DashboardPage = lazy(() => import('@/pages/pos/DashboardPage').then((m) => ({ default: m.DashboardPage })));
-const InventoryPage = lazy(() => import('@/pages/pos/InventoryPage').then((m) => ({ default: m.InventoryPage })));
+// POS Page
 const KStorePOS = lazy(() => import('@/pages/pos/KStorePOS').then((m) => ({ default: m.KStorePOS })));
 
 function ScrollToTop() {
