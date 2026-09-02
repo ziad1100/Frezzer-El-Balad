@@ -45,7 +45,7 @@ export function GalleryPage() {
   return (
     <div className="overflow-hidden">
       {/* ═══ Hero ═══ */}
-      <section className="relative bg-gradient-to-b from-brand-900/30 via-[var(--tw-bg)] to-[var(--tw-bg)]">
+      <section className="relative bg-linear-to-b from-brand-900/30 via-(--tw-bg) to-(--tw-bg)">
         <div className="container-px py-14 sm:py-20">
           <motion.div initial="hidden" animate="visible" variants={stagger} className="mx-auto max-w-2xl text-center">
             <motion.div variants={fadeUp} className="mb-5">
@@ -54,10 +54,10 @@ export function GalleryPage() {
                 {i18n.language === 'ar' ? 'معرض الصور' : 'Photo Gallery'}
               </span>
             </motion.div>
-            <motion.h1 variants={fadeUp} className="text-3xl font-extrabold tracking-tight text-[var(--tw-text)] sm:text-4xl">
+            <motion.h1 variants={fadeUp} className="text-3xl font-extrabold tracking-tight text-(--tw-text) sm:text-4xl">
               {t('gallery.title')}
             </motion.h1>
-            <motion.p variants={fadeUp} className="mt-4 text-base text-[var(--tw-text-muted)] sm:text-lg">
+            <motion.p variants={fadeUp} className="mt-4 text-base text-(--tw-text-muted) sm:text-lg">
               {t('gallery.subtitle')}
             </motion.p>
           </motion.div>
@@ -84,15 +84,15 @@ export function GalleryPage() {
               ))
             : items.map((item) => (
                 <motion.div key={item.key} variants={fadeUp} whileHover={{ y: -4 }}>
-                  <div className="group relative aspect-square overflow-hidden rounded-2xl border border-[var(--tw-border)] bg-[var(--tw-surface)]">
+                  <div className="group relative aspect-square overflow-hidden rounded-2xl border border-(--tw-border) bg-(--tw-surface)">
                     <img
                       src={item.src}
                       alt={item.caption}
                       loading="lazy"
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[var(--tw-bg)]/90 via-[var(--tw-bg)]/40 to-transparent px-3 pb-3 pt-10">
-                      <span className="text-sm font-bold text-[var(--tw-text)] drop-shadow-sm">{item.caption}</span>
+                    <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-(--tw-bg)/90 via-(--tw-bg)/40 to-transparent px-3 pb-3 pt-10">
+                      <span className="text-sm font-bold text-(--tw-text) drop-shadow-sm">{item.caption}</span>
                     </div>
                   </div>
                 </motion.div>

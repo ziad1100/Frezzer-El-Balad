@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { Send, Phone, Mail, MapPin, Clock, MessageCircle, Headphones, Snowflake } from 'lucide-react';
+import { Send, Phone, Mail, MapPin, Clock, MessageCircle, Headphones, Snowflake, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
@@ -40,11 +40,15 @@ export function ContactPage() {
     onError: () => toast.error(t('misc.error')),
   });
 
+  const BUSINESS_PHONE = '01204019307';
+  const WHATSAPP_NUMBER = '01278767679';
+  const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}`;
+
   const contactInfo = [
-    { icon: Phone, label: isAr ? 'الهاتف' : 'Phone', value: '01204019307', href: 'tel:01204019307', color: 'emerald' },
-    { icon: MessageCircle, label: 'WhatsApp', value: isAr ? 'راسلنا على واتساب' : 'Chat on WhatsApp', href: '#', color: 'fresh' },
+    { icon: Phone, label: isAr ? 'الهاتف' : 'Phone', value: BUSINESS_PHONE, href: `tel:${BUSINESS_PHONE}`, color: 'emerald' },
+    { icon: MessageCircle, label: 'WhatsApp', value: isAr ? 'راسلنا على واتساب' : 'Chat on WhatsApp', href: WHATSAPP_LINK, color: 'fresh' },
     { icon: Mail, label: isAr ? 'البريد الإلكتروني' : 'Email', value: 'info@freezerelbalad.com', href: 'mailto:info@freezerelbalad.com', color: 'brand' },
-    { icon: MapPin, label: isAr ? 'العنوان' : 'Address', value: isAr ? 'القاهرة، مصر' : 'Cairo, Egypt', href: '#', color: 'gold' },
+    { icon: MapPin, label: isAr ? 'العنوان' : 'Address', value: isAr ? 'القاهرة، مصر' : 'Cairo, Egypt', href: 'https://maps.google.com/?q=Cairo,Egypt', color: 'gold' },
     { icon: Clock, label: isAr ? 'ساعات العمل' : 'Working Hours', value: isAr ? 'يومياً 9 صباحاً - 11 مساءً' : 'Daily 9AM - 11PM', href: undefined, color: 'ice' },
   ] as const;
 
@@ -204,10 +208,16 @@ export function ContactPage() {
               : 'Our customer service team is available daily to assist you.'}
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
-            <a href="tel:01204019307">
+            <a href={`tel:${BUSINESS_PHONE}`}>
               <Button variant="primary" size="lg">
                 <Phone className="h-4 w-4" />
                 {isAr ? 'اتصل الآن' : 'Call Now'}
+              </Button>
+            </a>
+            <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="lg">
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
               </Button>
             </a>
           </div>
